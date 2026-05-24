@@ -68,6 +68,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
       'x-api-key': API_KEY,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
