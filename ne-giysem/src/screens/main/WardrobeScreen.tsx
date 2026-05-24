@@ -1,15 +1,43 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
+import { useUserStore } from '../../store/useUserStore';
 import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
 
 export default function WardrobeScreen({ navigation }: Props) {
-  const items = useWardrobeStore((s) => s.items);
+  const items     = useWardrobeStore((s) => s.items);
+  const isLoading = useWardrobeStore((s) => s.isLoading);
+  const fetchItems = useWardrobeStore((s) => s.fetchItems);
+  const user      = useUserStore((s) => s.user);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchItems(user.id);
+    }
+  }, [user?.id]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.accent} size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -36,6 +64,7 @@ export default function WardrobeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dolabım</Text>
+        <Text style={styles.headerCount}>{items.length} parça</Text>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => navigation.navigate('Upload')}
@@ -68,6 +97,11 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // --- Boş durum ---
   emptyContainer: {
@@ -115,17 +149,23 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: 8,
   },
   headerTitle: {
     fontSize: 22,
     fontFamily: fonts.headingBold,
     color: colors.primary,
+    flex: 1,
+  },
+  headerCount: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.muted,
   },
   addBtn: {
     paddingVertical: 8,
