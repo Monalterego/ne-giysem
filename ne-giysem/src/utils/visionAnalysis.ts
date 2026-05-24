@@ -62,14 +62,8 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
     throw new Error('Anthropic API key eksik. .env dosyasını kontrol et.');
   }
 
-  let mediaType: 'image/jpeg' | 'image/png' = 'image/png';
-  let imageData = base64;
-  if (base64.startsWith('data:')) {
-    const semicolon = base64.indexOf(';');
-    const mime = base64.slice(5, semicolon);
-    if (mime === 'image/jpeg') mediaType = 'image/jpeg';
-    imageData = base64.slice(base64.indexOf(',') + 1);
-  }
+  const imageData = base64.includes(',') ? base64.slice(base64.indexOf(',') + 1) : base64;
+  const mediaType: 'image/jpeg' | 'image/png' = imageData.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
 
   const requestBody = {
     model: 'claude-sonnet-4-5-20250929',
