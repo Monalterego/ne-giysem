@@ -19,6 +19,14 @@ export type WardrobeStackParamList = {
   };
 };
 
+export type ScanStackParamList = {
+  ScanHome: undefined;
+  StoreResult: {
+    processedBase64: string;
+    originalUri: string;
+  };
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Wardrobe: undefined;

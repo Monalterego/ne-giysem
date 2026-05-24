@@ -109,3 +109,40 @@ export function missingCategories(items: WardrobeItem[]): string[] {
   if (!items.some((i) => i.category === 'shoes'))  missing.push('ayakkabı');
   return missing;
 }
+
+// ─── Mağaza uyum analizi ─────────────────────────────────────────────────────
+
+export interface StoreAnalysis {
+  totalChecked: number;    // dolaptaki toplam parça
+  compatibleCount: number; // uyumlu parça sayısı (skor > 0.6)
+  avgScore: number;        // ortalama uyum skoru (0-100)
+  topCombos: Combo[];      // en iyi 3 kombin önerisi
+  sameCategory: number;    // aynı kategoride mevcut parça sayısı
+}
+
+// Taranan mağaza ürününü dolaptaki parçalara karşı analiz eder
+export function analyzeStoreItem(
+  scannedItem: WardrobeItem,
+  wardrobeItems: WardrobeItem[],
+): StoreAnalysis {
+  if (!wardrobeItems.length) {
+    return { totalChecked: 0, compatibleCount: 0, avgScore: 0, topCombos: [], sameCategory: 0 };
+  }
+
+  // Her dolap parçasıyla ikili renk uyum skoru
+  const pairScores = wardrobeItems.map((item) => itemColorScore(scannedItem, item));
+  const compatibleCount = pairScores.filter((s) => s > 0.6).length;
+  const avgScore = Math.round(
+    (pairScores.reduce((a, b) => a + b, 0) / pairScores.length) * 100,
+  );
+
+  // Taranan ürünü dolaba ekleyerek kombin motoru çalıştır
+  const allCombos = generateCombos([scannedItem, ...wardrobeItems], 50);
+  const topCombos = allCombos
+    .filter((c) => c.items.some((i) => i.id === scannedItem.id))
+    .slice(0, 3);
+
+  const sameCategory = wardrobeItems.filter((i) => i.category === scannedItem.category).length;
+
+  return { totalChecked: wardrobeItems.length, compatibleCount, avgScore, topCombos, sameCategory };
+}
