@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from './types';
 
 import HomeScreen from '../screens/main/HomeScreen';
-import WardrobeScreen from '../screens/main/WardrobeScreen';
+import WardrobeNavigator from './WardrobeNavigator';
 import CombosScreen from '../screens/main/CombosScreen';
 import ScanScreen from '../screens/main/ScanScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
@@ -22,7 +22,7 @@ export default function MainTabNavigator() {
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Ana Sayfa' }} />
-      <Tab.Screen name="Wardrobe" component={WardrobeScreen} options={{ tabBarLabel: 'Dolap' }} />
+      <Tab.Screen name="Wardrobe" component={WardrobeNavigator} options={{ tabBarLabel: 'Dolap' }} />
       <Tab.Screen name="Combos" component={CombosScreen} options={{ tabBarLabel: 'Kombin' }} />
       <Tab.Screen name="Scan" component={ScanScreen} options={{ tabBarLabel: 'Tara' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Profil' }} />

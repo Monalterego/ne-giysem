@@ -10,6 +10,15 @@ export type OnboardingStackParamList = {
   StyleResult: { selectedStyles: StyleEntry[] };
 };
 
+export type WardrobeStackParamList = {
+  WardrobeList: undefined;
+  Upload: undefined;
+  UploadDetail: {
+    processedBase64: string;
+    originalUri: string;
+  };
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Wardrobe: undefined;
