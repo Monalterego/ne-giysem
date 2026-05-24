@@ -8,15 +8,15 @@ Kullanıcıların gardrobunu dijitalleştiren, yapay zeka ile kombin önerileri 
 
 - **Mobil:** React Native / Expo (TypeScript)
 - **Backend:** FastAPI (Python) veya Node.js
-- **Görsel İşleme:** rembg / Segment Anything (SAM) — background removal
+- **Görsel İşleme:** Remove.bg API (MVP) → rembg fallback → SAM (ölçeklenme) — background removal
 - **AI / Vision:** Claude API (Vision) — kategori, renk, desen, mevsim tespiti
 - **Öneri Motoru:** Rule engine + embedding similarity (pgvector)
 - **Veritabanı:** PostgreSQL + Redis (cache/session)
 - **Auth:** Supabase Auth
 - **Storage:** Cloudflare R2 veya AWS S3 + CDN
 - **Hosting:** Hetzner VPS + Coolify
-- **Push Notification:** Expo Notifications / OneSignal
-- **Hava Durumu:** OpenWeatherMap API
+- **Push Notification:** Expo Notifications / OneSignal (V2 — V1'de ertelendi)
+- **Hava Durumu:** OpenWeatherMap API (V2 — V1'de ertelendi)
 
 ## Geliştirme Kuralları
 
@@ -28,7 +28,7 @@ Kullanıcıların gardrobunu dijitalleştiren, yapay zeka ile kombin önerileri 
 - Font: DM Sans (body) + Playfair Display (başlıklar)
 - Renk paleti: primary #1A1A2E, accent #E94560, secondary #0F3460
 - Component-based mimari, her ekran kendi klasöründe
-- Expo Router kullan (file-based routing)
+- React Navigation kullan (Stack + Bottom Tabs)
 
 ## Temel Özellikler
 
@@ -115,7 +115,7 @@ Kullanıcıların gardrobunu dijitalleştiren, yapay zeka ile kombin önerileri 
 ## Görsel İşleme Pipeline
 
 ```
-Fotoğraf → Boyutlandırma/Optimize → Background Removal (rembg/SAM)
+Fotoğraf → Boyutlandırma/Optimize → Background Removal (Remove.bg API → rembg fallback → SAM)
 → Kategori Tespiti (Vision AI) → Renk/Desen/Mevsim Çıkarımı
 → Embedding Generation → Storage (orijinal + işlenmiş → CDN, metadata → DB)
 ```
@@ -131,7 +131,11 @@ Fotoğraf → Boyutlandırma/Optimize → Background Removal (rembg/SAM)
 - Kural tabanlı basit kombin önerileri
 - Kombin kartı görseli (Pinterest flat lay stili)
 - Basit mağaza uyum kontrolü (renk uyumu seviyesinde)
+- Sanal mağaza: URL yapıştır + screenshot yükle (dolap uyum analizi)
 - Fotoğraf çekme rehberi
+- Onboarding A/B test (2 varyant — Yol A direkt seçim vs. kısaltılmış quiz)
+
+**V1 kapsamı dışında:** Stil Quiz (Yol B), Keşif Modu (Yol C), hava durumu entegrasyonu, push notification → V2+
 
 ### V2 — "Akıllı Stil" (2-3 ay)
 - Stil Quiz (Yol B) ve Keşif Modu (Yol C)
@@ -154,7 +158,7 @@ Fotoğraf → Boyutlandırma/Optimize → Background Removal (rembg/SAM)
 
 ## UX Kuralları
 
-- **"3 parça kuralı":** 3 parça yüklenince ilk kombin gösterilir — instant gratification
+- **"Kategori bazlı ilk kombin kuralı":** Üst + alt + ayakkabı yüklenince ilk kombin gösterilir — instant gratification
 - **"60 saniye kuralı":** Kayıttan ilk değere 60 saniyede ulaşılmalı
 - **"Sıfır boşluk":** Hiçbir ekran boş hissi vermemeli, her zaman bir aksiyon önerilmeli
 - **"Progressive disclosure":** Karmaşıklık kademeli açılmalı, ilk deneyim sade olmalı
@@ -190,6 +194,22 @@ Fotoğraf → Boyutlandırma/Optimize → Background Removal (rembg/SAM)
 - Üç katmanlı stil profili: farklı farkındalık seviyelerine hitap
 - Türk pazarına özel: Türkçe, yerel trendler, Türk moda terminolojisi
 - Kumaş bilgisi sistemi: mevsimsel öneri kalitesini yükselten farklılaştırıcı
+
+## Hedef Kitle
+
+- **Birincil:** Kadın kullanıcılar, 18-35 yaş, moda farkındalığı yüksek, akıllı telefon bağımlısı
+- **Erkek segmenti:** V2+ (ayrı onboarding + kombin kuralları gerektirir)
+- **Coğrafya:** Türkiye (V1), MENA + Diaspora (V2+)
+
+## Veritabanı Şeması (Supabase)
+
+Tablo: `profiles` — id (auth.users ref), email, name, age_range, created_at
+Tablo: `style_profiles` — id, user_id, styles jsonb, color_palette jsonb, created_at
+Tablo: `wardrobe_items` — id, user_id, category, subcategory, colors jsonb, pattern, season jsonb, fabric, image_url, processed_image_url, brand, price, created_at
+Tablo: `combos` — id, user_id, items jsonb, score, occasion, worn_at, created_at
+
+Tüm tablolarda RLS aktif — kullanıcı yalnızca kendi satırlarına erişir.
+Migrasyon: `supabase/migrations/001_initial.sql`
 
 ## GitHub
 
