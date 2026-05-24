@@ -40,14 +40,16 @@ export default function WelcomeScreen({ navigation }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
     setActiveIndex(idx);
   };
 
   const handleNext = () => {
-    if (activeIndex < SLIDES.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
+    const nextIndex = activeIndex + 1;
+    if (nextIndex < SLIDES.length) {
+      setActiveIndex(nextIndex);
+      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
     } else {
       navigation.navigate('Signup');
     }
@@ -62,8 +64,7 @@ export default function WelcomeScreen({ navigation }: Props) {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        onMomentumScrollEnd={onMomentumScrollEnd}
         renderItem={({ item }) => (
           <View style={styles.slide}>
             <View style={styles.emojiGrid}>
