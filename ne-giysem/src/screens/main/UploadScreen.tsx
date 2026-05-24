@@ -7,6 +7,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -77,8 +78,24 @@ export default function UploadScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
-      const base64 = await removeBackground(uri);
-      setProcessedBase64(base64);
+      if (Platform.OS === 'web') {
+        // Web'de Remove.bg'yi atla — orijinal görseli base64'e çevir
+        const res = await fetch(uri);
+        const blob = await res.blob();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const data = reader.result as string;
+            resolve(data.includes(',') ? data.split(',')[1] : data);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        setProcessedBase64(base64);
+      } else {
+        const base64 = await removeBackground(uri);
+        setProcessedBase64(base64);
+      }
     } catch (err: any) {
       Alert.alert('Hata', err.message ?? 'Arkaplan silinemedi. Lütfen tekrar dene.');
       setOriginalUri(null);
@@ -165,7 +182,9 @@ export default function UploadScreen({ navigation }: Props) {
               resizeMode="contain"
             />
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>✓  BG Temizlendi</Text>
+              <Text style={styles.badgeText}>
+                {Platform.OS === 'web' ? '✓  BG Temizlendi (Web Modu)' : '✓  BG Temizlendi'}
+              </Text>
             </View>
           </View>
 
