@@ -12,12 +12,13 @@ export const colors = {
   overlay: 'rgba(26,26,46,0.06)',
 };
 
+// Sistem fontları — npm install sonrası DM Sans / Playfair Display ile değiştirilecek
 export const fonts = {
-  body: 'DMSans_400Regular',
-  bodyMedium: 'DMSans_500Medium',
-  bodySemiBold: 'DMSans_600SemiBold',
-  bodyBold: 'DMSans_700Bold',
-  bodyExtraBold: 'DMSans_800ExtraBold',
-  heading: 'PlayfairDisplay_700Bold',
-  headingBold: 'PlayfairDisplay_800ExtraBold',
-};
+  body: undefined,
+  bodyMedium: undefined,
+  bodySemiBold: undefined,
+  bodyBold: undefined,
+  bodyExtraBold: undefined,
+  heading: undefined,
+  headingBold: undefined,
+} as const satisfies Record<string, string | undefined>;
