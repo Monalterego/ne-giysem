@@ -4,6 +4,7 @@ export type OnboardingStackParamList = {
   Splash: undefined;
   Welcome: undefined;
   Signup: undefined;
+  Login: undefined;
   StyleChoice: undefined;
   StyleSelect: undefined;
   StyleResult: { selectedStyles: StyleEntry[] };

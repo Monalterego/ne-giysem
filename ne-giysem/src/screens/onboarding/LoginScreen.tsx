@@ -17,22 +17,23 @@ import { colors, fonts } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 
-type Props = NativeStackScreenProps<OnboardingStackParamList, 'Signup'>;
+type Props = NativeStackScreenProps<OnboardingStackParamList, 'Login'>;
 
-export default function SignupScreen({ navigation }: Props) {
+export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const setUser = useUserStore((s) => s.setUser);
+  const setOnboarded = useUserStore((s) => s.setOnboarded);
 
-  const handleSignup = async () => {
+  const handleLogin = async () => {
     if (!email || !password) return;
     setLoading(true);
     setError('');
 
-    const { data, error: authError } = await supabase.auth.signUp({ email, password });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError(authError.message);
@@ -44,11 +45,12 @@ export default function SignupScreen({ navigation }: Props) {
       setUser({
         id: data.user.id,
         email: data.user.email ?? '',
-        name: '',
+        name: data.user.user_metadata?.name ?? '',
         isPremium: false,
         createdAt: data.user.created_at,
       });
-      navigation.navigate('StyleChoice');
+      // Geri dönen kullanıcı — onboarding atlansın
+      setOnboarded(true);
     }
     setLoading(false);
   };
@@ -64,29 +66,16 @@ export default function SignupScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Geri */}
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backText}>← Geri</Text>
+          </TouchableOpacity>
+
           {/* Header */}
-          <Text style={styles.title}>Hesap Oluştur</Text>
-          <Text style={styles.subtitle}>60 saniyede kişisel stiline kavuş</Text>
+          <Text style={styles.title}>Giriş Yap</Text>
+          <Text style={styles.subtitle}>Hesabına erişmek için bilgilerini gir</Text>
 
-          {/* Social buttons — kapsam dışı (V2) */}
-          <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
-            <Text style={styles.socialIcon}>🍎</Text>
-            <Text style={[styles.socialText, styles.socialTextDisabled]}>Apple ile devam et</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
-            <Text style={styles.socialIcon}>🌐</Text>
-            <Text style={[styles.socialText, styles.socialTextDisabled]}>Google ile devam et</Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>veya</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Email / password */}
+          {/* Email */}
           <TextInput
             style={styles.input}
             placeholder="E-posta"
@@ -97,6 +86,8 @@ export default function SignupScreen({ navigation }: Props) {
             autoCapitalize="none"
             autoComplete="email"
           />
+
+          {/* Şifre */}
           <TextInput
             style={styles.input}
             placeholder="Şifre"
@@ -107,27 +98,27 @@ export default function SignupScreen({ navigation }: Props) {
             autoComplete="password"
           />
 
-          {/* Hata mesajı */}
+          {/* Hata */}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {/* Signup CTA */}
+          {/* CTA */}
           <TouchableOpacity
             style={[styles.primaryBtn, (!email || !password || loading) && styles.primaryBtnDisabled]}
-            onPress={handleSignup}
+            onPress={handleLogin}
             activeOpacity={0.85}
             disabled={loading}
           >
             {loading
               ? <ActivityIndicator color={colors.white} />
-              : <Text style={styles.primaryBtnText}>Kayıt Ol</Text>
+              : <Text style={styles.primaryBtnText}>Giriş Yap</Text>
             }
           </TouchableOpacity>
 
-          {/* Login link */}
-          <View style={styles.loginRow}>
-            <Text style={styles.loginHint}>Zaten hesabın var mı?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}> Giriş Yap</Text>
+          {/* Kayıt linki */}
+          <View style={styles.signupRow}>
+            <Text style={styles.signupHint}>Hesabın yok mu?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+              <Text style={styles.signupLink}> Kayıt Ol</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -146,8 +137,16 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 20,
     paddingBottom: 24,
+  },
+  backBtn: {
+    marginBottom: 24,
+  },
+  backText: {
+    fontSize: 14,
+    fontFamily: fonts.bodyMedium,
+    color: colors.muted,
   },
   title: {
     fontSize: 26,
@@ -161,42 +160,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: 32,
   },
-  socialBtn: {
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    gap: 10,
-    backgroundColor: colors.white,
-  },
-  socialIcon: {
-    fontSize: 18,
-  },
-  socialText: {
-    fontSize: 14,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.primary,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: '#BBBBBB',
-  },
   input: {
     height: 52,
     borderRadius: 14,
@@ -209,10 +172,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: colors.white,
   },
+  errorText: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.accent,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
   primaryBtn: {
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
@@ -225,32 +195,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
-  loginRow: {
+  signupRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
   },
-  loginHint: {
+  signupHint: {
     fontSize: 13,
     fontFamily: fonts.body,
     color: colors.muted,
   },
-  loginLink: {
+  signupLink: {
     fontSize: 13,
     fontFamily: fonts.bodyBold,
     color: colors.accent,
-  },
-  socialBtnDisabled: {
-    opacity: 0.4,
-  },
-  socialTextDisabled: {
-    color: colors.muted,
-  },
-  errorText: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.accent,
-    marginBottom: 10,
-    textAlign: 'center',
   },
 });

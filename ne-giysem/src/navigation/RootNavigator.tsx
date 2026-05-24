@@ -9,11 +9,12 @@ import MainTabNavigator from './MainTabNavigator';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated);
   const isOnboarded = useUserStore((s) => s.isOnboarded);
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isOnboarded ? (
+      {isAuthenticated && isOnboarded ? (
         <Stack.Screen name="Main" component={MainTabNavigator} />
       ) : (
         <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
