@@ -100,8 +100,10 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any)?.error?.message ?? `Claude API hatası: ${res.status}`);
+    const errorText = await res.text();
+    console.error('API Error status:', res.status);
+    console.error('API Error body:', errorText);
+    throw new Error(`API error: ${res.status} ${errorText}`);
   }
 
   const json = await res.json();
