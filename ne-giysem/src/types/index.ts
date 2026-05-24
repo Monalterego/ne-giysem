@@ -41,9 +41,9 @@ export interface WardrobeItem {
 }
 
 export interface StyleProfile {
-  styles: { category: StyleCategory; weight: number }[];
+  styles: { name: string; weight: number }[];
   colorPalette: string[];
-  tags: string[];
+  tags?: string[];
 }
 
 export interface User {

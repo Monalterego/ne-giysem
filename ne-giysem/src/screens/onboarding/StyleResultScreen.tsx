@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Share, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
+import { supabase } from '../../lib/supabase';
 import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleResult'>;
@@ -43,6 +44,8 @@ export default function StyleResultScreen({ route }: Props) {
   const { selectedStyles } = route.params;
   const setOnboarded = useUserStore((s) => s.setOnboarded);
   const setStyleProfile = useUserStore((s) => s.setStyleProfile);
+  const user = useUserStore((s: { user: import('../../types').User | null }) => s.user);
+  const [loading, setLoading] = useState(false);
 
   const primary = selectedStyles[0];
   const dnaName = DNA_NAMES[primary.name] ?? primary.name;
@@ -53,7 +56,23 @@ export default function StyleResultScreen({ route }: Props) {
     .map((s) => `%${s.weight} ${s.name}`)
     .join(' · ');
 
-  const handleStart = () => {
+  const handleStart = async () => {
+    if (!user) return;
+    setLoading(true);
+
+    const { error } = await supabase
+      .from('style_profiles')
+      .upsert(
+        { user_id: user.id, styles: selectedStyles, color_palette: {} },
+        { onConflict: 'user_id' },
+      );
+
+    if (error) {
+      Alert.alert('Hata', 'Stil profili kaydedilemedi. Lütfen tekrar dene.');
+      setLoading(false);
+      return;
+    }
+
     setStyleProfile({ styles: selectedStyles, colorPalette: palette });
     setOnboarded(true);
   };
@@ -98,8 +117,11 @@ export default function StyleResultScreen({ route }: Props) {
 
         {/* Actions */}
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleStart} activeOpacity={0.85}>
-            <Text style={styles.primaryBtnText}>Dolabımı Oluştur →</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleStart} activeOpacity={0.85} disabled={loading}>
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.primaryBtnText}>Dolabımı Oluştur →</Text>
+            }
           </TouchableOpacity>
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.75}>
             <Text style={styles.shareBtnText}>🤍  Paylaş</Text>
