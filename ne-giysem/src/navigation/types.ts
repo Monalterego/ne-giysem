@@ -1,10 +1,12 @@
+export type StyleEntry = { name: string; weight: number };
+
 export type OnboardingStackParamList = {
   Splash: undefined;
   Welcome: undefined;
   Signup: undefined;
   StyleChoice: undefined;
   StyleSelect: undefined;
-  StyleResult: undefined;
+  StyleResult: { selectedStyles: StyleEntry[] };
 };
 
 export type MainTabParamList = {

@@ -1,26 +1,153 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
+import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleChoice'>;
 
+const PATHS = [
+  {
+    icon: '🎯',
+    title: 'Tarzımı Biliyorum',
+    description: 'Stil kategorilerinden direkt seçim yap',
+    accentColor: colors.accent,
+    route: 'StyleSelect' as const,
+  },
+  {
+    icon: '🧩',
+    title: 'Keşfetmek İstiyorum',
+    description: 'Quiz ile tarzını bul, 8 soruda profilini çıkar',
+    accentColor: colors.secondary,
+    route: 'StyleSelect' as const, // Quiz ekranı V2'de
+  },
+  {
+    icon: '✨',
+    title: 'İlham Ver',
+    description: 'Görselleri beğen/geç — 15 swipe ile stil DNA\'n hazır',
+    accentColor: '#6C5CE7',
+    route: 'StyleSelect' as const, // Keşif ekranı V2'de
+  },
+];
+
 export default function StyleChoiceScreen({ navigation }: Props) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Stilini Tanıyalım</Text>
-      <Text style={styles.subtitle}>Sana en uygun yolu seç</Text>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('StyleSelect')}>
-        <Text style={styles.buttonText}>Tarzımı Biliyorum</Text>
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Stilini Tanıyalım</Text>
+          <Text style={styles.subtitle}>Sana en uygun yolu seç</Text>
+        </View>
+
+        {/* Path cards */}
+        {PATHS.map((path, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.card}
+            onPress={() => navigation.navigate(path.route)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconBox, { backgroundColor: `${path.accentColor}14` }]}>
+              <Text style={styles.iconText}>{path.icon}</Text>
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={styles.cardTitle}>{path.title}</Text>
+              <Text style={styles.cardDesc}>{path.description}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        ))}
+
+        {/* Footer hint */}
+        <Text style={styles.hint}>
+          Her üç yol da aynı çıktıyı üretir → Stil DNA Kartın
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: 24 },
-  title: { fontSize: 22, fontWeight: '800', color: '#1A1A2E' },
-  subtitle: { fontSize: 14, color: '#888', marginTop: 8 },
-  button: { marginTop: 32, backgroundColor: '#1A1A2E', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 24 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  safe: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 32,
+  },
+  header: {
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 26,
+    fontFamily: fonts.headingBold,
+    color: colors.primary,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: fonts.body,
+    color: colors.muted,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 18,
+    marginBottom: 14,
+    backgroundColor: colors.white,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  iconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  iconText: {
+    fontSize: 24,
+  },
+  cardBody: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontFamily: fonts.bodyBold,
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  cardDesc: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: colors.muted,
+    lineHeight: 18,
+  },
+  chevron: {
+    fontSize: 22,
+    color: '#CCCCCC',
+    marginLeft: 8,
+  },
+  hint: {
+    marginTop: 16,
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: '#BBBBBB',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });
