@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import type { ClothingCategory, Fabric, Season } from '../../types';
 import { colors, fonts } from '../../constants/theme';
+import { analyzeClothingImage } from '../../utils/visionAnalysis';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'UploadDetail'>;
 
@@ -51,7 +52,29 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const [category, setCategory] = useState<ClothingCategory | null>(null);
   const [fabric, setFabric] = useState<Fabric>('unknown');
   const [seasons, setSeasons] = useState<Season[]>([]);
+  const [itemColors, setItemColors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [analyzing, setAnalyzing] = useState(true);
+  const [aiDetected, setAiDetected] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    analyzeClothingImage(processedBase64)
+      .then((result) => {
+        if (cancelled) return;
+        setCategory(result.category);
+        if (result.seasons.length > 0) setSeasons(result.seasons);
+        if (result.colors.length > 0) setItemColors(result.colors);
+        setAiDetected(true);
+      })
+      .catch(() => {
+        // Sessizce devam et — kullanıcı manuel doldurabilir
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyzing(false);
+      });
+    return () => { cancelled = true; };
+  }, [processedBase64]);
 
   const toggleSeason = (season: Season) => {
     setSeasons((prev) =>
@@ -101,7 +124,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         id: uuid,
         user_id: user.id,
         category,
-        colors: [],
+        colors: itemColors,
         season: seasons,
         fabric,
         image_url: originalImageUrl,
@@ -115,7 +138,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         id: uuid,
         userId: user.id,
         category,
-        colors: [],
+        colors: itemColors,
         seasons,
         fabric,
         originalImageUrl,
@@ -154,6 +177,19 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             resizeMode="contain"
           />
         </View>
+
+        {/* AI analiz banner */}
+        {analyzing && (
+          <View style={styles.aiBanner}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={styles.aiBannerText}>AI analiz ediyor…</Text>
+          </View>
+        )}
+        {!analyzing && aiDetected && (
+          <View style={[styles.aiBanner, styles.aiBannerDone]}>
+            <Text style={styles.aiBannerText}>✨ AI tarafından dolduruldu · değiştirebilirsin</Text>
+          </View>
+        )}
 
         {/* Kategori */}
         <Text style={styles.sectionTitle}>
@@ -315,6 +351,28 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: colors.white,
+  },
+  aiBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#F3E8FF',
+    borderWidth: 1,
+    borderColor: '#D8B4FE',
+  },
+  aiBannerDone: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#86EFAC',
+  },
+  aiBannerText: {
+    fontSize: 12,
+    fontFamily: fonts.bodyMedium,
+    color: colors.primary,
+    flex: 1,
   },
   saveBtn: {
     height: 54,

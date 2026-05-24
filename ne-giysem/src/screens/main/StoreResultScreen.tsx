@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -13,7 +14,8 @@ import type { ScanStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { analyzeStoreItem } from '../../utils/comboEngine';
-import type { WardrobeItem, Combo } from '../../types';
+import { analyzeClothingImage } from '../../utils/visionAnalysis';
+import type { WardrobeItem, Combo, ClothingCategory } from '../../types';
 import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
@@ -78,6 +80,27 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   const items = useWardrobeStore((s) => s.items);
   const user  = useUserStore((s) => s.user);
 
+  const [detectedCategory, setDetectedCategory] = useState<ClothingCategory>('upper');
+  const [detectedColors, setDetectedColors] = useState<string[]>([]);
+  const [analyzing, setAnalyzing] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    analyzeClothingImage(processedBase64)
+      .then((result) => {
+        if (cancelled) return;
+        setDetectedCategory(result.category);
+        if (result.colors.length > 0) setDetectedColors(result.colors);
+      })
+      .catch(() => {
+        // Sessizce devam et — varsayılan 'upper' kullanılır
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyzing(false);
+      });
+    return () => { cancelled = true; };
+  }, [processedBase64]);
+
   const scannedUri = `data:image/png;base64,${processedBase64}`;
 
   // Taranan ürün için geçici WardrobeItem
@@ -86,11 +109,11 @@ export default function StoreResultScreen({ route, navigation }: Props) {
     userId: user?.id ?? '',
     originalImageUrl: originalUri,
     processedImageUrl: scannedUri,
-    category: 'upper', // V1: kategori AI tespiti olmadan üst olarak varsayılır
-    colors: [],
+    category: detectedCategory,
+    colors: detectedColors,
     seasons: [],
     createdAt: new Date().toISOString(),
-  }), [originalUri, scannedUri, user?.id]);
+  }), [originalUri, scannedUri, user?.id, detectedCategory, detectedColors]);
 
   const analysis = useMemo(
     () => analyzeStoreItem(scannedItem, items),
@@ -123,12 +146,13 @@ export default function StoreResultScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        {/* V1 notu */}
-        <View style={styles.noteBox}>
-          <Text style={styles.noteText}>
-            🤖 V1: Ürün üst kıyafet olarak analiz edildi. Yakında AI ile otomatik kategori tespiti yapılacak.
-          </Text>
-        </View>
+        {/* AI kategori analiz banner */}
+        {analyzing && (
+          <View style={styles.analyzingBanner}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={styles.analyzingText}>AI kategori tespiti yapılıyor…</Text>
+          </View>
+        )}
 
         {/* Uyum Özeti */}
         <Text style={styles.sectionTitle}>Uyum Özeti</Text>
@@ -189,7 +213,9 @@ export default function StoreResultScreen({ route, navigation }: Props) {
               <Text style={styles.warningTitle}>Benzer Parça Uyarısı</Text>
               <Text style={styles.warningDesc}>
                 Dolabında zaten{' '}
-                <Text style={{ fontFamily: fonts.bodyBold }}>{sameCategory} üst kıyafet</Text>
+                <Text style={{ fontFamily: fonts.bodyBold }}>
+                  {sameCategory} {(CATEGORY_LABEL[detectedCategory] ?? detectedCategory).toLowerCase()}
+                </Text>
                 {' '}var. Bu ürün benzer işlev görecek.
               </Text>
             </View>
@@ -275,21 +301,24 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 
-  // V1 notu
-  noteBox: {
+  // AI banner
+  analyzingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 12,
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: '#FFF8E1',
+    backgroundColor: '#F3E8FF',
     borderWidth: 1,
-    borderColor: '#FFE082',
+    borderColor: '#D8B4FE',
   },
-  noteText: {
+  analyzingText: {
     fontSize: 12,
-    fontFamily: fonts.body,
-    color: '#7B5E00',
-    lineHeight: 17,
+    fontFamily: fonts.bodyMedium,
+    color: colors.primary,
   },
 
   // Section title
