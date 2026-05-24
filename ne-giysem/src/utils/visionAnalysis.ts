@@ -62,6 +62,32 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
     throw new Error('Anthropic API key eksik. .env dosyasını kontrol et.');
   }
 
+  const requestBody = {
+    model: 'claude-sonnet-4-5-20250929',
+    max_tokens: 512,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/png', data: base64 },
+          },
+          { type: 'text', text: PROMPT },
+        ],
+      },
+    ],
+  };
+  console.log('[visionAnalysis] request body:', JSON.stringify({
+    ...requestBody,
+    messages: requestBody.messages.map((m) => ({
+      ...m,
+      content: m.content.map((c: any) =>
+        c.type === 'image' ? { ...c, source: { ...c.source, data: `[base64 ${c.source.data.length} chars]` } } : c,
+      ),
+    })),
+  }, null, 2));
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -70,22 +96,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
       'content-type': 'application/json',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 512,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: 'image/png', data: base64 },
-            },
-            { type: 'text', text: PROMPT },
-          ],
-        },
-      ],
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!res.ok) {
