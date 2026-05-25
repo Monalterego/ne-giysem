@@ -5,12 +5,15 @@ import type { WardrobeItem } from '../types';
 interface WardrobeState {
   items: WardrobeItem[];
   isLoading: boolean;
+  wornComboKeys: Set<string>;
   setItems: (items: WardrobeItem[]) => void;
   addItem: (item: WardrobeItem) => void;
   removeItem: (id: string) => void;
   updateItem: (item: WardrobeItem) => void;
   setLoading: (value: boolean) => void;
   fetchItems: (userId: string) => Promise<void>;
+  markWorn: (key: string) => void;
+  fetchWornToday: (userId: string) => Promise<void>;
 }
 
 function mapRow(row: any): WardrobeItem {
@@ -34,6 +37,7 @@ function mapRow(row: any): WardrobeItem {
 export const useWardrobeStore = create<WardrobeState>((set) => ({
   items: [],
   isLoading: false,
+  wornComboKeys: new Set<string>(),
   setItems: (items) => set({ items }),
   addItem: (item) => set((state) => ({ items: [item, ...state.items] })),
   removeItem: (id) => set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
@@ -54,5 +58,25 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
       set({ items: data.map(mapRow) });
     }
     set({ isLoading: false });
+  },
+
+  markWorn: (key) => set((state) => ({
+    wornComboKeys: new Set([...state.wornComboKeys, key]),
+  })),
+
+  fetchWornToday: async (userId: string) => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('combos')
+      .select('items')
+      .eq('user_id', userId)
+      .gte('worn_at', todayStart.toISOString());
+    if (data) {
+      const keys = new Set<string>(
+        (data as { items: string[] }[]).map((row) => [...row.items].sort().join('|')),
+      );
+      set({ wornComboKeys: keys });
+    }
   },
 }));

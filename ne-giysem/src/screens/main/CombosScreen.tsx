@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
+import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
 import { colors, fonts } from '../../constants/theme';
 
@@ -36,11 +36,21 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
-function ComboCard({ combo }: { combo: Combo }) {
-  const handleWear = () => {
-    Alert.alert('Kombin Seçildi 🎉', `"${combo.label}" kombinin bugünün seçimi!`);
-  };
+function comboKey(combo: Combo): string {
+  return combo.items.map((i) => i.id).sort().join('|');
+}
 
+function ComboCard({
+  combo,
+  isWorn,
+  isSaving,
+  onWear,
+}: {
+  combo: Combo;
+  isWorn: boolean;
+  isSaving: boolean;
+  onWear: () => void;
+}) {
   return (
     <View style={styles.card}>
       {/* Parça görselleri */}
@@ -61,25 +71,61 @@ function ComboCard({ combo }: { combo: Combo }) {
       {/* Etiket + buton */}
       <View style={styles.cardFooter}>
         <Text style={styles.comboLabel}>{combo.label}</Text>
-        <TouchableOpacity style={styles.wearBtn} onPress={handleWear} activeOpacity={0.85}>
-          <Text style={styles.wearBtnText}>Bu Kombini Giy →</Text>
-        </TouchableOpacity>
+        {isWorn ? (
+          <View style={[styles.wearBtn, styles.wearBtnWorn]}>
+            <Text style={[styles.wearBtnText, styles.wearBtnTextWorn]}>✓ Giyildi</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.wearBtn}
+            onPress={onWear}
+            activeOpacity={0.85}
+            disabled={isSaving}
+          >
+            {isSaving
+              ? <ActivityIndicator size="small" color={colors.white} />
+              : <Text style={styles.wearBtnText}>Bu Kombini Giy →</Text>
+            }
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
 }
 
 export default function CombosScreen() {
-  const items      = useWardrobeStore((s) => s.items);
-  const isLoading  = useWardrobeStore((s) => s.isLoading);
-  const fetchItems = useWardrobeStore((s) => s.fetchItems);
-  const user       = useUserStore((s) => s.user);
+  const items          = useWardrobeStore((s) => s.items);
+  const isLoading      = useWardrobeStore((s) => s.isLoading);
+  const fetchItems     = useWardrobeStore((s) => s.fetchItems);
+  const wornComboKeys  = useWardrobeStore((s) => s.wornComboKeys);
+  const markWorn       = useWardrobeStore((s) => s.markWorn);
+  const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
+  const user           = useUserStore((s) => s.user);
+
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
       fetchItems(user.id);
+      fetchWornToday(user.id);
     }
   }, [user?.id]);
+
+  const handleWear = async (combo: Combo) => {
+    if (!user) return;
+    const key = comboKey(combo);
+    setSavingKey(key);
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('combos').insert({
+      user_id: user.id,
+      items: combo.items.map((i) => i.id),
+      score: combo.score,
+      worn_at: now,
+      created_at: now,
+    });
+    if (!error) markWorn(key);
+    setSavingKey(null);
+  };
 
   const combos  = useMemo(() => generateCombos(items), [items]);
   const missing = useMemo(() => missingCategories(items), [items]);
@@ -131,7 +177,17 @@ export default function CombosScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <ComboCard combo={item} />}
+          renderItem={({ item }) => {
+            const key = comboKey(item);
+            return (
+              <ComboCard
+                combo={item}
+                isWorn={wornComboKeys.has(key)}
+                isSaving={savingKey === key}
+                onWear={() => handleWear(item)}
+              />
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -279,10 +335,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: colors.primary,
+    minWidth: 48,
+    alignItems: 'center',
+  },
+  wearBtnWorn: {
+    backgroundColor: colors.border,
   },
   wearBtnText: {
     fontSize: 13,
     fontFamily: fonts.bodyBold,
     color: colors.white,
+  },
+  wearBtnTextWorn: {
+    color: colors.muted,
   },
 });
