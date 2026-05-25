@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   Image,
   TouchableOpacity,
   ActivityIndicator,
@@ -12,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
+import type { Occasion } from '../../utils/comboEngine';
 import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
 import { colors, fonts } from '../../constants/theme';
@@ -23,6 +25,15 @@ const CATEGORY_LABEL: Record<string, string> = {
   outer: 'Dış',
   accessory: 'Aksesuar',
 };
+
+const OCCASIONS: { label: string; value: Occasion }[] = [
+  { label: 'Tümü',   value: 'all'     },
+  { label: 'Günlük', value: 'casual'  },
+  { label: 'İş',     value: 'work'    },
+  { label: 'Date',   value: 'date'    },
+  { label: 'Spor',   value: 'sport'   },
+  { label: 'Özel',   value: 'special' },
+];
 
 function ScoreBadge({ score }: { score: number }) {
   const bg =
@@ -102,7 +113,8 @@ export default function CombosScreen() {
   const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
   const user           = useUserStore((s) => s.user);
 
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savingKey, setSavingKey]         = useState<string | null>(null);
+  const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
 
   useEffect(() => {
     if (user?.id) {
@@ -133,7 +145,7 @@ export default function CombosScreen() {
     setSavingKey(null);
   };
 
-  const combos  = useMemo(() => generateCombos(items), [items]);
+  const combos  = useMemo(() => generateCombos(items, 12, activeOccasion), [items, activeOccasion]);
   const missing = useMemo(() => missingCategories(items), [items]);
 
   if (isLoading) {
@@ -154,6 +166,30 @@ export default function CombosScreen() {
           <Text style={styles.headerCount}>{combos.length} öneri</Text>
         )}
       </View>
+
+      {/* Occasion chip'leri */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.occasionBar}
+        contentContainerStyle={styles.occasionBarContent}
+      >
+        {OCCASIONS.map(({ label, value }) => {
+          const active = activeOccasion === value;
+          return (
+            <TouchableOpacity
+              key={value}
+              style={[styles.occasionChip, active && styles.occasionChipActive]}
+              onPress={() => setActiveOccasion(value)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.occasionChipText, active && styles.occasionChipTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {combos.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -271,6 +307,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.bodyMedium,
     color: colors.primary,
+  },
+  // --- Occasion filtresi ---
+  occasionBar: {
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexGrow: 0,
+  },
+  occasionBarContent: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  occasionChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  occasionChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  occasionChipText: {
+    fontSize: 13,
+    fontFamily: fonts.bodyMedium,
+    color: colors.primary,
+  },
+  occasionChipTextActive: {
+    color: colors.white,
+    fontFamily: fonts.bodyBold,
   },
   // --- Kombin listesi ---
   list: {

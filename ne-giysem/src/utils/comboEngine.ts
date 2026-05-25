@@ -1,5 +1,7 @@
 import type { WardrobeItem, Combo } from '../types';
 
+export type Occasion = 'all' | 'casual' | 'work' | 'date' | 'sport' | 'special';
+
 // ─── Renk yardımcıları ───────────────────────────────────────────────────────
 
 function hexToHsl(hex: string): [number, number, number] | null {
@@ -36,6 +38,61 @@ function isNeutral(hex: string): boolean {
   return false;
 }
 
+// Sıcak renkler: kırmızı, turuncu, sarı, pembe (hue 0-60 veya 300-360)
+function isWarmColor(hex: string): boolean {
+  const hsl = hexToHsl(hex);
+  if (!hsl) return false;
+  const [h, s, l] = hsl;
+  if (s < 15 || l > 90) return false;
+  return h <= 60 || h >= 300;
+}
+
+// Bir parçanın belirli bir occasion'a uyum katsayısı (-0.15 ile +0.15 arası)
+function itemOccasionFit(item: WardrobeItem, occasion: Occasion): number {
+  if (occasion === 'all' || occasion === 'casual') return 0;
+  const fabric  = item.fabric ?? 'unknown';
+  const pattern = item.pattern ?? '';
+  const allNeutral  = item.colors.length > 0 && item.colors.every(isNeutral);
+  const hasWarm     = item.colors.some(isWarmColor);
+
+  switch (occasion) {
+    case 'work': {
+      let fit = 0;
+      if (allNeutral) fit += 0.08;
+      if (['cotton', 'linen', 'silk', 'wool', 'blend'].includes(fabric)) fit += 0.06;
+      if (fabric === 'denim') fit -= 0.12;
+      if (fabric === 'polyester') fit -= 0.06;
+      if (pattern === 'floral') fit -= 0.05;
+      return fit;
+    }
+    case 'sport': {
+      let fit = 0;
+      if (fabric === 'polyester') fit += 0.15;
+      if (fabric === 'cotton') fit += 0.03;
+      return fit;
+    }
+    case 'date': {
+      let fit = 0;
+      if (hasWarm) fit += 0.08;
+      if (['silk', 'satin', 'velvet'].includes(fabric)) fit += 0.10;
+      if (pattern === 'floral') fit += 0.06;
+      if (allNeutral && !hasWarm) fit -= 0.03;
+      return fit;
+    }
+    case 'special': {
+      let fit = 0;
+      if (['silk', 'satin', 'velvet'].includes(fabric)) fit += 0.12;
+      if (hasWarm) fit += 0.05;
+      if (pattern === 'floral') fit += 0.04;
+      if (fabric === 'denim') fit -= 0.10;
+      if (fabric === 'polyester') fit -= 0.08;
+      return fit;
+    }
+    default:
+      return 0;
+  }
+}
+
 // İki hex renk arasındaki uyum skoru (0–1)
 function pairScore(hex1: string, hex2: string): number {
   if (isNeutral(hex1) || isNeutral(hex2)) return 1.0;
@@ -63,7 +120,11 @@ function uid(): string {
 
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
 
-export function generateCombos(items: WardrobeItem[], maxCombos = 12): Combo[] {
+export function generateCombos(
+  items: WardrobeItem[],
+  maxCombos = 12,
+  occasion: Occasion = 'all',
+): Combo[] {
   const uppers = items.filter((i) => i.category === 'upper');
   const lowers = items.filter((i) => i.category === 'lower');
   const shoes  = items.filter((i) => i.category === 'shoes');
@@ -79,8 +140,16 @@ export function generateCombos(items: WardrobeItem[], maxCombos = 12): Combo[] {
         const ulScore = itemColorScore(upper, lower);
         const lsScore = itemColorScore(lower, shoe);
         const usScore = itemColorScore(upper, shoe);
-        const raw     = ulScore * 0.45 + lsScore * 0.35 + usScore * 0.20;
-        const score   = Math.min(100, Math.round(raw * 100));
+        const colorRaw = ulScore * 0.45 + lsScore * 0.35 + usScore * 0.20;
+
+        // Occasion ağırlığı: üç parçanın ortalama uyum katsayısı
+        const occasionFit =
+          (itemOccasionFit(upper, occasion) +
+           itemOccasionFit(lower, occasion) +
+           itemOccasionFit(shoe, occasion)) / 3;
+
+        const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
+        const score = Math.round(raw * 100);
 
         const label =
           score >= 80 ? 'Mükemmel Uyum' :
@@ -91,6 +160,7 @@ export function generateCombos(items: WardrobeItem[], maxCombos = 12): Combo[] {
           id: uid(),
           items: [upper, lower, shoe],
           score,
+          occasion,
           label,
           createdAt: new Date().toISOString(),
         });
