@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ScanStackParamList } from '../../navigation/types';
 import { colors, fonts } from '../../constants/theme';
+import { scrapeProductImage } from '../../utils/urlScraper';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
 
@@ -41,6 +42,31 @@ async function removeBackground(imageUri: string): Promise<string> {
   return json.data.result_b64 as string;
 }
 
+// Remove.bg JSON API — dosya URI yerine base64 kabul eder
+async function removeBackgroundFromBase64(base64: string): Promise<string> {
+  const res = await fetch('https://api.remove.bg/v1.0/removebg', {
+    method: 'POST',
+    headers: {
+      'X-Api-Key': REMOVEBG_API_KEY,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ image_base64: base64, size: 'auto' }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any)?.errors?.[0]?.title ?? `Remove.bg hatası: ${res.status}`);
+  }
+  const json = await res.json();
+  return (json as any).data.result_b64 as string;
+}
+
+// URL scraping'den gelen base64'ü işle
+async function processBase64(base64: string): Promise<string> {
+  if (Platform.OS === 'web') return base64; // web'de BG removal yok
+  return removeBackgroundFromBase64(base64);
+}
+
 async function processImage(uri: string): Promise<string> {
   if (Platform.OS === 'web') {
     // Web'de Remove.bg'yi atla, base64'e çevir
@@ -63,6 +89,7 @@ export default function ScanScreen({ navigation }: Props) {
   const [urlInput, setUrlInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingUri, setLoadingUri] = useState<string | null>(null);
+  const [loadingStep, setLoadingStep] = useState('');
 
   const handlePick = async (source: 'camera' | 'gallery') => {
     let result: ImagePicker.ImagePickerResult;
@@ -87,6 +114,7 @@ export default function ScanScreen({ navigation }: Props) {
 
     const uri = result.assets[0].uri;
     setLoadingUri(uri);
+    setLoadingStep(Platform.OS === 'web' ? 'Görsel hazırlanıyor…' : 'Arkaplan siliniyor…');
     setLoading(true);
 
     try {
@@ -97,15 +125,27 @@ export default function ScanScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
       setLoadingUri(null);
+      setLoadingStep('');
     }
   };
 
-  const handleUrlAnalyze = () => {
-    Alert.alert(
-      'Çok Yakında! 🚀',
-      'URL ile ürün analizi özelliği yakında geliyor.\n\nŞimdilik fotoğraf çekerek veya galeriden yükleyerek analiz yapabilirsin.',
-      [{ text: 'Tamam' }],
-    );
+  const handleUrlAnalyze = async () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    setLoading(true);
+    setLoadingUri(null);
+    try {
+      setLoadingStep('Ürün sayfası okunuyor…');
+      const imageBase64 = await scrapeProductImage(url);
+      setLoadingStep(Platform.OS === 'web' ? 'Görsel hazırlanıyor…' : 'Arkaplan siliniyor…');
+      const processedBase64 = await processBase64(imageBase64);
+      navigation.navigate('StoreResult', { processedBase64, originalUri: url });
+    } catch (err: any) {
+      Alert.alert('Hata', err.message ?? 'Ürün görseli alınamadı. Lütfen tekrar dene.');
+    } finally {
+      setLoading(false);
+      setLoadingStep('');
+    }
   };
 
   return (
@@ -164,9 +204,6 @@ export default function ScanScreen({ navigation }: Props) {
                   Zara, H&M, Mango gibi sitelerden ürün linki yapıştır
                 </Text>
               </View>
-              <View style={styles.soonBadge}>
-                <Text style={styles.soonText}>Yakında</Text>
-              </View>
             </View>
             <TextInput
               style={styles.urlInput}
@@ -179,9 +216,10 @@ export default function ScanScreen({ navigation }: Props) {
               autoCorrect={false}
             />
             <TouchableOpacity
-              style={[styles.secondaryBtn, !urlInput && styles.btnDisabled]}
+              style={[styles.secondaryBtn, (!urlInput || loading) && styles.btnDisabled]}
               onPress={handleUrlAnalyze}
               activeOpacity={0.85}
+              disabled={!urlInput || loading}
             >
               <Text style={styles.secondaryBtnText}>Analiz Et</Text>
             </TouchableOpacity>
@@ -226,9 +264,7 @@ export default function ScanScreen({ navigation }: Props) {
           )}
           <View style={styles.loadingBox}>
             <ActivityIndicator color={colors.accent} size="large" />
-            <Text style={styles.loadingText}>
-              {Platform.OS === 'web' ? 'Görsel hazırlanıyor…' : 'Arkaplan siliniyor…'}
-            </Text>
+            <Text style={styles.loadingText}>{loadingStep}</Text>
             <Text style={styles.loadingSubText}>Dolabınla karşılaştırılıyor</Text>
           </View>
         </View>
@@ -300,18 +336,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.muted,
     lineHeight: 18,
-  },
-  soonBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: colors.overlay,
-    alignSelf: 'flex-start',
-  },
-  soonText: {
-    fontSize: 11,
-    fontFamily: fonts.bodyBold,
-    color: colors.secondary,
   },
   // URL Input
   urlInput: {
