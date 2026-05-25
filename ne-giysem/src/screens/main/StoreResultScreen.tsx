@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,61 +13,89 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ScanStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
-import { analyzeStoreItem } from '../../utils/comboEngine';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
-import type { WardrobeItem, Combo, ClothingCategory } from '../../types';
+import type { VisionResult } from '../../utils/visionAnalysis';
+import { analyzeStoreCompatibility } from '../../utils/storeAnalysis';
+import type { CompatibilityResult } from '../../utils/storeAnalysis';
+import type { WardrobeItem, ClothingCategory } from '../../types';
 import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
 
 const CATEGORY_LABEL: Record<string, string> = {
-  upper: 'Üst',
-  lower: 'Alt',
-  shoes: 'Ayakkabı',
-  outer: 'Dış',
-  accessory: 'Aksesuar',
+  upper:          'Üst',
+  lower:          'Alt',
+  dress_jumpsuit: 'Elbise/Tulum',
+  outer:          'Dış Giyim',
+  shoes:          'Ayakkabı',
+  bag:            'Çanta',
+  accessory:      'Aksesuar',
 };
 
-const SCANNED_ID = '__scanned__';
-
-function scoreColor(score: number): string {
-  if (score >= 80) return colors.success;
-  if (score >= 65) return colors.warning;
-  return colors.muted;
+function verdictColor(verdict: string): string {
+  if (verdict === 'Zaten benzeri var')           return '#F59E0B';
+  if (verdict === 'Eksik parçaları tamamlıyor') return colors.secondary;
+  return colors.success;
 }
 
-// ─── Mini kombin kartı ────────────────────────────────────────────────────────
+// ─── AI Detay Kartı ──────────────────────────────────────────────────────────
 
-function MiniComboCard({ combo, scannedUri }: { combo: Combo; scannedUri: string }) {
+function AIDetailCard({ vision }: { vision: VisionResult }) {
+  const pills = [
+    vision.fit          ? vision.fit          : null,
+    vision.neckline     ? vision.neckline     : null,
+    vision.sleeveLength ? vision.sleeveLength : null,
+  ].filter((p): p is string => !!p);
+
+  return (
+    <View style={styles.aiDetailCard}>
+      {vision.itemName && (
+        <Text style={styles.aiDetailName}>{vision.itemName}</Text>
+      )}
+      <Text style={styles.aiDetailCategory}>
+        {CATEGORY_LABEL[vision.category] ?? vision.category}
+        {vision.subcategory ? ` · ${vision.subcategory}` : ''}
+      </Text>
+      {pills.length > 0 && (
+        <View style={styles.aiDetailPills}>
+          {pills.map((p) => (
+            <View key={p} style={styles.aiDetailPill}>
+              <Text style={styles.aiDetailPillText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {vision.details && vision.details.length > 0 && (
+        <View style={styles.aiDetailTags}>
+          {vision.details.map((d) => (
+            <View key={d} style={styles.aiDetailTag}>
+              <Text style={styles.aiDetailTagText}>{d}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Kombin Kartı (dolap parçaları) ──────────────────────────────────────────
+
+function WardrobeComboCard({ items }: { items: WardrobeItem[] }) {
   return (
     <View style={styles.comboCard}>
       <View style={styles.comboImagesRow}>
-        {combo.items.map((item: WardrobeItem) => {
-          const uri = item.id === SCANNED_ID ? scannedUri : item.processedImageUrl;
-          const isScanned = item.id === SCANNED_ID;
-          return (
-            <View key={item.id} style={[styles.comboImgWrap, isScanned && styles.comboImgScanned]}>
-              <Image source={{ uri }} style={styles.comboImg} resizeMode="contain" />
-              {isScanned && (
-                <View style={styles.scannedTag}>
-                  <Text style={styles.scannedTagText}>Taranan</Text>
-                </View>
-              )}
-              <Text style={styles.comboImgLabel}>
-                {CATEGORY_LABEL[item.category] ?? item.category}
-              </Text>
-            </View>
-          );
-        })}
-
-        {/* Skor badge */}
-        <View style={[styles.scoreBadge, { backgroundColor: scoreColor(combo.score) }]}>
-          <Text style={styles.scoreBadgeText}>{combo.score}%</Text>
-        </View>
-      </View>
-
-      <View style={styles.comboFooter}>
-        <Text style={styles.comboLabel}>{combo.label}</Text>
+        {items.map((item) => (
+          <View key={item.id} style={styles.comboImgWrap}>
+            <Image
+              source={{ uri: item.processedImageUrl }}
+              style={styles.comboImg}
+              resizeMode="contain"
+            />
+            <Text style={styles.comboImgLabel}>
+              {CATEGORY_LABEL[item.category] ?? item.category}
+            </Text>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -80,47 +108,42 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   const items = useWardrobeStore((s) => s.items);
   const user  = useUserStore((s) => s.user);
 
-  const [detectedCategory, setDetectedCategory] = useState<ClothingCategory>('upper');
-  const [detectedColors, setDetectedColors] = useState<string[]>([]);
-  const [analyzing, setAnalyzing] = useState(true);
+  const [analyzing, setAnalyzing]             = useState(true);
+  const [visionResult, setVisionResult]       = useState<VisionResult | null>(null);
+  const [smartAnalyzing, setSmartAnalyzing]   = useState(false);
+  const [compatibility, setCompatibility]     = useState<CompatibilityResult | null>(null);
 
+  // Kullanılmayan detectedCategory/detectedColors state'lerini basit şekilde saklıyoruz
+  // — scannedItem artık gereksiz; sadece scannedUri gösterimi yeterli
+  const [_detectedCategory, setDetectedCategory] = useState<ClothingCategory>('upper');
+
+  // 1. Vision analizi
   useEffect(() => {
     let cancelled = false;
     analyzeClothingImage(processedBase64)
       .then((result) => {
         if (cancelled) return;
+        setVisionResult(result);
         setDetectedCategory(result.category);
-        if (result.colors.length > 0) setDetectedColors(result.colors);
       })
-      .catch(() => {
-        // Sessizce devam et — varsayılan 'upper' kullanılır
-      })
-      .finally(() => {
-        if (!cancelled) setAnalyzing(false);
-      });
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setAnalyzing(false); });
     return () => { cancelled = true; };
   }, [processedBase64]);
 
+  // 2. Dolap uyum analizi — vision hazır olunca başlar
+  useEffect(() => {
+    if (!visionResult || !items.length) return;
+    let cancelled = false;
+    setSmartAnalyzing(true);
+    analyzeStoreCompatibility(visionResult, items)
+      .then((result) => { if (!cancelled) setCompatibility(result); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setSmartAnalyzing(false); });
+    return () => { cancelled = true; };
+  }, [visionResult]);
+
   const scannedUri = `data:image/png;base64,${processedBase64}`;
-
-  // Taranan ürün için geçici WardrobeItem
-  const scannedItem: WardrobeItem = useMemo(() => ({
-    id: SCANNED_ID,
-    userId: user?.id ?? '',
-    originalImageUrl: originalUri,
-    processedImageUrl: scannedUri,
-    category: detectedCategory,
-    colors: detectedColors,
-    seasons: [],
-    createdAt: new Date().toISOString(),
-  }), [originalUri, scannedUri, user?.id, detectedCategory, detectedColors]);
-
-  const analysis = useMemo(
-    () => analyzeStoreItem(scannedItem, items),
-    [scannedItem, items],
-  );
-
-  const { totalChecked, compatibleCount, avgScore, topCombos, sameCategory } = analysis;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -146,18 +169,19 @@ export default function StoreResultScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        {/* AI kategori analiz banner */}
+        {/* Adım 1: Vision analiz bannerı */}
         {analyzing && (
-          <View style={styles.analyzingBanner}>
+          <View style={styles.analyzingBannerPurple}>
             <ActivityIndicator size="small" color={colors.accent} />
             <Text style={styles.analyzingText}>AI kategori tespiti yapılıyor…</Text>
           </View>
         )}
 
-        {/* Uyum Özeti */}
-        <Text style={styles.sectionTitle}>Uyum Özeti</Text>
+        {/* AI Detay Kartı */}
+        {visionResult && <AIDetailCard vision={visionResult} />}
 
-        {totalChecked === 0 ? (
+        {/* Dolap boşsa */}
+        {!items.length ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyIcon}>👗</Text>
             <Text style={styles.emptyTitle}>Dolabın henüz boş</Text>
@@ -166,69 +190,61 @@ export default function StoreResultScreen({ route, navigation }: Props) {
             </Text>
           </View>
         ) : (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryHeadline}>
-              Dolabındaki{' '}
-              <Text style={styles.summaryAccent}>{totalChecked} parça</Text>
-              {' '}incelendi
-            </Text>
-
-            {/* Skor çubuğu */}
-            <View style={styles.scoreRow}>
-              <View style={styles.scoreBarBg}>
-                <View
-                  style={[
-                    styles.scoreBarFill,
-                    { width: `${avgScore}%` as any, backgroundColor: scoreColor(avgScore) },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.scoreLabel, { color: scoreColor(avgScore) }]}>
-                {avgScore}%
-              </Text>
-            </View>
-
-            <Text style={styles.summaryDetail}>
-              <Text style={styles.summaryAccent}>{compatibleCount}</Text>
-              {' '}parça ile uyumlu görünüyor
-            </Text>
-          </View>
-        )}
-
-        {/* Potansiyel Kombinler */}
-        {topCombos.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Potansiyel Kombinler</Text>
-            {topCombos.map((combo) => (
-              <MiniComboCard key={combo.id} combo={combo} scannedUri={scannedUri} />
-            ))}
+            {/* Adım 2: Dolap analiz bannerı */}
+            {smartAnalyzing && (
+              <View style={styles.analyzingBannerBlue}>
+                <ActivityIndicator size="small" color={colors.secondary} />
+                <Text style={styles.analyzingText}>Dolabın analiz ediliyor…</Text>
+              </View>
+            )}
+
+            {compatibility && (
+              <>
+                {/* Verdict */}
+                <View style={[styles.verdictBadge, { backgroundColor: verdictColor(compatibility.verdict) }]}>
+                  <Text style={styles.verdictText}>{compatibility.verdict}</Text>
+                </View>
+
+                {/* Gerekçeler */}
+                {compatibility.reasons.length > 0 && (
+                  <View style={styles.reasonsCard}>
+                    {compatibility.reasons.map((reason, i) => (
+                      <View key={i} style={styles.reasonRow}>
+                        <Text style={styles.reasonBullet}>•</Text>
+                        <Text style={styles.reasonText}>{reason}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Kombin Önerileri */}
+                {compatibility.combos.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Kombin Önerileri</Text>
+                    {compatibility.combos.map((comboItems, i) => (
+                      <WardrobeComboCard key={i} items={comboItems} />
+                    ))}
+                  </>
+                )}
+
+                {/* Eksik Parçalar */}
+                {compatibility.missing.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Eksik Parçalar</Text>
+                    <View style={styles.missingCard}>
+                      {compatibility.missing.map((m, i) => (
+                        <View key={i} style={styles.missingRow}>
+                          <Text style={styles.missingPlus}>+</Text>
+                          <Text style={styles.missingText}>{m}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </>
+            )}
           </>
-        )}
-
-        {/* Aynı işlev uyarısı */}
-        {sameCategory > 0 && (
-          <View style={styles.warningBox}>
-            <Text style={styles.warningIcon}>⚠️</Text>
-            <View style={styles.warningText}>
-              <Text style={styles.warningTitle}>Benzer Parça Uyarısı</Text>
-              <Text style={styles.warningDesc}>
-                Dolabında zaten{' '}
-                <Text style={{ fontFamily: fonts.bodyBold }}>
-                  {sameCategory} {(CATEGORY_LABEL[detectedCategory] ?? detectedCategory).toLowerCase()}
-                </Text>
-                {' '}var. Bu ürün benzer işlev görecek.
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Kombin bulunamadı */}
-        {totalChecked > 0 && topCombos.length === 0 && (
-          <View style={styles.noCombosCard}>
-            <Text style={styles.noCombosText}>
-              Tam kombin için dolabına alt kıyafet ve ayakkabı eklemeyi dene.
-            </Text>
-          </View>
         )}
 
         <View style={styles.bottomPad} />
@@ -272,7 +288,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // Ürün görseli
+  // ── Ürün görseli ──
   productImageWrap: {
     height: 280,
     margin: 16,
@@ -301,13 +317,13 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 
-  // AI banner
-  analyzingBanner: {
+  // ── Analiz bannerları ──
+  analyzingBannerPurple: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
@@ -315,73 +331,94 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D8B4FE',
   },
+  analyzingBannerBlue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
   analyzingText: {
     fontSize: 12,
     fontFamily: fonts.bodyMedium,
     color: colors.primary,
   },
 
-  // Section title
+  // ── AI Detay Kartı ──
+  aiDetailCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    gap: 8,
+  },
+  aiDetailName: {
+    fontSize: 16,
+    fontFamily: fonts.bodyBold,
+    color: colors.primary,
+  },
+  aiDetailCategory: {
+    fontSize: 12,
+    fontFamily: fonts.bodyMedium,
+    color: colors.secondary,
+  },
+  aiDetailPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  aiDetailPill: {
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  aiDetailPillText: {
+    fontSize: 12,
+    fontFamily: fonts.bodyMedium,
+    color: colors.secondary,
+  },
+  aiDetailTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  aiDetailTag: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  aiDetailTagText: {
+    fontSize: 11,
+    fontFamily: fonts.body,
+    color: colors.secondary,
+  },
+
+  // ── Section title ──
   sectionTitle: {
     fontSize: 17,
     fontFamily: fonts.headingBold,
     color: colors.primary,
     marginHorizontal: 16,
     marginBottom: 12,
-    marginTop: 4,
+    marginTop: 8,
   },
 
-  // Uyum özeti kartı
-  summaryCard: {
-    marginHorizontal: 16,
-    marginBottom: 24,
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
-    boxShadow: '0 2px 8px rgba(26,26,46,0.05)',
-    elevation: 2,
-  },
-  summaryHeadline: {
-    fontSize: 15,
-    fontFamily: fonts.body,
-    color: colors.primary,
-  },
-  summaryAccent: {
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  scoreBarBg: {
-    flex: 1,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.border,
-    overflow: 'hidden',
-  },
-  scoreBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  scoreLabel: {
-    fontSize: 16,
-    fontFamily: fonts.bodyBold,
-    minWidth: 44,
-    textAlign: 'right',
-  },
-  summaryDetail: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.muted,
-  },
-
-  // Boş dolap
+  // ── Boş dolap ──
   emptyCard: {
     marginHorizontal: 16,
     marginBottom: 24,
@@ -409,7 +446,52 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // Kombin kartı
+  // ── Verdict ──
+  verdictBadge: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 18,
+    alignItems: 'center',
+  },
+  verdictText: {
+    fontSize: 18,
+    fontFamily: fonts.headingBold,
+    color: colors.white,
+    textAlign: 'center',
+  },
+
+  // ── Gerekçeler ──
+  reasonsCard: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 10,
+  },
+  reasonRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  reasonBullet: {
+    fontSize: 16,
+    color: colors.accent,
+    lineHeight: 20,
+  },
+  reasonText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: fonts.body,
+    color: colors.primary,
+    lineHeight: 20,
+  },
+
+  // ── Kombin kartı ──
   comboCard: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -426,15 +508,11 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
     backgroundColor: colors.surface,
-    position: 'relative',
   },
   comboImgWrap: {
     flex: 1,
     alignItems: 'center',
     gap: 5,
-  },
-  comboImgScanned: {
-    opacity: 1,
   },
   comboImg: {
     width: '100%',
@@ -442,98 +520,40 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: colors.white,
   },
-  scannedTag: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    backgroundColor: colors.accent,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 6,
-  },
-  scannedTagText: {
-    fontSize: 9,
-    fontFamily: fonts.bodyBold,
-    color: colors.white,
-  },
   comboImgLabel: {
     fontSize: 11,
     fontFamily: fonts.bodyMedium,
     color: colors.muted,
   },
-  scoreBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-  },
-  scoreBadgeText: {
-    fontSize: 12,
-    fontFamily: fonts.bodyBold,
-    color: colors.white,
-  },
-  comboFooter: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  comboLabel: {
-    fontSize: 14,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
-  },
 
-  // Uyarı kutusu
-  warningBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+  // ── Eksik parçalar ──
+  missingCard: {
     marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 20,
     padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#FFF3E0',
-    borderWidth: 1,
-    borderColor: '#FFCC80',
-  },
-  warningIcon: {
-    fontSize: 20,
-    marginTop: 1,
-  },
-  warningText: {
-    flex: 1,
-    gap: 3,
-  },
-  warningTitle: {
-    fontSize: 14,
-    fontFamily: fonts.bodyBold,
-    color: '#7B4F00',
-  },
-  warningDesc: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: '#7B4F00',
-    lineHeight: 18,
-  },
-
-  // Kombin yok
-  noCombosCard: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: colors.overlay,
+    borderRadius: 18,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 10,
   },
-  noCombosText: {
-    fontSize: 13,
+  missingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  missingPlus: {
+    fontSize: 18,
+    fontFamily: fonts.bodyBold,
+    color: colors.success,
+    lineHeight: 20,
+  },
+  missingText: {
+    flex: 1,
+    fontSize: 14,
     fontFamily: fonts.body,
-    color: colors.muted,
-    lineHeight: 19,
-    textAlign: 'center',
+    color: colors.primary,
+    lineHeight: 20,
   },
 
   bottomPad: {
