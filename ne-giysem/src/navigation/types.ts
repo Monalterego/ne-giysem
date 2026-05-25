@@ -10,13 +10,14 @@ export type OnboardingStackParamList = {
   StyleResult: { selectedStyles: StyleEntry[] };
 };
 
+import type { WardrobeItem } from '../types';
+
 export type WardrobeStackParamList = {
   WardrobeList: undefined;
   Upload: undefined;
-  UploadDetail: {
-    processedBase64: string;
-    originalUri: string;
-  };
+  UploadDetail:
+    | { processedBase64: string; originalUri: string; existingItem?: undefined }
+    | { processedBase64?: undefined; originalUri?: undefined; existingItem: WardrobeItem };
 };
 
 export type ScanStackParamList = {

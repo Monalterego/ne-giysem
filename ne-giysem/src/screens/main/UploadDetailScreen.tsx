@@ -15,7 +15,7 @@ import type { WardrobeStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
-import type { ClothingCategory, Fabric, Season } from '../../types';
+import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
 import { colors, fonts } from '../../constants/theme';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
 
@@ -45,19 +45,27 @@ const SEASONS: { label: string; value: Season }[] = [
 ];
 
 export default function UploadDetailScreen({ route, navigation }: Props) {
-  const { processedBase64, originalUri } = route.params;
-  const user = useUserStore((s) => s.user);
-  const addItem = useWardrobeStore((s) => s.addItem);
+  const { processedBase64, originalUri, existingItem } = route.params as {
+    processedBase64?: string;
+    originalUri?: string;
+    existingItem?: WardrobeItem;
+  };
+  const isEditMode = !!existingItem;
 
-  const [category, setCategory] = useState<ClothingCategory | null>(null);
-  const [fabric, setFabric] = useState<Fabric>('unknown');
-  const [seasons, setSeasons] = useState<Season[]>([]);
-  const [itemColors, setItemColors] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [analyzing, setAnalyzing] = useState(true);
+  const user       = useUserStore((s) => s.user);
+  const addItem    = useWardrobeStore((s) => s.addItem);
+  const updateItem = useWardrobeStore((s) => s.updateItem);
+
+  const [category,   setCategory]   = useState<ClothingCategory | null>(existingItem?.category ?? null);
+  const [fabric,     setFabric]     = useState<Fabric>(existingItem?.fabric ?? 'unknown');
+  const [seasons,    setSeasons]    = useState<Season[]>(existingItem?.seasons ?? []);
+  const [itemColors, setItemColors] = useState<string[]>(existingItem?.colors ?? []);
+  const [saving,     setSaving]     = useState(false);
+  const [analyzing,  setAnalyzing]  = useState(!isEditMode);
   const [aiDetected, setAiDetected] = useState(false);
 
   useEffect(() => {
+    if (isEditMode || !processedBase64) return;
     let cancelled = false;
     analyzeClothingImage(processedBase64)
       .then((result) => {
@@ -74,7 +82,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         if (!cancelled) setAnalyzing(false);
       });
     return () => { cancelled = true; };
-  }, [processedBase64]);
+  }, [processedBase64, isEditMode]);
 
   const toggleSeason = (season: Season) => {
     setSeasons((prev) =>
@@ -154,6 +162,29 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
     }
   };
 
+  const handleUpdate = async () => {
+    if (!category) {
+      Alert.alert('Kategori Seç', 'Lütfen kıyafetin kategorisini seç.');
+      return;
+    }
+    if (!existingItem) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('wardrobe_items')
+        .update({ category, colors: itemColors, season: seasons, fabric })
+        .eq('id', existingItem.id);
+      if (error) throw new Error(error.message);
+
+      updateItem({ ...existingItem, category, colors: itemColors, seasons, fabric });
+      navigation.navigate('WardrobeList');
+    } catch (err: any) {
+      Alert.alert('Hata', err.message ?? 'Güncelleme başarısız. Lütfen tekrar dene.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
@@ -164,7 +195,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         >
           <Text style={styles.back}>← Geri</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Detayları Gir</Text>
+        <Text style={styles.title}>{isEditMode ? 'Düzenle' : 'Detayları Gir'}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -172,7 +203,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         {/* İşlenmiş görsel */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: `data:image/png;base64,${processedBase64}` }}
+            source={{
+              uri: isEditMode
+                ? existingItem!.processedImageUrl
+                : `data:image/png;base64,${processedBase64}`,
+            }}
             style={styles.image}
             resizeMode="contain"
           />
@@ -247,17 +282,17 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
           ))}
         </View>
 
-        {/* Kaydet butonu */}
+        {/* Kaydet / Güncelle butonu */}
         <TouchableOpacity
           style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-          onPress={handleSave}
+          onPress={isEditMode ? handleUpdate : handleSave}
           activeOpacity={0.85}
           disabled={saving}
         >
           {saving ? (
             <ActivityIndicator color={colors.white} />
           ) : (
-            <Text style={styles.saveBtnText}>Dolaba Ekle</Text>
+            <Text style={styles.saveBtnText}>{isEditMode ? 'Güncelle' : 'Dolaba Ekle'}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

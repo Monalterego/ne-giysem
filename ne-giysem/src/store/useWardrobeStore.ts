@@ -8,6 +8,7 @@ interface WardrobeState {
   setItems: (items: WardrobeItem[]) => void;
   addItem: (item: WardrobeItem) => void;
   removeItem: (id: string) => void;
+  updateItem: (item: WardrobeItem) => void;
   setLoading: (value: boolean) => void;
   fetchItems: (userId: string) => Promise<void>;
 }
@@ -36,6 +37,9 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
   setItems: (items) => set({ items }),
   addItem: (item) => set((state) => ({ items: [item, ...state.items] })),
   removeItem: (id) => set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
+  updateItem: (updated) => set((state) => ({
+    items: state.items.map((i) => i.id === updated.id ? updated : i),
+  })),
   setLoading: (value) => set({ isLoading: value }),
 
   fetchItems: async (userId: string) => {
