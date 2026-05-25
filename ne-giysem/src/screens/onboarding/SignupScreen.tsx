@@ -44,13 +44,12 @@ export default function SignupScreen({ navigation }: Props) {
     if (data.user) {
       const trimmedName = name.trim();
 
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        email: data.user.email,
-        name: trimmedName,
-      });
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ name: trimmedName })
+        .eq('id', data.user.id);
       if (profileError) {
-        setError('Profil oluşturulamadı: ' + profileError.message);
+        setError('Profil güncellenemedi: ' + profileError.message);
         setLoading(false);
         return;
       }
