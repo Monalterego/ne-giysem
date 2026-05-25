@@ -8,6 +8,11 @@ export interface VisionResult {
   colors: string[];
   pattern?: string;
   seasons: Season[];
+  itemName?: string;
+  fit?: string;
+  neckline?: string;
+  sleeveLength?: string;
+  details?: string[];
 }
 
 const CATEGORY_MAP: Record<string, ClothingCategory> = {
@@ -39,6 +44,11 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
     ayakkabi için → "sneaker" | "loafer" | "bot" | "cizme" | "topuklu" | "sandalet" | "terlik" | "babet"
     canta için → "omuz_cantasi" | "clutch" | "tote" | "bel_cantasi" | "sirt_cantasi" | "mini_canta"
     aksesuar için → "kolye" | "kupe" | "bileklik" | "yuzuk" | "fular" | "kaskol" | "bandana" | "kemer" | "sapka" | "gozluk",
+  "name": Zara/HM tarzı kısa ürün adı — örn. "Düşük bel geniş paça jean", "Balon kollu çizgili gömlek", "Kruvaze blazer ceket",
+  "fit": kesim — "slim" | "regular" | "oversized" | "crop" | "midi" | "maxi" | "mini",
+  "neckline": yaka tipi, SADECE ust ve elbise_tulum için — "yuvarlak" | "v yaka" | "polo" | "balikci" | "kayik" | "halter" | "dik yaka" | null,
+  "sleeve": kol boyu, SADECE ust için — "kolsuz" | "kisa kol" | "3/4 kol" | "uzun kol" | "balon kol" | null,
+  "details": öne çıkan max 3 detay — örn. ["dugmeli", "cepli", "firfirli", "bagcikli", "seritli", "fermanuarli", "kapsonlu", "kesiksiz", "asimetrik"],
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
   "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
   "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
@@ -57,12 +67,21 @@ function parseVisionResponse(text: string): VisionResult {
     ? (raw.colors as unknown[]).filter((c): c is string => typeof c === 'string')
     : [];
 
+  const details: string[] | undefined = Array.isArray(raw.details)
+    ? (raw.details as unknown[]).filter((d): d is string => typeof d === 'string').slice(0, 3)
+    : undefined;
+
   return {
     category: CATEGORY_MAP[raw.category ?? ''] ?? 'upper',
-    subcategory: typeof raw.subcategory === 'string' ? raw.subcategory : undefined,
+    subcategory:  typeof raw.subcategory === 'string' ? raw.subcategory : undefined,
     colors,
-    pattern: typeof raw.pattern === 'string' ? raw.pattern : undefined,
+    pattern:      typeof raw.pattern  === 'string' ? raw.pattern  : undefined,
     seasons,
+    itemName:     typeof raw.name     === 'string' ? raw.name     : undefined,
+    fit:          typeof raw.fit      === 'string' ? raw.fit      : undefined,
+    neckline:     typeof raw.neckline === 'string' ? raw.neckline : undefined,
+    sleeveLength: typeof raw.sleeve   === 'string' ? raw.sleeve   : undefined,
+    details:      details?.length ? details : undefined,
   };
 }
 

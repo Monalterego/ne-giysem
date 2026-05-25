@@ -59,6 +59,16 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const [fabric,      setFabric]      = useState<Fabric>(existingItem?.fabric ?? 'unknown');
   const [seasons,     setSeasons]     = useState<Season[]>(existingItem?.seasons ?? []);
   const [itemColors,  setItemColors]  = useState<string[]>(existingItem?.colors ?? []);
+  const [aiDetails, setAiDetails] = useState<{
+    itemName?: string; fit?: string; neckline?: string;
+    sleeveLength?: string; details?: string[];
+  } | null>(existingItem?.itemName ? {
+    itemName: existingItem.itemName,
+    fit: existingItem.fit,
+    neckline: existingItem.neckline,
+    sleeveLength: existingItem.sleeveLength,
+    details: existingItem.details,
+  } : null);
   const [saving,      setSaving]      = useState(false);
   const [analyzing,   setAnalyzing]   = useState(!isEditMode);
   const [aiDetected,  setAiDetected]  = useState(false);
@@ -73,6 +83,13 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         if (result.subcategory) setSubCategory(result.subcategory);
         if (result.seasons.length > 0) setSeasons(result.seasons);
         if (result.colors.length > 0) setItemColors(result.colors);
+        setAiDetails({
+          itemName:     result.itemName,
+          fit:          result.fit,
+          neckline:     result.neckline,
+          sleeveLength: result.sleeveLength,
+          details:      result.details,
+        });
         setAiDetected(true);
       })
       .catch(() => {
@@ -137,13 +154,18 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         id: uuid,
         user_id: user.id,
         category,
-        subcategory: subCategory ?? null,
-        colors: itemColors,
-        season: seasons,
+        subcategory:         subCategory           ?? null,
+        colors:              itemColors,
+        season:              seasons,
         fabric,
-        image_url: originalImageUrl,
+        item_name:           aiDetails?.itemName   ?? null,
+        fit:                 aiDetails?.fit        ?? null,
+        neckline:            aiDetails?.neckline   ?? null,
+        sleeve_length:       aiDetails?.sleeveLength ?? null,
+        details:             aiDetails?.details    ?? null,
+        image_url:           originalImageUrl,
         processed_image_url: processedImageUrl,
-        created_at: now,
+        created_at:          now,
       });
       if (dbError) throw new Error(dbError.message);
 
@@ -153,9 +175,14 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         userId: user.id,
         category,
         subCategory,
-        colors: itemColors,
+        colors:       itemColors,
         seasons,
         fabric,
+        itemName:     aiDetails?.itemName,
+        fit:          aiDetails?.fit,
+        neckline:     aiDetails?.neckline,
+        sleeveLength: aiDetails?.sleeveLength,
+        details:      aiDetails?.details,
         originalImageUrl,
         processedImageUrl,
         createdAt: now,
@@ -232,6 +259,44 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             <Text style={styles.aiBannerText}>✨ AI tarafından dolduruldu · değiştirebilirsin</Text>
           </View>
         )}
+
+        {/* AI Detay Kartı — yeni ekleme ve detay içeren düzenleme modunda göster */}
+        {aiDetails && (aiDetails.itemName || aiDetails.fit || aiDetails.neckline || aiDetails.sleeveLength || aiDetails.details?.length) ? (
+          <View style={styles.detailCard}>
+            {aiDetails.itemName ? (
+              <Text style={styles.detailName}>{aiDetails.itemName}</Text>
+            ) : null}
+            <View style={styles.detailRow}>
+              {aiDetails.fit ? (
+                <View style={styles.detailPill}>
+                  <Text style={styles.detailPillLabel}>Kesim</Text>
+                  <Text style={styles.detailPillValue}>{aiDetails.fit}</Text>
+                </View>
+              ) : null}
+              {aiDetails.neckline ? (
+                <View style={styles.detailPill}>
+                  <Text style={styles.detailPillLabel}>Yaka</Text>
+                  <Text style={styles.detailPillValue}>{aiDetails.neckline}</Text>
+                </View>
+              ) : null}
+              {aiDetails.sleeveLength ? (
+                <View style={styles.detailPill}>
+                  <Text style={styles.detailPillLabel}>Kol</Text>
+                  <Text style={styles.detailPillValue}>{aiDetails.sleeveLength}</Text>
+                </View>
+              ) : null}
+            </View>
+            {aiDetails.details && aiDetails.details.length > 0 ? (
+              <View style={styles.detailTagsRow}>
+                {aiDetails.details.map((d) => (
+                  <View key={d} style={styles.detailTag}>
+                    <Text style={styles.detailTagText}>{d}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Kategori */}
         <Text style={styles.sectionTitle}>
@@ -439,6 +504,64 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     color: colors.primary,
     flex: 1,
+  },
+  // ─── AI Detay Kartı ──────────────────────────────────────────────────────────
+  detailCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detailName: {
+    fontSize: 14,
+    fontFamily: fonts.bodyBold,
+    color: colors.primary,
+    lineHeight: 20,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detailPillLabel: {
+    fontSize: 10,
+    fontFamily: fonts.bodyMedium,
+    color: colors.muted,
+  },
+  detailPillValue: {
+    fontSize: 12,
+    fontFamily: fonts.bodyBold,
+    color: colors.primary,
+  },
+  detailTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  detailTag: {
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+  },
+  detailTagText: {
+    fontSize: 11,
+    fontFamily: fonts.bodyMedium,
+    color: '#4F46E5',
   },
   saveBtn: {
     height: 54,

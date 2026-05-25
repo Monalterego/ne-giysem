@@ -44,6 +44,12 @@ export interface WardrobeItem {
   seasons: Season[];
   brand?: string;
   price?: number;
+  // AI-detected detail fields
+  itemName?: string;
+  fit?: string;
+  neckline?: string;
+  sleeveLength?: string;
+  details?: string[];
   createdAt: string;
 }
 
