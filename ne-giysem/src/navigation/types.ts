@@ -8,6 +8,7 @@ export type OnboardingStackParamList = {
   StyleChoice: undefined;
   StyleSelect: undefined;
   StyleQuiz: undefined;
+  StyleExplore: undefined;
   StyleResult: { selectedStyles: StyleEntry[] };
 };
 

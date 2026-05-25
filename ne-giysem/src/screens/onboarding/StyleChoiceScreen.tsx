@@ -27,7 +27,7 @@ const PATHS = [
     title: 'İlham Ver',
     description: 'Görselleri beğen/geç — 15 swipe ile stil DNA\'n hazır',
     accentColor: '#6C5CE7',
-    route: 'StyleSelect' as const, // Keşif ekranı V2'de
+    route: 'StyleExplore' as const,
   },
 ];
 
