@@ -12,6 +12,8 @@ export default function RootNavigator() {
   const isAuthenticated = useUserStore((s) => s.isAuthenticated);
   const isOnboarded = useUserStore((s) => s.isOnboarded);
 
+  console.log('[RootNavigator] render — isAuthenticated:', isAuthenticated, '| isOnboarded:', isOnboarded);
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {isAuthenticated && isOnboarded ? (

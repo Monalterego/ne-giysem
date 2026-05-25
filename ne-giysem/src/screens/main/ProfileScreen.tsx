@@ -40,10 +40,11 @@ const STYLE_LABEL: Record<string, string> = {
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const user    = useUserStore((s) => s.user);
-  const logout  = useUserStore((s) => s.logout);
-  const setUser = useUserStore((s) => s.setUser);
-  const items   = useWardrobeStore((s) => s.items);
+  const user      = useUserStore((s) => s.user);
+  const logout    = useUserStore((s) => s.logout);
+  const setUser   = useUserStore((s) => s.setUser);
+  const items     = useWardrobeStore((s) => s.items);
+  const setItems  = useWardrobeStore((s) => s.setItems);
 
   // İstatistikler
   const combos = useMemo(() => generateCombos(items, 50), [items]);
@@ -95,15 +96,25 @@ export default function ProfileScreen() {
   };
 
   // Çıkış
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert('Çıkış Yap', 'Hesabından çıkmak istediğine emin misin?', [
       { text: 'İptal', style: 'cancel' },
       {
         text: 'Çıkış Yap',
         style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          logout();
+        onPress: () => {
+          console.log('[ProfileScreen] signOut başlatılıyor…');
+          supabase.auth.signOut()
+            .then(({ error }) => {
+              if (error) console.warn('[ProfileScreen] signOut hatası:', error.message);
+              else console.log('[ProfileScreen] signOut başarılı');
+            })
+            .catch((err) => console.warn('[ProfileScreen] signOut exception:', err))
+            .finally(() => {
+              console.log('[ProfileScreen] logout() çağrılıyor — store sıfırlanıyor');
+              setItems([]);
+              logout();
+            });
         },
       },
     ]);
