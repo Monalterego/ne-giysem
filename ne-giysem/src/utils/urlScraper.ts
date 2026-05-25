@@ -1,6 +1,35 @@
 import { Platform } from 'react-native';
 
-const PROXY = 'https://corsproxy.io/?url=';
+const PROXY_PRIMARY  = 'https://api.codetabs.com/v1/proxy?quest=';
+const PROXY_FALLBACK = 'https://thingproxy.freeboard.io/fetch/';
+const FETCH_TIMEOUT  = 8000; // ms
+
+// AbortController ile timeout'lu fetch
+async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// HTML fetch: önce codetabs, timeout/hata olursa thingproxy fallback
+async function fetchHtml(url: string): Promise<string> {
+  const encoded = encodeURIComponent(url);
+  try {
+    const res = await fetchWithTimeout(`${PROXY_PRIMARY}${encoded}`, FETCH_TIMEOUT);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.text();
+  } catch {
+    // Fallback
+    const res = await fetch(`${PROXY_FALLBACK}${encoded}`);
+    if (!res.ok) throw new Error(`Proxy bağlantı hatası: ${res.status}`);
+    return res.text();
+  }
+}
 
 // HTML'den og:image veya twitter:image meta tag'ini regex ile çıkarır
 function extractMetaImage(html: string): string | null {
@@ -19,9 +48,9 @@ function extractMetaImage(html: string): string | null {
 
 // Görsel URL'ini indirip base64'e çevirir
 async function imageUrlToBase64(imageUrl: string): Promise<string> {
-  // Web'de direkt fetch CORS hatası verir → corsproxy.io kullan
+  // Web'de direkt fetch CORS hatası verir → codetabs proxy kullan
   const fetchUrl = Platform.OS === 'web'
-    ? `${PROXY}${encodeURIComponent(imageUrl)}`
+    ? `${PROXY_PRIMARY}${encodeURIComponent(imageUrl)}`
     : imageUrl;
 
   const res = await fetch(fetchUrl);
@@ -41,11 +70,7 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
 
 // Ürün URL'inden og:image görselini çekip base64 döndürür
 export async function scrapeProductImage(url: string): Promise<string> {
-  // corsproxy.io raw HTML döndürür — JSON wrapper yok
-  const proxyRes = await fetch(`${PROXY}${encodeURIComponent(url)}`);
-  if (!proxyRes.ok) throw new Error(`Proxy bağlantı hatası: ${proxyRes.status}`);
-
-  const html = await proxyRes.text();
+  const html = await fetchHtml(url);
   if (!html) throw new Error('Sayfa içeriği alınamadı.');
 
   const imageUrl = extractMetaImage(html);
