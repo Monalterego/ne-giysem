@@ -20,7 +20,7 @@ const PATHS = [
     title: 'Keşfetmek İstiyorum',
     description: 'Quiz ile tarzını bul, 8 soruda profilini çıkar',
     accentColor: colors.secondary,
-    route: 'StyleSelect' as const, // Quiz ekranı V2'de
+    route: 'StyleQuiz' as const,
   },
   {
     icon: '✨',
