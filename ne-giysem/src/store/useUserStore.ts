@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { User, StyleProfile } from '../types';
 
-interface UserState {
+export interface UserState {
   user: User | null;
   isAuthenticated: boolean;
   isOnboarded: boolean;

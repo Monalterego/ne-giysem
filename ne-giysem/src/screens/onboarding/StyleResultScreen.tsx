@@ -1,103 +1,159 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Share, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { OnboardingStackParamList } from '../../navigation/types';
+import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
+import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts } from '../../constants/theme';
+import { STYLE_DATA_MAP } from '../../constants/styles';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleResult'>;
 
-const PALETTE: Record<string, string[]> = {
-  Minimalist:    ['#2C3E50', '#ECF0F1', '#BDC3C7', '#95A5A6', '#1A1A2E'],
-  Streetwear:    ['#1A1A2E', '#E94560', '#F8C300', '#2ECC71', '#000000'],
-  'Old Money':   ['#8E6F47', '#F5F0E8', '#C9A96E', '#5D4037', '#1A1A2E'],
-  'Smart Casual':['#2C3E50', '#ECF0F1', '#3498DB', '#95A5A6', '#1A1A2E'],
-  Bohemian:      ['#C0392B', '#E67E22', '#F1C40F', '#8E44AD', '#2ECC71'],
-  Athleisure:    ['#1A1A2E', '#E94560', '#FFFFFF', '#3498DB', '#2ECC71'],
-  'Avant-garde': ['#8E44AD', '#1A1A2E', '#E94560', '#F39C12', '#ECF0F1'],
-};
+const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
-const DNA_NAMES: Record<string, string> = {
-  Minimalist:     'Minimal Elegance',
-  Streetwear:     'Urban Edge',
-  'Old Money':    'Classic Refinement',
-  'Smart Casual': 'Polished Ease',
-  Bohemian:       'Free Spirit',
-  Athleisure:     'Active Energy',
-  'Avant-garde':  'Bold Vision',
-};
+// Seçili stillerin paletlerini ağırlık sırasına göre birleştir, max 5 unique renk
+function buildPalette(entries: StyleEntry[]): string[] {
+  const seen   = new Set<string>();
+  const result: string[] = [];
+  for (const entry of entries) {
+    const data = STYLE_DATA_MAP[entry.name];
+    if (!data) continue;
+    for (const hex of data.palette) {
+      const key = hex.toLowerCase();
+      if (!seen.has(key) && result.length < 5) {
+        seen.add(key);
+        result.push(hex);
+      }
+    }
+  }
+  return result;
+}
 
-const TRAITS: Record<string, string[]> = {
-  Minimalist:     ['Sade hatlar', 'Kaliteli kumaş', 'Nötr tonlar', 'Zamansız'],
-  Streetwear:     ['Oversize fit', 'Grafik baskı', 'Sneaker odaklı', 'Cesur'],
-  'Old Money':    ['Klasik kesim', 'Doğal kumaş', 'Sakin palet', 'Şık'],
-  'Smart Casual': ['Ofis uyumlu', 'Rahat kesim', 'Temiz görünüm', 'Çok yönlü'],
-  Bohemian:       ['Akıcı kumaş', 'Renkli desen', 'Doğa ilhamlı', 'Özgür'],
-  Athleisure:     ['Fonksiyonel', 'Sportif', 'Konfor öncelikli', 'Dinamik'],
-  'Avant-garde':  ['Deneysel', 'Statement parça', 'Asimetri', 'Sanatsal'],
-};
+async function fetchDnaFromClaude(
+  entries: StyleEntry[],
+): Promise<{ dnaName: string; traits: string[] }> {
+  if (!API_KEY) throw new Error('API key eksik');
+
+  const profileLine = entries
+    .map((e) => `${e.name} (%${e.weight})`)
+    .join(' · ');
+
+  const prompt = `Kullanıcının stil profili: ${profileLine}
+
+Şunları döndür (sadece JSON, başka metin yazma):
+{
+  "dnaName": "2-3 kelimelik şık İngilizce isim — tek stil için o stili temsil eden, çoklu için kombinasyonu temsil eden",
+  "traits": ["4 adet kısa Türkçe stil özelliği"]
+}`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 128,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  const json = await res.json();
+  const text: string = (json as any)?.content?.[0]?.text ?? '';
+  if (!text) throw new Error('Boş yanıt');
+
+  const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const raw   = JSON.parse(clean);
+
+  return {
+    dnaName: typeof raw.dnaName === 'string' ? raw.dnaName : '',
+    traits: Array.isArray(raw.traits)
+      ? (raw.traits as unknown[]).filter((t): t is string => typeof t === 'string').slice(0, 4)
+      : [],
+  };
+}
 
 export default function StyleResultScreen({ route }: Props) {
   const { selectedStyles } = route.params;
-  const setOnboarded = useUserStore((s) => s.setOnboarded);
-  const setStyleProfile = useUserStore((s) => s.setStyleProfile);
-  const user = useUserStore((s: { user: import('../../types').User | null }) => s.user);
-  const [loading, setLoading] = useState(false);
+  const setOnboarded    = useUserStore((s: UserState) => s.setOnboarded);
+  const setStyleProfile = useUserStore((s: UserState) => s.setStyleProfile);
+  const user            = useUserStore((s: UserState) => s.user);
 
   const primary = selectedStyles[0];
-  const dnaName = DNA_NAMES[primary.name] ?? primary.name;
-  const palette = PALETTE[primary.name] ?? PALETTE['Minimalist'];
-  const traits = TRAITS[primary.name] ?? [];
+  const palette = buildPalette(selectedStyles);
+
+  const [dnaName,   setDnaName]   = useState<string>('');
+  const [traits,    setTraits]    = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [saving,    setSaving]    = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchDnaFromClaude(selectedStyles)
+      .then(({ dnaName: name, traits: t }) => {
+        if (cancelled) return;
+        setDnaName(name || primary.name);
+        setTraits(t);
+      })
+      .catch(() => {
+        if (!cancelled) setDnaName(primary.name);
+      })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const breakdown = selectedStyles
-    .map((s) => `%${s.weight} ${s.name}`)
+    .map((s: StyleEntry) => `%${s.weight} ${s.name}`)
     .join(' · ');
 
   const handleStart = async () => {
     if (!user) return;
-    setLoading(true);
-
+    setSaving(true);
     const { error } = await supabase
       .from('style_profiles')
       .upsert(
         { user_id: user.id, styles: selectedStyles, color_palette: {} },
         { onConflict: 'user_id' },
       );
-
     if (error) {
       Alert.alert('Hata', 'Stil profili kaydedilemedi. Lütfen tekrar dene.');
-      setLoading(false);
+      setSaving(false);
       return;
     }
-
     setStyleProfile({ styles: selectedStyles, colorPalette: palette });
     setOnboarded(true);
   };
 
   const handleShare = async () => {
     await Share.share({
-      message: `Stil DNA'm: ${dnaName} (${breakdown}) — Ne Giysem? ile keşfettim! 👗`,
+      message: `Stil DNA'm: ${dnaName || primary.name} (${breakdown}) — Ne Giysem? ile keşfettim! 👗`,
     });
   };
 
   return (
-    <LinearGradient
-      colors={['#1A1A2E', '#0F3460', '#1A1A2E']}
-      style={styles.gradient}
-    >
+    <LinearGradient colors={['#1A1A2E', '#0F3460', '#1A1A2E']} style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
-        {/* Badge */}
         <Text style={styles.badge}>STİL DNA KARTIN</Text>
 
-        {/* Card */}
+        {/* Kart */}
         <View style={styles.card}>
-          <Text style={styles.dnaName}>{dnaName}</Text>
+          {/* DNA İsmi */}
+          {aiLoading ? (
+            <ActivityIndicator color="rgba(255,255,255,0.7)" size="small" style={styles.nameSpinner} />
+          ) : (
+            <Text style={styles.dnaName}>{dnaName}</Text>
+          )}
+
           <Text style={styles.breakdown}>{breakdown}</Text>
 
-          {/* Color palette */}
+          {/* Renk paleti */}
           <View style={styles.paletteRow}>
             {palette.map((hex, i) => (
               <View key={i} style={[styles.paletteCircle, { backgroundColor: hex }]} />
@@ -105,20 +161,32 @@ export default function StyleResultScreen({ route }: Props) {
           </View>
           <Text style={styles.paletteLabel}>RENK PALETİN</Text>
 
-          {/* Trait tags */}
-          <View style={styles.traitsWrap}>
-            {traits.map((t) => (
-              <View key={t} style={styles.traitTag}>
-                <Text style={styles.traitText}>{t}</Text>
-              </View>
-            ))}
-          </View>
+          {/* Trait tag'ler */}
+          {!aiLoading && traits.length > 0 && (
+            <View style={styles.traitsWrap}>
+              {traits.map((t: string) => (
+                <View key={t} style={styles.traitTag}>
+                  <Text style={styles.traitText}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {aiLoading && (
+            <View style={styles.traitsPlaceholder}>
+              <ActivityIndicator color="rgba(255,255,255,0.4)" size="small" />
+            </View>
+          )}
         </View>
 
-        {/* Actions */}
+        {/* Aksiyonlar */}
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleStart} activeOpacity={0.85} disabled={loading}>
-            {loading
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={handleStart}
+            activeOpacity={0.85}
+            disabled={saving}
+          >
+            {saving
               ? <ActivityIndicator color="#fff" />
               : <Text style={styles.primaryBtnText}>Dolabımı Oluştur →</Text>
             }
@@ -157,6 +225,12 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     marginBottom: 32,
+    minHeight: 240,
+  },
+  nameSpinner: {
+    marginBottom: 12,
+    marginTop: 4,
+    height: 34,
   },
   dnaName: {
     fontSize: 28,
@@ -207,6 +281,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.body,
     color: 'rgba(255,255,255,0.75)',
+  },
+  traitsPlaceholder: {
+    height: 32,
+    justifyContent: 'center',
   },
   actions: {
     gap: 12,
