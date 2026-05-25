@@ -53,6 +53,12 @@ function comboKey(combo: Combo): string {
   return combo.items.map((i) => i.id).sort().join('|');
 }
 
+const SUGGESTED_LABEL: Record<string, string> = {
+  bag:       'Çanta',
+  outer:     'Dış Giyim',
+  accessory: 'Aksesuar',
+};
+
 function ComboCard({
   combo,
   isWorn,
@@ -64,9 +70,12 @@ function ComboCard({
   isSaving: boolean;
   onWear: () => void;
 }) {
+  const hasSuggestions = (combo.suggestedItems?.length ?? 0) > 0;
+  const hasOuter = combo.suggestedItems?.some((i) => i.category === 'outer') ?? false;
+
   return (
     <View style={styles.card}>
-      {/* Parça görselleri */}
+      {/* Çekirdek parça görselleri */}
       <View style={styles.imagesRow}>
         {combo.items.map((item) => (
           <View key={item.id} style={styles.itemImageWrap}>
@@ -80,6 +89,32 @@ function ComboCard({
         ))}
         <ScoreBadge score={combo.score} />
       </View>
+
+      {/* Tamamlayıcı öneriler */}
+      {hasSuggestions && (
+        <View style={styles.suggestionsSection}>
+          <Text style={styles.suggestionsTitle}>
+            {hasOuter ? '🧥 Tamamlayıcı öneriler' : '✨ Tamamlayıcı öneriler'}
+          </Text>
+          <View style={styles.suggestionsRow}>
+            {combo.suggestedItems!.map((item) => (
+              <View key={item.id} style={styles.suggestionWrap}>
+                <Image
+                  source={{ uri: item.processedImageUrl }}
+                  style={styles.suggestionImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.suggestionLabel}>
+                  {SUGGESTED_LABEL[item.category] ?? item.category}
+                </Text>
+              </View>
+            ))}
+          </View>
+          {hasOuter && (
+            <Text style={styles.outerNote}>Soğuk hava için dış giyim önerisi</Text>
+          )}
+        </View>
+      )}
 
       {/* Etiket + buton */}
       <View style={styles.cardFooter}>
@@ -436,5 +471,51 @@ const styles = StyleSheet.create({
   },
   wearBtnTextWorn: {
     color: colors.muted,
+  },
+  // --- Tamamlayıcı öneriler ---
+  suggestionsSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  suggestionsTitle: {
+    fontSize: 11,
+    fontFamily: fonts.bodyMedium,
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  suggestionWrap: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  suggestionImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  suggestionLabel: {
+    fontSize: 10,
+    fontFamily: fonts.body,
+    color: colors.muted,
+  },
+  outerNote: {
+    fontSize: 11,
+    fontFamily: fonts.body,
+    color: colors.muted,
+    marginTop: 6,
+    marginBottom: 4,
+    fontStyle: 'italic',
   },
 });

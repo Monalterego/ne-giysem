@@ -72,6 +72,7 @@ export interface User {
 export interface Combo {
   id: string;
   items: WardrobeItem[];
+  suggestedItems?: WardrobeItem[];
   score: number;
   occasion?: string;
   label: string;

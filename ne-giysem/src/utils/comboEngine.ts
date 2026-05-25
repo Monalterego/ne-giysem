@@ -118,6 +118,19 @@ function uid(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+// Çekirdek parçalara renk uyumu en yüksek n adayı döner (min eşik: 0.65)
+function bestMatches(core: WardrobeItem[], candidates: WardrobeItem[], n: number): WardrobeItem[] {
+  return candidates
+    .map((c) => ({
+      item: c,
+      score: core.reduce((sum, ci) => sum + itemColorScore(ci, c), 0) / core.length,
+    }))
+    .filter((x) => x.score > 0.65)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n)
+    .map((x) => x.item);
+}
+
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
 
 function comboLabel(score: number): string {
@@ -129,10 +142,13 @@ export function generateCombos(
   maxCombos = 12,
   occasion: Occasion = 'all',
 ): Combo[] {
-  const uppers  = items.filter((i) => i.category === 'upper');
-  const lowers  = items.filter((i) => i.category === 'lower');
-  const shoes   = items.filter((i) => i.category === 'shoes');
-  const dresses = items.filter((i) => i.category === 'dress_jumpsuit');
+  const uppers      = items.filter((i) => i.category === 'upper');
+  const lowers      = items.filter((i) => i.category === 'lower');
+  const shoes       = items.filter((i) => i.category === 'shoes');
+  const dresses     = items.filter((i) => i.category === 'dress_jumpsuit');
+  const bags        = items.filter((i) => i.category === 'bag');
+  const outers      = items.filter((i) => i.category === 'outer');
+  const accessories = items.filter((i) => i.category === 'accessory');
 
   const results: Combo[] = [];
   const now = new Date().toISOString();
@@ -156,7 +172,22 @@ export function generateCombos(
           const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
           const score = Math.round(raw * 100);
 
-          results.push({ id: uid(), items: [upper, lower, shoe], score, occasion, label: comboLabel(score), createdAt: now });
+          const coreItems = [upper, lower, shoe];
+          const suggestedItems = [
+            ...bestMatches(coreItems, bags, 1),
+            ...bestMatches(coreItems, outers, 1),
+            ...bestMatches(coreItems, accessories, 2),
+          ];
+
+          results.push({
+            id: uid(),
+            items: coreItems,
+            suggestedItems: suggestedItems.length ? suggestedItems : undefined,
+            score,
+            occasion,
+            label: comboLabel(score),
+            createdAt: now,
+          });
         }
       }
     }
@@ -171,7 +202,22 @@ export function generateCombos(
         const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
         const score = Math.round(raw * 100);
 
-        results.push({ id: uid(), items: [dress, shoe], score, occasion, label: comboLabel(score), createdAt: now });
+        const coreItems = [dress, shoe];
+        const suggestedItems = [
+          ...bestMatches(coreItems, bags, 1),
+          ...bestMatches(coreItems, outers, 1),
+          ...bestMatches(coreItems, accessories, 2),
+        ];
+
+        results.push({
+          id: uid(),
+          items: coreItems,
+          suggestedItems: suggestedItems.length ? suggestedItems : undefined,
+          score,
+          occasion,
+          label: comboLabel(score),
+          createdAt: now,
+        });
       }
     }
   }
