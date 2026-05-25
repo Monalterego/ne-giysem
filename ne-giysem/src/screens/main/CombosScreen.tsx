@@ -116,14 +116,20 @@ export default function CombosScreen() {
     const key = comboKey(combo);
     setSavingKey(key);
     const now = new Date().toISOString();
-    const { error } = await supabase.from('combos').insert({
+    const payload = {
       user_id: user.id,
       items: combo.items.map((i) => i.id),
       score: combo.score,
       worn_at: now,
       created_at: now,
-    });
-    if (!error) markWorn(key);
+    };
+    console.log('[handleWear] inserting to combos:', JSON.stringify(payload));
+    const { error } = await supabase.from('combos').insert(payload);
+    if (error) {
+      console.error('[handleWear] combos insert error:', error);
+    } else {
+      markWorn(key);
+    }
     setSavingKey(null);
   };
 
