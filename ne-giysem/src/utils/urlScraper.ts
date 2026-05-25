@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 
-const PROXY_GET = 'https://api.allorigins.win/get?url=';
-const PROXY_RAW = 'https://api.allorigins.win/raw?url=';
+const PROXY = 'https://corsproxy.io/?url=';
 
 // HTML'den og:image veya twitter:image meta tag'ini regex ile çıkarır
 function extractMetaImage(html: string): string | null {
@@ -20,9 +19,9 @@ function extractMetaImage(html: string): string | null {
 
 // Görsel URL'ini indirip base64'e çevirir
 async function imageUrlToBase64(imageUrl: string): Promise<string> {
-  // Web'de direkt fetch CORS hatası verir → allorigins raw proxy kullan
+  // Web'de direkt fetch CORS hatası verir → corsproxy.io kullan
   const fetchUrl = Platform.OS === 'web'
-    ? `${PROXY_RAW}${encodeURIComponent(imageUrl)}`
+    ? `${PROXY}${encodeURIComponent(imageUrl)}`
     : imageUrl;
 
   const res = await fetch(fetchUrl);
@@ -42,11 +41,11 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
 
 // Ürün URL'inden og:image görselini çekip base64 döndürür
 export async function scrapeProductImage(url: string): Promise<string> {
-  const proxyRes = await fetch(`${PROXY_GET}${encodeURIComponent(url)}`);
+  // corsproxy.io raw HTML döndürür — JSON wrapper yok
+  const proxyRes = await fetch(`${PROXY}${encodeURIComponent(url)}`);
   if (!proxyRes.ok) throw new Error(`Proxy bağlantı hatası: ${proxyRes.status}`);
 
-  const json = await proxyRes.json() as { contents: string };
-  const html = json.contents ?? '';
+  const html = await proxyRes.text();
   if (!html) throw new Error('Sayfa içeriği alınamadı.');
 
   const imageUrl = extractMetaImage(html);
