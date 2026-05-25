@@ -85,13 +85,33 @@ function parseVisionResponse(text: string): VisionResult {
   };
 }
 
+function toJpegBase64(input: string): Promise<string> {
+  const raw = input.includes(',') ? input.slice(input.indexOf(',') + 1) : input;
+  const srcType = raw.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas 2D context kullanılamıyor')); return; }
+      ctx.drawImage(img, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      resolve(dataUrl.slice(dataUrl.indexOf(',') + 1));
+    };
+    img.onerror = () => reject(new Error('Görsel canvas\'a yüklenemedi'));
+    img.src = `data:${srcType};base64,${raw}`;
+  });
+}
+
 export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
   if (!API_KEY) {
     throw new Error('Anthropic API key eksik. .env dosyasını kontrol et.');
   }
 
-  const imageData = base64.includes(',') ? base64.slice(base64.indexOf(',') + 1) : base64;
-  const mediaType: 'image/jpeg' | 'image/png' = imageData.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
+  const jpegData = await toJpegBase64(base64);
 
   const requestBody = {
     model: 'claude-sonnet-4-5-20250929',
@@ -102,7 +122,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
         content: [
           {
             type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: imageData },
+            source: { type: 'base64', media_type: 'image/jpeg', data: jpegData },
           },
           { type: 'text', text: PROMPT },
         ],
@@ -114,7 +134,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
     messages: requestBody.messages.map((m) => ({
       ...m,
       content: m.content.map((c: any) =>
-        c.type === 'image' ? { ...c, source: { ...c.source, data: `[base64 ${imageData.length} chars, ${mediaType}]` } } : c,
+        c.type === 'image' ? { ...c, source: { ...c.source, data: `[jpeg base64 ${jpegData.length} chars]` } } : c,
       ),
     })),
   }, null, 2));
