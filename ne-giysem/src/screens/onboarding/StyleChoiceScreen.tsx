@@ -105,10 +105,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 14,
     backgroundColor: colors.white,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
+    boxShadow: '0 2px 8px rgba(26,26,46,0.04)',
     elevation: 2,
   },
   iconBox: {

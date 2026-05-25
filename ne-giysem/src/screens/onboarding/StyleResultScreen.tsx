@@ -217,10 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    boxShadow: '0 6px 12px rgba(233,69,96,0.35)',
     elevation: 6,
   },
   primaryBtnText: {

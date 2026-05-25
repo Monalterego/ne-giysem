@@ -20,6 +20,7 @@ import { useUserStore } from '../../store/useUserStore';
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Signup'>;
 
 export default function SignupScreen({ navigation }: Props) {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export default function SignupScreen({ navigation }: Props) {
   const setUser = useUserStore((s) => s.setUser);
 
   const handleSignup = async () => {
-    if (!email || !password) return;
+    if (!name.trim() || !email || !password) return;
     setLoading(true);
     setError('');
 
@@ -41,10 +42,23 @@ export default function SignupScreen({ navigation }: Props) {
     }
 
     if (data.user) {
+      const trimmedName = name.trim();
+
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        email: data.user.email,
+        name: trimmedName,
+      });
+      if (profileError) {
+        setError('Profil oluşturulamadı: ' + profileError.message);
+        setLoading(false);
+        return;
+      }
+
       setUser({
         id: data.user.id,
         email: data.user.email ?? '',
-        name: '',
+        name: trimmedName,
         isPremium: false,
         createdAt: data.user.created_at,
       });
@@ -86,6 +100,17 @@ export default function SignupScreen({ navigation }: Props) {
             <View style={styles.dividerLine} />
           </View>
 
+          {/* Ad */}
+          <TextInput
+            style={styles.input}
+            placeholder="Adın"
+            placeholderTextColor={colors.muted}
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            autoComplete="name"
+          />
+
           {/* Email / password */}
           <TextInput
             style={styles.input}
@@ -112,7 +137,7 @@ export default function SignupScreen({ navigation }: Props) {
 
           {/* Signup CTA */}
           <TouchableOpacity
-            style={[styles.primaryBtn, (!email || !password || loading) && styles.primaryBtnDisabled]}
+            style={[styles.primaryBtn, (!name.trim() || !email || !password || loading) && styles.primaryBtnDisabled]}
             onPress={handleSignup}
             activeOpacity={0.85}
             disabled={loading}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import type { MainTabParamList } from './types';
 
 import HomeScreen from '../screens/main/HomeScreen';
@@ -21,11 +22,56 @@ export default function MainTabNavigator() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Ana Sayfa' }} />
-      <Tab.Screen name="Wardrobe" component={WardrobeNavigator} options={{ tabBarLabel: 'Dolap' }} />
-      <Tab.Screen name="Combos" component={CombosScreen} options={{ tabBarLabel: 'Kombin' }} />
-      <Tab.Screen name="Scan" component={ScanNavigator} options={{ tabBarLabel: 'Tara' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Profil' }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Ana Sayfa',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Wardrobe"
+        component={WardrobeNavigator}
+        options={{
+          tabBarLabel: 'Dolap',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'shirt' : 'shirt-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Combos"
+        component={CombosScreen}
+        options={{
+          tabBarLabel: 'Kombin',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Scan"
+        component={ScanNavigator}
+        options={{
+          tabBarLabel: 'Tara',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'scan' : 'scan-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profil',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={size} color={color} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }

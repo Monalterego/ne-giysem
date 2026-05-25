@@ -286,10 +286,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 16,
     paddingVertical: 20,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    boxShadow: '0 1px 6px rgba(26,26,46,0.04)',
     elevation: 1,
   },
   statBox: {
@@ -321,10 +318,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     gap: 14,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    boxShadow: '0 1px 6px rgba(26,26,46,0.04)',
     elevation: 1,
   },
   cardTitle: {

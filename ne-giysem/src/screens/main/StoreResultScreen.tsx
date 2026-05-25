@@ -341,10 +341,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     gap: 12,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    boxShadow: '0 2px 8px rgba(26,26,46,0.05)',
     elevation: 2,
   },
   summaryHeadline: {
@@ -421,10 +418,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    boxShadow: '0 1px 6px rgba(26,26,46,0.04)',
     elevation: 1,
   },
   comboImagesRow: {

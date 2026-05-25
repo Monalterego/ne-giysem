@@ -284,10 +284,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    boxShadow: '0 2px 8px rgba(26,26,46,0.06)',
     elevation: 2,
   },
   comboImages: {
@@ -448,10 +445,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    boxShadow: '0 1px 4px rgba(26,26,46,0.04)',
     elevation: 1,
   },
   quickActionEmoji: {

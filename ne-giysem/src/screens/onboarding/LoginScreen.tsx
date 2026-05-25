@@ -42,10 +42,16 @@ export default function LoginScreen({ navigation }: Props) {
     }
 
     if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
       setUser({
         id: data.user.id,
         email: data.user.email ?? '',
-        name: data.user.user_metadata?.name ?? '',
+        name: profile?.name ?? '',
         isPremium: false,
         createdAt: data.user.created_at,
       });
