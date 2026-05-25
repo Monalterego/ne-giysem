@@ -1,11 +1,15 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { WardrobeItem } from '../types';
+import { fetchWeather as fetchWeatherApi } from '../utils/weatherService';
+import type { WeatherData } from '../utils/weatherService';
 
 interface WardrobeState {
   items: WardrobeItem[];
   isLoading: boolean;
   wornComboKeys: Set<string>;
+  weather: WeatherData | null;
+  weatherLoading: boolean;
   setItems: (items: WardrobeItem[]) => void;
   addItem: (item: WardrobeItem) => void;
   removeItem: (id: string) => void;
@@ -14,6 +18,7 @@ interface WardrobeState {
   fetchItems: (userId: string) => Promise<void>;
   markWorn: (key: string) => void;
   fetchWornToday: (userId: string) => Promise<void>;
+  fetchWeather: () => Promise<void>;
 }
 
 function mapRow(row: any): WardrobeItem {
@@ -43,6 +48,8 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
   items: [],
   isLoading: false,
   wornComboKeys: new Set<string>(),
+  weather: null,
+  weatherLoading: false,
   setItems: (items) => set({ items }),
   addItem: (item) => set((state) => ({ items: [item, ...state.items] })),
   removeItem: (id) => set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
@@ -68,6 +75,18 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
   markWorn: (key) => set((state) => ({
     wornComboKeys: new Set([...state.wornComboKeys, key]),
   })),
+
+  fetchWeather: async () => {
+    set({ weatherLoading: true });
+    try {
+      const data = await fetchWeatherApi();
+      set({ weather: data });
+    } catch {
+      // hava durumu başarısız olursa sessizce geç
+    } finally {
+      set({ weatherLoading: false });
+    }
+  },
 
   fetchWornToday: async (userId: string) => {
     const todayStart = new Date();

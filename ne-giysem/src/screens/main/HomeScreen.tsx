@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -102,12 +103,16 @@ function QuickAction({
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function HomeScreen({ navigation }: Props) {
-  const user       = useUserStore((s) => s.user);
-  const items      = useWardrobeStore((s) => s.items);
-  const fetchItems = useWardrobeStore((s) => s.fetchItems);
+  const user           = useUserStore((s) => s.user);
+  const items          = useWardrobeStore((s) => s.items);
+  const fetchItems     = useWardrobeStore((s) => s.fetchItems);
+  const weather        = useWardrobeStore((s) => s.weather);
+  const weatherLoading = useWardrobeStore((s) => s.weatherLoading);
+  const fetchWeather   = useWardrobeStore((s) => s.fetchWeather);
 
   useEffect(() => {
     if (user?.id) fetchItems(user.id);
+    fetchWeather();
   }, [user?.id]);
 
   const combos     = useMemo(() => generateCombos(items), [items]);
@@ -146,15 +151,31 @@ export default function HomeScreen({ navigation }: Props) {
 
         {/* ── Hava Durumu ── */}
         <View style={styles.weatherCard}>
-          <View style={styles.weatherLeft}>
-            <Text style={styles.weatherIcon}>☀️</Text>
-            <View>
-              <Text style={styles.weatherCity}>İstanbul</Text>
-              <Text style={styles.weatherTemp}>22°C · Açık</Text>
-            </View>
-          </View>
-          <View style={styles.weatherDivider} />
-          <Text style={styles.weatherTip}>Hafif kıyafetler ideal</Text>
+          {weatherLoading ? (
+            <ActivityIndicator color="#4A90D9" size="small" style={{ flex: 1 }} />
+          ) : weather ? (
+            <>
+              <View style={styles.weatherLeft}>
+                <Text style={styles.weatherIcon}>{weather.icon}</Text>
+                <View>
+                  <Text style={styles.weatherCity}>İstanbul</Text>
+                  <Text style={styles.weatherTemp}>{weather.temp}°C · {weather.description}</Text>
+                </View>
+              </View>
+              <View style={styles.weatherDivider} />
+              <Text style={styles.weatherTip}>{weather.recommendation}</Text>
+            </>
+          ) : (
+            <>
+              <View style={styles.weatherLeft}>
+                <Text style={styles.weatherIcon}>🌡️</Text>
+                <View>
+                  <Text style={styles.weatherCity}>İstanbul</Text>
+                  <Text style={styles.weatherTemp}>Hava durumu alınamadı</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         {/* ── Hızlı Aksiyonlar ── */}
