@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  ScrollView,
   FlatList,
   Image,
   ActivityIndicator,
@@ -16,10 +17,19 @@ import type { WardrobeStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
-import type { WardrobeItem } from '../../types';
+import type { ClothingCategory, WardrobeItem } from '../../types';
 import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
+
+const FILTERS: { label: string; value: ClothingCategory | 'all' }[] = [
+  { label: 'Tümü',    value: 'all' },
+  { label: 'Üst',     value: 'upper' },
+  { label: 'Alt',     value: 'lower' },
+  { label: 'Dış',     value: 'outer' },
+  { label: 'Ayakkabı', value: 'shoes' },
+  { label: 'Aksesuar', value: 'accessory' },
+];
 
 export default function WardrobeScreen({ navigation }: Props) {
   const items      = useWardrobeStore((s) => s.items);
@@ -30,6 +40,12 @@ export default function WardrobeScreen({ navigation }: Props) {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<ClothingCategory | 'all'>('all');
+
+  const filteredItems = useMemo(
+    () => activeFilter === 'all' ? items : items.filter((i) => i.category === activeFilter),
+    [items, activeFilter],
+  );
 
   const selectionMode = selectedIds.size > 0;
 
@@ -172,7 +188,7 @@ export default function WardrobeScreen({ navigation }: Props) {
       ) : (
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Dolabım</Text>
-          <Text style={styles.headerCount}>{items.length} parça</Text>
+          <Text style={styles.headerCount}>{filteredItems.length} parça</Text>
           <TouchableOpacity
             style={styles.addBtn}
             onPress={() => navigation.navigate('Upload')}
@@ -183,8 +199,34 @@ export default function WardrobeScreen({ navigation }: Props) {
         </View>
       )}
 
+      {/* Filtre chip'leri — seçim modunda gizle */}
+      {!selectionMode && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterBar}
+          contentContainerStyle={styles.filterBarContent}
+        >
+          {FILTERS.map(({ label, value }) => {
+            const active = activeFilter === value;
+            return (
+              <TouchableOpacity
+                key={value}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setActiveFilter(value)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
       <FlatList
-        data={items}
+        data={filteredItems}
         numColumns={2}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.grid}
@@ -332,6 +374,40 @@ const styles = StyleSheet.create({
     color: colors.accent,
     width: 52,
     textAlign: 'right',
+  },
+
+  // Filtre bar
+  filterBar: {
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexGrow: 0,
+  },
+  filterBarContent: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  filterChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  filterChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontFamily: fonts.bodyMedium,
+    color: colors.primary,
+  },
+  filterChipTextActive: {
+    color: colors.white,
+    fontFamily: fonts.bodyBold,
   },
 
   // Grid
