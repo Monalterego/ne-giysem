@@ -9,20 +9,56 @@ import RootNavigator from './src/navigation/RootNavigator';
 export default function App() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION' && session?.user) {
-        // Uygulama açılışında mevcut oturum tespit edildi — onboarding atla
-        const { setUser, setOnboarded } = useUserStore.getState();
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name ?? '',
-          isPremium: false,
-          createdAt: session.user.created_at,
-        });
-        setOnboarded(true);
-      } else if (event === 'SIGNED_OUT') {
+      console.log('[App] auth event:', event, '| user:', session?.user?.id ?? null);
+
+      // Sadece ilgili event'ler işleniyor — TOKEN_REFRESHED, USER_UPDATED vb. yoksayılır
+      if (event === 'SIGNED_OUT') {
+        console.log('[App] SIGNED_OUT → logout()');
         useUserStore.getState().logout();
+        return;
       }
+
+      if (event === 'INITIAL_SESSION' && session?.user) {
+        // Uygulama açılışında mevcut oturum — profiles tablosundan adı çek
+        const u = session.user;
+        supabase.from('profiles').select('name').eq('id', u.id).maybeSingle()
+          .then(({ data: profile }: { data: { name: string } | null }) => {
+            console.log('[App] INITIAL_SESSION setUser — name:', profile?.name ?? '(yok)');
+            const { setUser, setOnboarded } = useUserStore.getState();
+            setUser({
+              id: u.id,
+              email: u.email ?? '',
+              name: profile?.name ?? '',
+              isPremium: false,
+              createdAt: u.created_at,
+            });
+            setOnboarded(true);
+          });
+        return;
+      }
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Login sonrası — isOnboarded'a dokunma, ekranlar yönetiyor
+        // (LoginScreen setOnboarded(true), SignupScreen onboarding'e yönlendiriyor)
+        const u = session.user;
+        const { user: current, setUser } = useUserStore.getState();
+        if (!current) {
+          // Sadece store henüz boşsa set et (LoginScreen zaten doldurmuşsa üzerine yazma)
+          console.log('[App] SIGNED_IN fallback setUser — id:', u.id);
+          setUser({
+            id: u.id,
+            email: u.email ?? '',
+            name: '',
+            isPremium: false,
+            createdAt: u.created_at,
+          });
+        } else {
+          console.log('[App] SIGNED_IN — store zaten dolu, atlanıyor');
+        }
+        return;
+      }
+
+      console.log('[App] event yoksayıldı:', event);
     });
 
     return () => subscription.unsubscribe();
