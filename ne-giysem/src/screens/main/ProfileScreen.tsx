@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
+  Alert,  // isim güncelleme hatası için korunuyor
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
@@ -97,27 +97,19 @@ export default function ProfileScreen() {
 
   // Çıkış
   const handleLogout = () => {
-    Alert.alert('Çıkış Yap', 'Hesabından çıkmak istediğine emin misin?', [
-      { text: 'İptal', style: 'cancel' },
-      {
-        text: 'Çıkış Yap',
-        style: 'destructive',
-        onPress: () => {
-          console.log('[ProfileScreen] signOut başlatılıyor…');
-          supabase.auth.signOut()
-            .then(({ error }) => {
-              if (error) console.warn('[ProfileScreen] signOut hatası:', error.message);
-              else console.log('[ProfileScreen] signOut başarılı');
-            })
-            .catch((err) => console.warn('[ProfileScreen] signOut exception:', err))
-            .finally(() => {
-              console.log('[ProfileScreen] logout() çağrılıyor — store sıfırlanıyor');
-              setItems([]);
-              logout();
-            });
-        },
-      },
-    ]);
+    console.log('[ProfileScreen] handleLogout çağrıldı');
+    console.log('[ProfileScreen] signOut öncesi — supabase.auth.signOut() çağrılıyor');
+    supabase.auth.signOut()
+      .then(({ error }) => {
+        console.log('[ProfileScreen] signOut sonrası — error:', error ?? null);
+        if (error) console.warn('[ProfileScreen] signOut error.message:', error.message);
+      })
+      .catch((err) => console.warn('[ProfileScreen] signOut exception (catch):', err))
+      .finally(() => {
+        console.log('[ProfileScreen] finally — setItems([]) ve logout() çağrılıyor');
+        setItems([]);
+        logout();
+      });
   };
 
   if (!user) return null;
