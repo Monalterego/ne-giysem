@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,15 +22,33 @@ import type { ClothingCategory, WardrobeItem } from '../../types';
 import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
+type ViewMode = 'grid' | 'list';
+
+const VIEW_MODE_KEY = 'wardrobe_view_mode';
 
 const FILTERS: { label: string; value: ClothingCategory | 'all' }[] = [
-  { label: 'Tümü',    value: 'all' },
-  { label: 'Üst',     value: 'upper' },
-  { label: 'Alt',     value: 'lower' },
-  { label: 'Dış',     value: 'outer' },
-  { label: 'Ayakkabı', value: 'shoes' },
+  { label: 'Tümü',     value: 'all'       },
+  { label: 'Üst',      value: 'upper'     },
+  { label: 'Alt',      value: 'lower'     },
+  { label: 'Dış',      value: 'outer'     },
+  { label: 'Ayakkabı', value: 'shoes'     },
   { label: 'Aksesuar', value: 'accessory' },
 ];
+
+const CATEGORY_LABEL: Record<string, string> = {
+  upper:     'Üst',
+  lower:     'Alt',
+  outer:     'Dış',
+  shoes:     'Ayakkabı',
+  accessory: 'Aksesuar',
+};
+
+const SEASON_LABEL: Record<string, string> = {
+  spring: 'İlkbahar',
+  summer: 'Yaz',
+  fall:   'Sonbahar',
+  winter: 'Kış',
+};
 
 export default function WardrobeScreen({ navigation }: Props) {
   const items      = useWardrobeStore((s) => s.items);
@@ -38,9 +57,10 @@ export default function WardrobeScreen({ navigation }: Props) {
   const removeItem = useWardrobeStore((s) => s.removeItem);
   const user       = useUserStore((s) => s.user);
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [deleting, setDeleting] = useState(false);
+  const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set());
+  const [deleting,     setDeleting]     = useState(false);
   const [activeFilter, setActiveFilter] = useState<ClothingCategory | 'all'>('all');
+  const [viewMode,     setViewMode]     = useState<ViewMode>('grid');
 
   const filteredItems = useMemo(
     () => activeFilter === 'all' ? items : items.filter((i) => i.category === activeFilter),
@@ -49,15 +69,28 @@ export default function WardrobeScreen({ navigation }: Props) {
 
   const selectionMode = selectedIds.size > 0;
 
+  // ─── AsyncStorage ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    AsyncStorage.getItem(VIEW_MODE_KEY).then((val) => {
+      if (val === 'list' || val === 'grid') setViewMode(val);
+    });
+  }, []);
+
+  const changeViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    AsyncStorage.setItem(VIEW_MODE_KEY, mode);
+  };
+
+  // ─── Fetch ───────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (user?.id) fetchItems(user.id);
   }, [user?.id]);
 
   // ─── Seçim modu ─────────────────────────────────────────────────────────────
 
-  const handleLongPress = (id: string) => {
-    setSelectedIds(new Set([id]));
-  };
+  const handleLongPress = (id: string) => setSelectedIds(new Set([id]));
 
   const handleItemPress = (id: string) => {
     if (!selectionMode) return;
@@ -70,7 +103,7 @@ export default function WardrobeScreen({ navigation }: Props) {
 
   const cancelSelection = () => setSelectedIds(new Set());
 
-  // ─── Silme ──────────────────────────────────────────────────────────────────
+  // ─── Silme ───────────────────────────────────────────────────────────────────
 
   const confirmDeleteSelected = () => {
     Alert.alert(
@@ -78,7 +111,7 @@ export default function WardrobeScreen({ navigation }: Props) {
       `${selectedIds.size} parçayı kalıcı olarak silmek istediğine emin misin?`,
       [
         { text: 'İptal', style: 'cancel' },
-        { text: 'Sil', style: 'destructive', onPress: deleteSelected },
+        { text: 'Sil',   style: 'destructive', onPress: deleteSelected },
       ],
     );
   };
@@ -102,7 +135,7 @@ export default function WardrobeScreen({ navigation }: Props) {
       'Bu parçayı kalıcı olarak silmek istediğine emin misin?',
       [
         { text: 'İptal', style: 'cancel' },
-        { text: 'Sil', style: 'destructive', onPress: () => deleteSingle(id) },
+        { text: 'Sil',   style: 'destructive', onPress: () => deleteSingle(id) },
       ],
     );
   };
@@ -113,7 +146,7 @@ export default function WardrobeScreen({ navigation }: Props) {
     else removeItem(id);
   };
 
-  // ─── "…" menü ───────────────────────────────────────────────────────────────
+  // ─── "…" menü ────────────────────────────────────────────────────────────────
 
   const openItemMenu = (item: WardrobeItem) => {
     Alert.alert('Seçenekler', undefined, [
@@ -130,7 +163,7 @@ export default function WardrobeScreen({ navigation }: Props) {
     ]);
   };
 
-  // ─── Loading / boş durum ────────────────────────────────────────────────────
+  // ─── Loading / boş durum ─────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -163,7 +196,91 @@ export default function WardrobeScreen({ navigation }: Props) {
     );
   }
 
-  // ─── Ana render ─────────────────────────────────────────────────────────────
+  // ─── Render helpers ──────────────────────────────────────────────────────────
+
+  const renderGridItem = ({ item }: { item: WardrobeItem }) => {
+    const selected = selectedIds.has(item.id);
+    return (
+      <TouchableOpacity
+        style={styles.gridItem}
+        onPress={() => handleItemPress(item.id)}
+        onLongPress={() => handleLongPress(item.id)}
+        activeOpacity={selectionMode ? 0.7 : 1}
+        delayLongPress={350}
+      >
+        <Image
+          source={{ uri: item.processedImageUrl }}
+          style={styles.gridImage}
+          resizeMode="contain"
+        />
+        {!selectionMode && (
+          <TouchableOpacity
+            style={styles.menuBtn}
+            onPress={() => openItemMenu(item)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+        {selectionMode && (
+          <View style={[styles.selectionOverlay, selected && styles.selectionOverlaySelected]}>
+            {selected && (
+              <View style={styles.checkCircle}>
+                <Ionicons name="checkmark" size={16} color={colors.white} />
+              </View>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderListItem = ({ item }: { item: WardrobeItem }) => {
+    const selected = selectedIds.has(item.id);
+    return (
+      <TouchableOpacity
+        style={[styles.listItem, selected && styles.listItemSelected]}
+        onPress={() => handleItemPress(item.id)}
+        onLongPress={() => handleLongPress(item.id)}
+        activeOpacity={0.85}
+        delayLongPress={350}
+      >
+        <Image
+          source={{ uri: item.processedImageUrl }}
+          style={styles.listImage}
+          resizeMode="contain"
+        />
+        <View style={styles.listInfo}>
+          <Text style={styles.listCategory}>
+            {CATEGORY_LABEL[item.category] ?? item.category}
+          </Text>
+          {item.subCategory ? (
+            <Text style={styles.listSub}>{item.subCategory}</Text>
+          ) : null}
+          {item.seasons.length > 0 && (
+            <Text style={styles.listSeasons}>
+              {item.seasons.map((s) => SEASON_LABEL[s] ?? s).join(' · ')}
+            </Text>
+          )}
+        </View>
+        {selectionMode ? (
+          <View style={[styles.checkCircleList, selected && styles.checkCircleListSelected]}>
+            {selected && <Ionicons name="checkmark" size={14} color={colors.white} />}
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.menuBtnList}
+            onPress={() => openItemMenu(item)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={16} color={colors.muted} />
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // ─── Ana render ──────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -189,6 +306,29 @@ export default function WardrobeScreen({ navigation }: Props) {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Dolabım</Text>
           <Text style={styles.headerCount}>{filteredItems.length} parça</Text>
+          {/* Görünüm toggle */}
+          <View style={styles.viewToggle}>
+            <TouchableOpacity
+              onPress={() => changeViewMode('grid')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name="grid-outline"
+                size={20}
+                color={viewMode === 'grid' ? colors.accent : colors.muted}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => changeViewMode('list')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name="list-outline"
+                size={20}
+                color={viewMode === 'list' ? colors.accent : colors.muted}
+              />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={styles.addBtn}
             onPress={() => navigation.navigate('Upload')}
@@ -236,51 +376,15 @@ export default function WardrobeScreen({ navigation }: Props) {
         </ScrollView>
       )}
 
+      {/* İçerik — key ile numColumns değişiminde yeniden mount et */}
       <FlatList
+        key={viewMode}
         data={filteredItems}
-        numColumns={2}
+        numColumns={viewMode === 'grid' ? 2 : 1}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.grid}
-        renderItem={({ item }) => {
-          const selected = selectedIds.has(item.id);
-          return (
-            <TouchableOpacity
-              style={styles.gridItem}
-              onPress={() => handleItemPress(item.id)}
-              onLongPress={() => handleLongPress(item.id)}
-              activeOpacity={selectionMode ? 0.7 : 1}
-              delayLongPress={350}
-            >
-              <Image
-                source={{ uri: item.processedImageUrl }}
-                style={styles.gridImage}
-                resizeMode="contain"
-              />
-
-              {/* "…" butonu — seçim modunda gizle */}
-              {!selectionMode && (
-                <TouchableOpacity
-                  style={styles.menuBtn}
-                  onPress={() => openItemMenu(item)}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                >
-                  <Ionicons name="ellipsis-vertical" size={16} color={colors.primary} />
-                </TouchableOpacity>
-              )}
-
-              {/* Seçim overlay */}
-              {selectionMode && (
-                <View style={[styles.selectionOverlay, selected && styles.selectionOverlaySelected]}>
-                  {selected && (
-                    <View style={styles.checkCircle}>
-                      <Ionicons name="checkmark" size={16} color={colors.white} />
-                    </View>
-                  )}
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        }}
+        contentContainerStyle={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}
+        renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );
@@ -299,7 +403,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Boş durum
+  // ─── Boş durum ───────────────────────────────────────────────────────────────
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
@@ -339,12 +443,12 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 
-  // Header
+  // ─── Header ──────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -355,21 +459,25 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingBold,
     color: colors.primary,
     flex: 1,
-    textAlign: 'center',
   },
   headerCount: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: fonts.body,
     color: colors.muted,
   },
+  viewToggle: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
   addBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
     borderRadius: 20,
     backgroundColor: colors.accent,
   },
   addBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
@@ -387,18 +495,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  // Filtre bar
-  filterBar: {
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    flexGrow: 0,
-  },
-  filterBarContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 8,
-  },
+  // ─── Filtre bar ───────────────────────────────────────────────────────────────
   filterChip: {
     paddingVertical: 6,
     paddingHorizontal: 16,
@@ -421,8 +518,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
   },
 
-  // Grid
-  grid: {
+  // ─── Grid görünümü ────────────────────────────────────────────────────────────
+  gridContainer: {
     padding: 10,
   },
   gridItem: {
@@ -440,7 +537,69 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // "…" butonu
+  // ─── Liste görünümü ───────────────────────────────────────────────────────────
+  listContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    gap: 12,
+    paddingRight: 12,
+  },
+  listItemSelected: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(233,69,96,0.04)',
+  },
+  listImage: {
+    width: 80,
+    height: 80,
+    backgroundColor: colors.surface,
+  },
+  listInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  listCategory: {
+    fontSize: 14,
+    fontFamily: fonts.bodyBold,
+    color: colors.primary,
+  },
+  listSub: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: colors.muted,
+  },
+  listSeasons: {
+    fontSize: 11,
+    fontFamily: fonts.bodyMedium,
+    color: colors.accent,
+  },
+  menuBtnList: {
+    padding: 4,
+  },
+  checkCircleList: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkCircleListSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+
+  // ─── "…" butonu (grid) ────────────────────────────────────────────────────────
   menuBtn: {
     position: 'absolute',
     top: 6,
@@ -453,7 +612,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Seçim overlay
+  // ─── Seçim overlay (grid) ─────────────────────────────────────────────────────
   selectionOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(255,255,255,0.35)',
