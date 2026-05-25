@@ -172,7 +172,7 @@ export default function CombosScreen() {
         horizontal={true}
         showsHorizontalScrollIndicator={false}
         style={{
-          backgroundColor: 'red',
+          backgroundColor: '#FAFAFA',
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
           flexShrink: 0,

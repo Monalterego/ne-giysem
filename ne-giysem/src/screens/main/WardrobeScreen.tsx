@@ -205,7 +205,7 @@ export default function WardrobeScreen({ navigation }: Props) {
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           style={{
-            backgroundColor: 'red',
+            backgroundColor: '#FAFAFA',
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
             flexShrink: 0,
