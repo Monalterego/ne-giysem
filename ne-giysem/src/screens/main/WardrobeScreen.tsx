@@ -19,6 +19,7 @@ import { supabase } from '../../lib/supabase';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { ClothingCategory, WardrobeItem } from '../../types';
+import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
 import { colors, fonts } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
@@ -27,21 +28,13 @@ type ViewMode = 'grid' | 'list';
 const VIEW_MODE_KEY = 'wardrobe_view_mode';
 
 const FILTERS: { label: string; value: ClothingCategory | 'all' }[] = [
-  { label: 'Tümü',     value: 'all'       },
-  { label: 'Üst',      value: 'upper'     },
-  { label: 'Alt',      value: 'lower'     },
-  { label: 'Dış',      value: 'outer'     },
-  { label: 'Ayakkabı', value: 'shoes'     },
-  { label: 'Aksesuar', value: 'accessory' },
+  { label: 'Tümü', value: 'all' },
+  ...CATEGORY_ORDER.map((cat) => ({ label: CATEGORY_META[cat].label, value: cat })),
 ];
 
-const CATEGORY_LABEL: Record<string, string> = {
-  upper:     'Üst',
-  lower:     'Alt',
-  outer:     'Dış',
-  shoes:     'Ayakkabı',
-  accessory: 'Aksesuar',
-};
+const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
+  CATEGORY_ORDER.map((cat) => [cat, CATEGORY_META[cat].label]),
+);
 
 const SEASON_LABEL: Record<string, string> = {
   spring: 'İlkbahar',

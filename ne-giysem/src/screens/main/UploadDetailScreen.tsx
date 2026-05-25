@@ -16,18 +16,16 @@ import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
+import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
 import { colors, fonts } from '../../constants/theme';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'UploadDetail'>;
 
-const CATEGORIES: { label: string; value: ClothingCategory }[] = [
-  { label: 'Üst', value: 'upper' },
-  { label: 'Alt', value: 'lower' },
-  { label: 'Dış', value: 'outer' },
-  { label: 'Ayakkabı', value: 'shoes' },
-  { label: 'Aksesuar', value: 'accessory' },
-];
+const CATEGORIES = CATEGORY_ORDER.map((cat) => ({
+  label: CATEGORY_META[cat].label,
+  value: cat,
+}));
 
 const FABRICS: { label: string; value: Fabric }[] = [
   { label: 'Pamuk', value: 'cotton' },
@@ -56,13 +54,14 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const addItem    = useWardrobeStore((s) => s.addItem);
   const updateItem = useWardrobeStore((s) => s.updateItem);
 
-  const [category,   setCategory]   = useState<ClothingCategory | null>(existingItem?.category ?? null);
-  const [fabric,     setFabric]     = useState<Fabric>(existingItem?.fabric ?? 'unknown');
-  const [seasons,    setSeasons]    = useState<Season[]>(existingItem?.seasons ?? []);
-  const [itemColors, setItemColors] = useState<string[]>(existingItem?.colors ?? []);
-  const [saving,     setSaving]     = useState(false);
-  const [analyzing,  setAnalyzing]  = useState(!isEditMode);
-  const [aiDetected, setAiDetected] = useState(false);
+  const [category,    setCategory]    = useState<ClothingCategory | null>(existingItem?.category ?? null);
+  const [subCategory, setSubCategory] = useState<string | undefined>(existingItem?.subCategory ?? undefined);
+  const [fabric,      setFabric]      = useState<Fabric>(existingItem?.fabric ?? 'unknown');
+  const [seasons,     setSeasons]     = useState<Season[]>(existingItem?.seasons ?? []);
+  const [itemColors,  setItemColors]  = useState<string[]>(existingItem?.colors ?? []);
+  const [saving,      setSaving]      = useState(false);
+  const [analyzing,   setAnalyzing]   = useState(!isEditMode);
+  const [aiDetected,  setAiDetected]  = useState(false);
 
   useEffect(() => {
     if (isEditMode || !processedBase64) return;
@@ -71,6 +70,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       .then((result) => {
         if (cancelled) return;
         setCategory(result.category);
+        if (result.subcategory) setSubCategory(result.subcategory);
         if (result.seasons.length > 0) setSeasons(result.seasons);
         if (result.colors.length > 0) setItemColors(result.colors);
         setAiDetected(true);
@@ -83,6 +83,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       });
     return () => { cancelled = true; };
   }, [processedBase64, isEditMode]);
+
+  const handleCategoryChange = (cat: ClothingCategory) => {
+    setCategory(cat);
+    setSubCategory(undefined);
+  };
 
   const toggleSeason = (season: Season) => {
     setSeasons((prev) =>
@@ -132,6 +137,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         id: uuid,
         user_id: user.id,
         category,
+        subcategory: subCategory ?? null,
         colors: itemColors,
         season: seasons,
         fabric,
@@ -146,6 +152,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         id: uuid,
         userId: user.id,
         category,
+        subCategory,
         colors: itemColors,
         seasons,
         fabric,
@@ -172,11 +179,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
     try {
       const { error } = await supabase
         .from('wardrobe_items')
-        .update({ category, colors: itemColors, season: seasons, fabric })
+        .update({ category, subcategory: subCategory ?? null, colors: itemColors, season: seasons, fabric })
         .eq('id', existingItem.id);
       if (error) throw new Error(error.message);
 
-      updateItem({ ...existingItem, category, colors: itemColors, seasons, fabric });
+      updateItem({ ...existingItem, category, subCategory, colors: itemColors, seasons, fabric });
       navigation.navigate('WardrobeList');
     } catch (err: any) {
       Alert.alert('Hata', err.message ?? 'Güncelleme başarısız. Lütfen tekrar dene.');
@@ -235,7 +242,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             <TouchableOpacity
               key={value}
               style={[styles.chip, category === value && styles.chipSelected]}
-              onPress={() => setCategory(value)}
+              onPress={() => handleCategoryChange(value)}
               activeOpacity={0.75}
             >
               <Text style={[styles.chipText, category === value && styles.chipTextSelected]}>
@@ -244,6 +251,30 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Alt Kategori — kategori seçilince görünür */}
+        {category && CATEGORY_META[category].subcategories.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>
+              Alt Kategori{' '}
+              <Text style={styles.optional}>(opsiyonel)</Text>
+            </Text>
+            <View style={styles.chipRow}>
+              {CATEGORY_META[category].subcategories.map(({ label, value }) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.chip, subCategory === value && styles.chipSelected]}
+                  onPress={() => setSubCategory(subCategory === value ? undefined : value)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.chipText, subCategory === value && styles.chipTextSelected]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Kumaş */}
         <Text style={styles.sectionTitle}>Kumaş</Text>

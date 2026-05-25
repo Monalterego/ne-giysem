@@ -19,11 +19,13 @@ import type { Combo } from '../../types';
 import { colors, fonts } from '../../constants/theme';
 
 const CATEGORY_LABEL: Record<string, string> = {
-  upper: 'Üst',
-  lower: 'Alt',
-  shoes: 'Ayakkabı',
-  outer: 'Dış',
-  accessory: 'Aksesuar',
+  upper:          'Üst',
+  lower:          'Alt',
+  dress_jumpsuit: 'Elbise/Tulum',
+  outer:          'Dış Giyim',
+  shoes:          'Ayakkabı',
+  bag:            'Çanta',
+  accessory:      'Aksesuar',
 };
 
 const OCCASIONS: { label: string; value: Occasion }[] = [

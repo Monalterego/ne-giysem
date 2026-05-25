@@ -120,50 +120,58 @@ function uid(): string {
 
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
 
+function comboLabel(score: number): string {
+  return score >= 80 ? 'Mükemmel Uyum' : score >= 65 ? 'İyi Kombin' : 'Kabul Edilebilir';
+}
+
 export function generateCombos(
   items: WardrobeItem[],
   maxCombos = 12,
   occasion: Occasion = 'all',
 ): Combo[] {
-  const uppers = items.filter((i) => i.category === 'upper');
-  const lowers = items.filter((i) => i.category === 'lower');
-  const shoes  = items.filter((i) => i.category === 'shoes');
-
-  if (!uppers.length || !lowers.length || !shoes.length) return [];
+  const uppers  = items.filter((i) => i.category === 'upper');
+  const lowers  = items.filter((i) => i.category === 'lower');
+  const shoes   = items.filter((i) => i.category === 'shoes');
+  const dresses = items.filter((i) => i.category === 'dress_jumpsuit');
 
   const results: Combo[] = [];
+  const now = new Date().toISOString();
 
-  for (const upper of uppers) {
-    for (const lower of lowers) {
+  // ─── Üst + Alt + Ayakkabı kombileri ────────────────────────────────────────
+  if (uppers.length && lowers.length && shoes.length) {
+    for (const upper of uppers) {
+      for (const lower of lowers) {
+        for (const shoe of shoes) {
+          // Üst-Alt uyumu en ağır; Alt-Ayakkabı önemli; Üst-Ayakkabı daha az kritik
+          const ulScore  = itemColorScore(upper, lower);
+          const lsScore  = itemColorScore(lower, shoe);
+          const usScore  = itemColorScore(upper, shoe);
+          const colorRaw = ulScore * 0.45 + lsScore * 0.35 + usScore * 0.20;
+
+          const occasionFit =
+            (itemOccasionFit(upper, occasion) +
+             itemOccasionFit(lower, occasion) +
+             itemOccasionFit(shoe, occasion)) / 3;
+
+          const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
+          const score = Math.round(raw * 100);
+
+          results.push({ id: uid(), items: [upper, lower, shoe], score, occasion, label: comboLabel(score), createdAt: now });
+        }
+      }
+    }
+  }
+
+  // ─── Elbise/Tulum + Ayakkabı kombileri ────────────────────────────────────
+  if (dresses.length && shoes.length) {
+    for (const dress of dresses) {
       for (const shoe of shoes) {
-        // Üst-Alt uyumu en ağır; Alt-Ayakkabı önemli; Üst-Ayakkabı daha az kritik
-        const ulScore = itemColorScore(upper, lower);
-        const lsScore = itemColorScore(lower, shoe);
-        const usScore = itemColorScore(upper, shoe);
-        const colorRaw = ulScore * 0.45 + lsScore * 0.35 + usScore * 0.20;
-
-        // Occasion ağırlığı: üç parçanın ortalama uyum katsayısı
-        const occasionFit =
-          (itemOccasionFit(upper, occasion) +
-           itemOccasionFit(lower, occasion) +
-           itemOccasionFit(shoe, occasion)) / 3;
-
+        const colorRaw = itemColorScore(dress, shoe);
+        const occasionFit = (itemOccasionFit(dress, occasion) + itemOccasionFit(shoe, occasion)) / 2;
         const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
         const score = Math.round(raw * 100);
 
-        const label =
-          score >= 80 ? 'Mükemmel Uyum' :
-          score >= 65 ? 'İyi Kombin'    :
-                        'Kabul Edilebilir';
-
-        results.push({
-          id: uid(),
-          items: [upper, lower, shoe],
-          score,
-          occasion,
-          label,
-          createdAt: new Date().toISOString(),
-        });
+        results.push({ id: uid(), items: [dress, shoe], score, occasion, label: comboLabel(score), createdAt: now });
       }
     }
   }
@@ -174,9 +182,14 @@ export function generateCombos(
 // Dolabın kombin üretmek için hangi kategorilerde eksik olduğunu döner
 export function missingCategories(items: WardrobeItem[]): string[] {
   const missing: string[] = [];
-  if (!items.some((i) => i.category === 'upper'))  missing.push('üst kıyafet');
-  if (!items.some((i) => i.category === 'lower'))  missing.push('alt kıyafet');
-  if (!items.some((i) => i.category === 'shoes'))  missing.push('ayakkabı');
+  const hasUpper  = items.some((i) => i.category === 'upper');
+  const hasLower  = items.some((i) => i.category === 'lower');
+  const hasDress  = items.some((i) => i.category === 'dress_jumpsuit');
+  const hasShoes  = items.some((i) => i.category === 'shoes');
+
+  if (!hasUpper && !hasDress) missing.push('üst kıyafet veya elbise');
+  if (!hasLower && !hasDress) missing.push('alt kıyafet');
+  if (!hasShoes)              missing.push('ayakkabı');
   return missing;
 }
 

@@ -11,11 +11,13 @@ export interface VisionResult {
 }
 
 const CATEGORY_MAP: Record<string, ClothingCategory> = {
-  ust: 'upper',
-  alt: 'lower',
-  dis: 'outer',
-  ayakkabi: 'shoes',
-  aksesuar: 'accessory',
+  ust:           'upper',
+  alt:           'lower',
+  elbise_tulum:  'dress_jumpsuit',
+  dis:           'outer',
+  ayakkabi:      'shoes',
+  canta:         'bag',
+  aksesuar:      'accessory',
 };
 
 const SEASON_MAP: Record<string, Season> = {
@@ -28,10 +30,17 @@ const SEASON_MAP: Record<string, Season> = {
 const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndür, başka hiçbir metin yazma.
 
 {
-  "category": "ust" veya "alt" veya "dis" veya "ayakkabi" veya "aksesuar",
-  "subcategory": kıyafetin alt tipi — örn. "tisort", "gomlek", "pantolon", "etek", "sort", "ceket", "hirka", "elbise", "kazak", "mont", "bot", "sneaker", "topuklu", "sandalet", "terlik",
+  "category": "ust" | "alt" | "elbise_tulum" | "dis" | "ayakkabi" | "canta" | "aksesuar",
+  "subcategory": aşağıdaki değerlerden biri:
+    ust için → "tisort" | "bluz" | "gomlek" | "kazak" | "triko" | "hirka" | "yelek" | "sweatshirt" | "hoodie" | "body"
+    alt için → "pantolon" | "jean" | "etek" | "sort" | "tayt"
+    elbise_tulum için → "mini_elbise" | "midi_elbise" | "maxi_elbise" | "tulum"
+    dis için → "ceket" | "blazer" | "mont" | "kaban" | "trenchkot" | "yagmurluk"
+    ayakkabi için → "sneaker" | "loafer" | "bot" | "cizme" | "topuklu" | "sandalet" | "terlik" | "babet"
+    canta için → "omuz_cantasi" | "clutch" | "tote" | "bel_cantasi" | "sirt_cantasi" | "mini_canta"
+    aksesuar için → "kolye" | "kupe" | "bileklik" | "yuzuk" | "fular" | "kaskol" | "bandana" | "kemer" | "sapka" | "gozluk",
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
-  "pattern": "duz" veya "cizgili" veya "ekose" veya "cicekli" veya "geometrik",
+  "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
   "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
 }`;
 

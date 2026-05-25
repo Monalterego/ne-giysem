@@ -7,7 +7,14 @@ export type StyleCategory =
   | 'athleisure'
   | 'avant_garde';
 
-export type ClothingCategory = 'upper' | 'lower' | 'outer' | 'shoes' | 'accessory';
+export type ClothingCategory =
+  | 'upper'
+  | 'lower'
+  | 'dress_jumpsuit'
+  | 'outer'
+  | 'shoes'
+  | 'bag'
+  | 'accessory';
 
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
