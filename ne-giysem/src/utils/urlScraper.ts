@@ -19,15 +19,25 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
 // HTML fetch: önce codetabs, timeout/hata olursa thingproxy fallback
 async function fetchHtml(url: string): Promise<string> {
   const encoded = encodeURIComponent(url);
+  const primaryUrl  = `${PROXY_PRIMARY}${encoded}`;
+  const fallbackUrl = `${PROXY_FALLBACK}${encoded}`;
+
+  console.log('[urlScraper] fetchHtml → primary proxy:', primaryUrl);
   try {
-    const res = await fetchWithTimeout(`${PROXY_PRIMARY}${encoded}`, FETCH_TIMEOUT);
+    const res = await fetchWithTimeout(primaryUrl, FETCH_TIMEOUT);
+    console.log('[urlScraper] primary proxy yanıtı — status:', res.status, 'ok:', res.ok);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.text();
-  } catch {
-    // Fallback
-    const res = await fetch(`${PROXY_FALLBACK}${encoded}`);
+    const html = await res.text();
+    console.log('[urlScraper] primary HTML alındı — uzunluk:', html.length, 'karakter');
+    return html;
+  } catch (primaryErr: any) {
+    console.warn('[urlScraper] primary proxy başarısız:', primaryErr.message, '— fallback deneniyor:', fallbackUrl);
+    const res = await fetch(fallbackUrl);
+    console.log('[urlScraper] fallback proxy yanıtı — status:', res.status, 'ok:', res.ok);
     if (!res.ok) throw new Error(`Proxy bağlantı hatası: ${res.status}`);
-    return res.text();
+    const html = await res.text();
+    console.log('[urlScraper] fallback HTML alındı — uzunluk:', html.length, 'karakter');
+    return html;
   }
 }
 
@@ -41,8 +51,12 @@ function extractMetaImage(html: string): string | null {
   ];
   for (const pat of patterns) {
     const m = html.match(pat);
-    if (m?.[1]) return m[1];
+    if (m?.[1]) {
+      console.log('[urlScraper] og:image bulundu:', m[1]);
+      return m[1];
+    }
   }
+  console.warn('[urlScraper] og:image / twitter:image bulunamadı. HTML başı:', html.slice(0, 300));
   return null;
 }
 
@@ -53,15 +67,20 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
     ? `${PROXY_PRIMARY}${encodeURIComponent(imageUrl)}`
     : imageUrl;
 
+  console.log('[urlScraper] görsel fetch → platform:', Platform.OS, 'url:', fetchUrl);
   const res = await fetch(fetchUrl);
+  console.log('[urlScraper] görsel yanıtı — status:', res.status, 'ok:', res.ok);
   if (!res.ok) throw new Error(`Görsel indirilemedi: ${res.status}`);
   const blob = await res.blob();
+  console.log('[urlScraper] blob alındı — boyut:', blob.size, 'type:', blob.type);
 
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const data = reader.result as string;
-      resolve(data.includes(',') ? data.split(',')[1] : data);
+      const b64 = data.includes(',') ? data.split(',')[1] : data;
+      console.log('[urlScraper] base64 hazır — uzunluk:', b64.length, 'karakter');
+      resolve(b64);
     };
     reader.onerror = () => reject(new Error('Görsel okunamadı'));
     reader.readAsDataURL(blob);
@@ -70,6 +89,7 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
 
 // Ürün URL'inden og:image görselini çekip base64 döndürür
 export async function scrapeProductImage(url: string): Promise<string> {
+  console.log('[urlScraper] scrapeProductImage başladı — url:', url);
   const html = await fetchHtml(url);
   if (!html) throw new Error('Sayfa içeriği alınamadı.');
 

@@ -141,6 +141,7 @@ export default function ScanScreen({ navigation }: Props) {
       const processedBase64 = await processBase64(imageBase64);
       navigation.navigate('StoreResult', { processedBase64, originalUri: url });
     } catch (err: any) {
+      console.error('[ScanScreen] handleUrlAnalyze hata:', err);
       Alert.alert('Hata', err.message ?? 'Ürün görseli alınamadı. Lütfen tekrar dene.');
     } finally {
       setLoading(false);
