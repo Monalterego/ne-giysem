@@ -169,10 +169,21 @@ export default function CombosScreen() {
 
       {/* Occasion chip'leri */}
       <ScrollView
-        horizontal
+        horizontal={true}
         showsHorizontalScrollIndicator={false}
-        style={styles.occasionBar}
-        contentContainerStyle={styles.occasionBarContent}
+        style={{
+          backgroundColor: 'red',
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+          flexShrink: 0,
+        }}
+        contentContainerStyle={{
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          gap: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}
       >
         {OCCASIONS.map(({ label, value }) => {
           const active = activeOccasion === value;

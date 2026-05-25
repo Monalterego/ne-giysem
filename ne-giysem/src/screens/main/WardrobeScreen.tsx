@@ -202,10 +202,21 @@ export default function WardrobeScreen({ navigation }: Props) {
       {/* Filtre chip'leri — seçim modunda gizle */}
       {!selectionMode && (
         <ScrollView
-          horizontal
+          horizontal={true}
           showsHorizontalScrollIndicator={false}
-          style={styles.filterBar}
-          contentContainerStyle={styles.filterBarContent}
+          style={{
+            backgroundColor: 'red',
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+            flexShrink: 0,
+          }}
+          contentContainerStyle={{
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            gap: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
         >
           {FILTERS.map(({ label, value }) => {
             const active = activeFilter === value;
