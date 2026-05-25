@@ -205,9 +205,12 @@ export default function ScanScreen({ navigation }: Props) {
                   Zara, H&M, Mango gibi sitelerden ürün linki yapıştır
                 </Text>
               </View>
+              <View style={styles.soonBadge}>
+                <Text style={styles.soonText}>Yakında</Text>
+              </View>
             </View>
             <TextInput
-              style={styles.urlInput}
+              style={[styles.urlInput, styles.inputDisabled]}
               placeholder="https://www.zara.com/..."
               placeholderTextColor={colors.muted}
               value={urlInput}
@@ -215,12 +218,15 @@ export default function ScanScreen({ navigation }: Props) {
               autoCapitalize="none"
               keyboardType="url"
               autoCorrect={false}
+              editable={false}
             />
+            <Text style={styles.comingSoonNote}>
+              Şimdilik mağazada ürün fotoğrafını çek veya screenshot yükle.
+            </Text>
             <TouchableOpacity
-              style={[styles.secondaryBtn, (!urlInput || loading) && styles.btnDisabled]}
-              onPress={handleUrlAnalyze}
-              activeOpacity={0.85}
-              disabled={!urlInput || loading}
+              style={[styles.secondaryBtn, styles.btnDisabled]}
+              activeOpacity={1}
+              disabled={true}
             >
               <Text style={styles.secondaryBtnText}>Analiz Et</Text>
             </TouchableOpacity>
@@ -338,6 +344,24 @@ const styles = StyleSheet.create({
     color: colors.muted,
     lineHeight: 18,
   },
+  soonBadge: {
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: colors.overlay,
+    alignSelf: 'flex-start',
+  },
+  soonText: {
+    fontSize: 11,
+    fontFamily: fonts.bodyBold,
+    color: colors.secondary,
+  },
+  comingSoonNote: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: colors.muted,
+    lineHeight: 17,
+  },
   // URL Input
   urlInput: {
     height: 46,
@@ -349,6 +373,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.primary,
     backgroundColor: colors.background,
+  },
+  inputDisabled: {
+    opacity: 0.45,
+    backgroundColor: colors.border,
   },
   // Butonlar
   primaryBtn: {
