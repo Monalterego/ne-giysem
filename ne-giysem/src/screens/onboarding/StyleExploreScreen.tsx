@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Image,
   PanResponder,
   StyleSheet,
@@ -19,9 +18,6 @@ import { STYLE_CARDS, type StyleCardData } from '../../constants/styleCards';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleExplore'>;
 
-const { width: SW, height: SH } = Dimensions.get('window');
-const CARD_W     = SW - 48;
-const CARD_H     = Math.min(SH * 0.60, 480);
 const SWIPE_THR  = 80;
 const MIN_SWIPES = 15;
 
@@ -55,15 +51,7 @@ function normalizeScores(scores: Record<string, number>): StyleEntry[] {
 
 // ─── Moodboard kart bileşeni ──────────────────────────────────────────────────
 
-function MoodboardCard({
-  card,
-  cardWidth,
-  cardHeight,
-}: {
-  card: StyleCardData;
-  cardWidth: number;
-  cardHeight: number;
-}) {
+function MoodboardCard({ card }: { card: StyleCardData }) {
   const data = STYLE_DATA_MAP[card.name];
   const [failed, setFailed] = useState(false);
 
@@ -77,7 +65,7 @@ function MoodboardCard({
   const bg = data?.palette[0] ?? '#1A1A2E';
 
   return (
-    <View style={{ width: cardWidth, height: cardHeight, borderRadius: 24, overflow: 'hidden', backgroundColor: bg }}>
+    <View style={{ flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: bg }}>
 
       {/* Fotoğraf — yoksa palette renk + emoji fallback */}
       {imageUri && !failed ? (
@@ -88,34 +76,29 @@ function MoodboardCard({
           onError={() => setFailed(true)}
         />
       ) : (
-        <View style={[StyleSheet.absoluteFill, fallbackStyle]}>
-          <Text style={fallbackEmoji}>{data?.emoji ?? '✨'}</Text>
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+          <Text style={{ fontSize: 72, opacity: 0.45 }}>{data?.emoji ?? '✨'}</Text>
         </View>
       )}
 
-      {/* Alt gradient overlay + isim + anahtar kelimeler */}
+      {/* Alt gradient overlay — siyahtan şeffafa, kartın alt yarısı */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.78)']}
-        style={[StyleSheet.absoluteFill, overlayStyle]}
+        colors={['transparent', 'rgba(0,0,0,0.85)']}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '52%', justifyContent: 'flex-end', paddingHorizontal: 22, paddingBottom: 24 }}
       >
-        <View style={nameRow}>
-          <Text style={emojiText}>{data?.emoji ?? '✨'}</Text>
-          <Text style={nameText} numberOfLines={1}>{card.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <Text style={{ fontSize: 26 }}>{data?.emoji ?? '✨'}</Text>
+          <Text style={{ fontSize: 21, fontFamily: fonts.headingBold, color: '#FFFFFF', flexShrink: 1 }} numberOfLines={1}>
+            {card.name}
+          </Text>
         </View>
-        <Text style={kwText}>{card.keywords.join(' · ')}</Text>
+        <Text style={{ fontSize: 13, fontFamily: fonts.body, color: 'rgba(255,255,255,0.82)', lineHeight: 19 }}>
+          {data?.turkishDesc ?? card.keywords.join(' · ')}
+        </Text>
       </LinearGradient>
     </View>
   );
 }
-
-// Sabit stil nesneleri (bileşen dışında — her render'da yeniden oluşturulmasın)
-const fallbackStyle: import('react-native').ViewStyle = { alignItems: 'center', justifyContent: 'center' };
-const fallbackEmoji: import('react-native').TextStyle = { fontSize: 72, opacity: 0.5 };
-const overlayStyle:  import('react-native').ViewStyle = { justifyContent: 'flex-end', padding: 24 };
-const nameRow:       import('react-native').ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 };
-const emojiText:     import('react-native').TextStyle = { fontSize: 28 };
-const nameText:      import('react-native').TextStyle = { fontSize: 22, fontFamily: fonts.headingBold, color: '#FFFFFF', flexShrink: 1 };
-const kwText:        import('react-native').TextStyle = { fontSize: 12, fontFamily: fonts.body, color: 'rgba(255,255,255,0.80)' };
 
 // ─── Ana ekran ─────────────────────────────────────────────────────────────────
 
@@ -234,27 +217,27 @@ export default function StyleExploreScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={styles.badge}>YOL C · KEŞİF MODU</Text>
         <View style={styles.counterPill}>
-          <Text style={styles.counterText}>{swipeCount} / {MIN_SWIPES}</Text>
+          <Text style={styles.counterText}>{swipeCount + 1} / {MIN_SWIPES}</Text>
         </View>
       </View>
 
       <Text style={styles.swipeHint}>Beğen → sağa · Geç → sola</Text>
 
-      {/* Kart yığını */}
+      {/* Kart yığını — flex:1 ile tüm boşluğu kapla */}
       <View style={styles.stackArea}>
-        {/* Arka kart */}
+        {/* Arka kart — absolute, ön kartın arkasında */}
         {nextCard && (
           <Animated.View
             style={[
-              styles.cardSlot,
-              { transform: [{ scale: backScale }, { translateY: 12 }], opacity: 0.72, zIndex: 0 },
+              StyleSheet.absoluteFill,
+              { transform: [{ scale: backScale }], opacity: 0.72, zIndex: 0 },
             ]}
           >
-            <MoodboardCard card={nextCard} cardWidth={CARD_W} cardHeight={CARD_H} />
+            <MoodboardCard card={nextCard} />
           </Animated.View>
         )}
 
-        {/* Ön kart (etkileşimli) */}
+        {/* Ön kart — flex:1, layout'u sürer + etkileşimli */}
         <Animated.View
           style={[
             styles.cardSlot,
@@ -277,7 +260,7 @@ export default function StyleExploreScreen({ navigation }: Props) {
             <Text style={styles.indText}>✕</Text>
           </Animated.View>
 
-          <MoodboardCard card={currentCard} cardWidth={CARD_W} cardHeight={CARD_H} />
+          <MoodboardCard card={currentCard} />
         </Animated.View>
       </View>
 
@@ -345,13 +328,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   stackArea: {
-    height: CARD_H + 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
   },
   cardSlot: {
-    position: 'absolute',
-    width: CARD_W,
+    flex: 1,
     boxShadow: '0 8px 24px rgba(26,26,46,0.18)',
     elevation: 8,
     borderRadius: 24,
