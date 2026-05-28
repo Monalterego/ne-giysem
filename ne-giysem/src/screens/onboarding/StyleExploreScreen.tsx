@@ -19,7 +19,7 @@ import { STYLE_CARDS, type StyleCardData } from '../../constants/styleCards';
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleExplore'>;
 
 const SWIPE_THR  = 80;
-const MIN_SWIPES = 15;
+const MIN_SWIPES = 20;
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
