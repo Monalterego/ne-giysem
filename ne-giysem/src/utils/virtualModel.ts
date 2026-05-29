@@ -106,7 +106,6 @@ export async function generateVirtualModelImage(
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model:   'dall-e-3',
       prompt,
       n:       1,
       size:    '1024x1792',
