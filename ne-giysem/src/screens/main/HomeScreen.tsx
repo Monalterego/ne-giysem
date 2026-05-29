@@ -195,17 +195,17 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
         <View style={styles.quickRow}>
           <QuickAction
-            icon={<Feather name="camera" size={20} color={colors.text} />}
+            icon={<Feather name="camera" size={18} color={colors.text} />}
             label="Yükle"
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
           />
           <QuickAction
-            icon={<Feather name="shopping-bag" size={20} color={colors.text} />}
+            icon={<Feather name="shopping-bag" size={18} color={colors.text} />}
             label="Mağaza"
             onPress={() => navigation.navigate('Scan')}
           />
           <QuickAction
-            icon={<Ionicons name="sparkles-outline" size={20} color={colors.text} />}
+            icon={<Ionicons name="sparkles-outline" size={18} color={colors.text} />}
             label="Kombin"
             onPress={() => navigation.navigate('Combos')}
           />
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: layout.screenPaddingH,
-    paddingTop: layout.sectionSpacing,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
   sectionTitle: {
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   },
   quickAction: {
     flex: 1,
-    height: 72,
+    height: 64,
     borderRadius: radius.sm,
     backgroundColor: colors.white,
     borderWidth: 1,
@@ -455,6 +455,7 @@ const styles = StyleSheet.create({
   },
   quickActionLabel: {
     ...typography.caption,
+    fontSize: 10,
     color: colors.textSecondary,
   },
 
