@@ -17,8 +17,8 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
-import { generateCombos, missingCategories } from '../../utils/comboEngine';
-import type { Occasion } from '../../utils/comboEngine';
+import { generateCombos, generateCombosAI, missingCategories } from '../../utils/comboEngine';
+import type { Occasion, UserProfileInput } from '../../utils/comboEngine';
 import { generateVirtualModelImage } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
@@ -293,10 +293,13 @@ export default function CombosScreen() {
   const wornComboKeys  = useWardrobeStore((s) => s.wornComboKeys);
   const markWorn       = useWardrobeStore((s) => s.markWorn);
   const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
+  const weather        = useWardrobeStore((s) => s.weather);
   const user           = useUserStore((s) => s.user);
 
   const [savingKey,      setSavingKey]      = useState<string | null>(null);
   const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
+  const [aiCombos,       setAiCombos]       = useState<Combo[]>([]);
+  const [aiLoading,      setAiLoading]      = useState(false);
 
   // Virtual model state
   const [generatingComboId,    setGeneratingComboId]    = useState<string | null>(null);
@@ -312,6 +315,36 @@ export default function CombosScreen() {
       fetchWornToday(user.id);
     }
   }, [user?.id]);
+
+  // Claude AI kombin üretimi — her items/occasion değişiminde
+  useEffect(() => {
+    if (!items.length || !user) { setAiCombos([]); return; }
+    let cancelled = false;
+    setAiLoading(true);
+
+    const profile: UserProfileInput = {
+      styleProfile: user.styleProfile?.styles.map((s) => `${s.name} %${s.weight}`).join(', '),
+      height:     user.height,
+      age:        user.age,
+      bodyType:   user.bodyType,
+      skinTone:   user.skinTone,
+      hairColor:  user.hairColor,
+      hairLength: user.hairLength,
+      hairType:   user.hairType,
+    };
+
+    generateCombosAI(items, profile, weather, activeOccasion, 12)
+      .then((results) => {
+        if (cancelled) return;
+        setAiCombos(results.length ? results : generateCombos(items, 12, activeOccasion));
+      })
+      .catch(() => {
+        if (!cancelled) setAiCombos(generateCombos(items, 12, activeOccasion));
+      })
+      .finally(() => { if (!cancelled) setAiLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [items, activeOccasion, user?.id]);
 
   const handleWear = async (combo: Combo) => {
     if (!user) return;
@@ -391,7 +424,7 @@ export default function CombosScreen() {
     }
   };
 
-  const combos  = useMemo(() => generateCombos(items, 12, activeOccasion), [items, activeOccasion]);
+  const combos  = aiCombos;
   const missing = useMemo(() => missingCategories(items), [items]);
 
   if (isLoading) {
@@ -442,7 +475,12 @@ export default function CombosScreen() {
       </ScrollView>
 
       {/* İçerik */}
-      {combos.length === 0 ? (
+      {aiLoading ? (
+        <View style={styles.aiLoadingContainer}>
+          <ActivityIndicator color={colors.textSecondary} size="large" />
+          <Text style={styles.aiLoadingText}>Stilistiniz kombinlerinizi hazırlıyor...</Text>
+        </View>
+      ) : combos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Feather name="layers" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
           <Text style={styles.emptyTitle}>Kombin üretilemedi</Text>
@@ -765,6 +803,20 @@ const styles = StyleSheet.create({
   suggestionLabel: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+
+  // AI yükleme durumu
+  aiLoadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.md,
+  },
+  aiLoadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });
 

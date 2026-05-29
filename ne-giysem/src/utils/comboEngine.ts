@@ -1,4 +1,39 @@
-import type { WardrobeItem, Combo } from '../types';
+import type { WardrobeItem, Combo, Season } from '../types';
+
+const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+
+export interface UserProfileInput {
+  styleProfile?: string;   // "Minimalist %60, Old Money %40"
+  height?: number;
+  age?: number;
+  bodyType?: string;
+  skinTone?: string;
+  hairColor?: string;
+  hairLength?: string;
+  hairType?: string;
+}
+
+const OCCASION_TR: Record<Occasion, string> = {
+  all:     'Günlük',
+  casual:  'Günlük',
+  work:    'İş',
+  date:    'Romantik',
+  sport:   'Spor',
+  special: 'Özel Davet',
+};
+
+function getCurrentSeason(): Season {
+  const m = new Date().getMonth() + 1;
+  if (m >= 3 && m <= 5) return 'spring';
+  if (m >= 6 && m <= 8) return 'summer';
+  if (m >= 9 && m <= 11) return 'fall';
+  return 'winter';
+}
+
+function seasonDesc(s: Season): string {
+  const map: Record<Season, string> = { spring: 'ilkbahar', summer: 'yaz', fall: 'sonbahar', winter: 'kış' };
+  return map[s];
+}
 
 export type Occasion = 'all' | 'casual' | 'work' | 'date' | 'sport' | 'special';
 
@@ -237,6 +272,120 @@ export function missingCategories(items: WardrobeItem[]): string[] {
   if (!hasLower && !hasDress) missing.push('alt kıyafet');
   if (!hasShoes)              missing.push('ayakkabı');
   return missing;
+}
+
+// ─── Claude AI kombin motoru ─────────────────────────────────────────────────
+
+export async function generateCombosAI(
+  items: WardrobeItem[],
+  userProfile: UserProfileInput,
+  weather?: { temp: number; description: string } | null,
+  occasion: Occasion = 'all',
+  count = 12,
+): Promise<Combo[]> {
+  if (!API_KEY) throw new Error('Anthropic API key eksik');
+  if (!items.length) return [];
+
+  // Mevsim ön filtresi
+  const season  = getCurrentSeason();
+  const filtered = items.filter(
+    (i) => i.seasons.length === 0 || i.seasons.includes(season),
+  );
+  const pool = filtered.length >= 3 ? filtered : items;
+
+  const wardrobeText = pool.map((item) =>
+    `- ID:${item.id} | ${item.itemName ?? item.category} | ${item.category}` +
+    ` | Renk: ${item.colors[0] ?? 'belirsiz'}` +
+    ` | Kumaş: ${item.fabric ?? 'belirsiz'}` +
+    ` | Desen: ${item.pattern ?? 'düz'}` +
+    ` | Mevsim: ${item.seasons.length ? item.seasons.map(seasonDesc).join(', ') : 'tüm mevsimler'}`,
+  ).join('\n');
+
+  const profileLines = [
+    userProfile.styleProfile ? `- Stil DNA: ${userProfile.styleProfile}` : null,
+    userProfile.height       ? `- Boy: ${userProfile.height}cm`          : null,
+    userProfile.age          ? `- Yaş: ${userProfile.age}`               : null,
+    userProfile.bodyType     ? `- Vücut tipi: ${userProfile.bodyType}`   : null,
+    userProfile.skinTone     ? `- Ten rengi: ${userProfile.skinTone}`    : null,
+    (userProfile.hairColor || userProfile.hairLength || userProfile.hairType)
+      ? `- Saç: ${[userProfile.hairColor, userProfile.hairLength, userProfile.hairType].filter(Boolean).join(', ')}` : null,
+  ].filter(Boolean).join('\n') || '- Profil bilgisi girilmemiş';
+
+  const weatherText = weather ? `${weather.temp}°C, ${weather.description}` : 'Bilinmiyor';
+
+  const systemPrompt = `Sen uzman bir moda stilistisin. Renk teorisi, Kibbe vücut tipleri, seasonal color analysis ve stil sistemleri konusunda derin bilgin var. Kullanıcının tüm verilerini kullanarak kişiselleştirilmiş kombin önerileri yapıyorsun. Sadece JSON döndür, başka hiçbir şey yazma.`;
+
+  const userPrompt = `KULLANICI PROFİLİ:\n${profileLines}\n\nHAVA DURUMU: ${weatherText}\nOKASYON: ${OCCASION_TR[occasion]}\n\nGARDROP PARÇALARI:\n${wardrobeText}\n\nGÖREV:\nBu kişi için ${count} adet kombin öner. Fashion teorisi kurallarını uygula:\n- Ten rengine uygun renk paleti\n- Vücut tipine uygun silüet ve proporsiyon\n- Stil DNA'ya uygun kombinasyonlar\n- Hava durumu ve okasyona uygunluk\n- Renk uyumu (color wheel, neutral balance)\n- Kumaş kombinasyonu uyumu\n\nHer kombin için kısa bir Türkçe gerekçe yaz (1 cümle).\n\nJSON formatı:\n{\n  "combos": [\n    {\n      "items": ["item_id_1", "item_id_2", "item_id_3"],\n      "score": 92,\n      "occasion": "${OCCASION_TR[occasion]}",\n      "reasoning": "Ten renginle uyumlu nötr tonlar ve vücut tipini dengeleyen proporsiyon"\n    }\n  ]\n}`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key':        API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type':     'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model:      'claude-sonnet-4-5-20250929',
+      max_tokens: 2048,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: userPrompt }],
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Claude API hatası: ${res.status}`);
+
+  const json   = await res.json();
+  const text: string = (json as any)?.content?.[0]?.text ?? '';
+  if (!text) throw new Error('Claude boş yanıt döndürdü');
+
+  const clean  = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const parsed = JSON.parse(clean) as {
+    combos: Array<{ items: string[]; score: number; occasion: string; reasoning: string }>;
+  };
+
+  const itemMap = new Map(items.map((i) => [i.id, i]));
+  const now = new Date().toISOString();
+
+  return parsed.combos
+    .map((c) => {
+      const comboItems = c.items
+        .map((id) => itemMap.get(id))
+        .filter((i): i is WardrobeItem => !!i);
+      if (comboItems.length < 2) return null;
+      return {
+        id: uid(),
+        items: comboItems,
+        score: Math.max(0, Math.min(100, Math.round(c.score))),
+        occasion,
+        label: c.reasoning,
+        createdAt: now,
+      } as Combo;
+    })
+    .filter((c): c is Combo => c !== null)
+    .slice(0, count);
+}
+
+// ID listesinden Combo nesnesi oluşturur (Supabase cache'den geri yüklemek için)
+export function buildComboFromIds(
+  itemIds: string[],
+  allItems: WardrobeItem[],
+  score: number,
+  occasion: Occasion = 'casual',
+): Combo | null {
+  const itemMap = new Map(allItems.map((i) => [i.id, i]));
+  const comboItems = itemIds
+    .map((id) => itemMap.get(id))
+    .filter((i): i is WardrobeItem => !!i);
+  if (comboItems.length < 2) return null;
+  return {
+    id: uid(),
+    items: comboItems,
+    score: Math.max(0, Math.min(100, Math.round(score))),
+    occasion,
+    label: comboLabel(score),
+    createdAt: new Date().toISOString(),
+  };
 }
 
 // ─── Mağaza uyum analizi ─────────────────────────────────────────────────────
