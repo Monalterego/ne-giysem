@@ -10,13 +10,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
 const CATEGORY_LABEL: Record<string, string> = {
   upper:          'Üst',
@@ -37,27 +38,15 @@ const OCCASIONS: { label: string; value: Occasion }[] = [
   { label: 'Özel',   value: 'special' },
 ];
 
-function ScoreBadge({ score }: { score: number }) {
-  const bg =
-    score >= 80 ? colors.success :
-    score >= 65 ? colors.warning :
-    colors.muted;
-  return (
-    <View style={[styles.scoreBadge, { backgroundColor: bg }]}>
-      <Text style={styles.scoreBadgeText}>{score}%</Text>
-    </View>
-  );
-}
-
-function comboKey(combo: Combo): string {
-  return combo.items.map((i) => i.id).sort().join('|');
-}
-
 const SUGGESTED_LABEL: Record<string, string> = {
   bag:       'Çanta',
   outer:     'Dış Giyim',
   accessory: 'Aksesuar',
 };
+
+function comboKey(combo: Combo): string {
+  return combo.items.map((i) => i.id).sort().join('|');
+}
 
 function ComboCard({
   combo,
@@ -71,10 +60,10 @@ function ComboCard({
   onWear: () => void;
 }) {
   const hasSuggestions = (combo.suggestedItems?.length ?? 0) > 0;
-  const hasOuter = combo.suggestedItems?.some((i) => i.category === 'outer') ?? false;
 
   return (
     <View style={styles.card}>
+
       {/* Çekirdek parça görselleri */}
       <View style={styles.imagesRow}>
         {combo.items.map((item) => (
@@ -87,15 +76,14 @@ function ComboCard({
             <Text style={styles.itemLabel}>{CATEGORY_LABEL[item.category] ?? item.category}</Text>
           </View>
         ))}
-        <ScoreBadge score={combo.score} />
+        {/* Skor — badge değil, sağ üstte sade metin */}
+        <Text style={styles.scoreText}>{combo.score}%</Text>
       </View>
 
       {/* Tamamlayıcı öneriler */}
       {hasSuggestions && (
         <View style={styles.suggestionsSection}>
-          <Text style={styles.suggestionsTitle}>
-            {hasOuter ? '🧥 Tamamlayıcı öneriler' : '✨ Tamamlayıcı öneriler'}
-          </Text>
+          <Text style={styles.suggestionsTitle}>Tamamlayıcı Öneriler</Text>
           <View style={styles.suggestionsRow}>
             {combo.suggestedItems!.map((item) => (
               <View key={item.id} style={styles.suggestionWrap}>
@@ -110,13 +98,10 @@ function ComboCard({
               </View>
             ))}
           </View>
-          {hasOuter && (
-            <Text style={styles.outerNote}>Soğuk hava için dış giyim önerisi</Text>
-          )}
         </View>
       )}
 
-      {/* Etiket + buton */}
+      {/* Footer */}
       <View style={styles.cardFooter}>
         <Text style={styles.comboLabel}>{combo.label}</Text>
         {isWorn ? (
@@ -132,7 +117,7 @@ function ComboCard({
           >
             {isSaving
               ? <ActivityIndicator size="small" color={colors.white} />
-              : <Text style={styles.wearBtnText}>Bu Kombini Giy →</Text>
+              : <Text style={styles.wearBtnText}>Giy →</Text>
             }
           </TouchableOpacity>
         )}
@@ -150,7 +135,7 @@ export default function CombosScreen() {
   const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
   const user           = useUserStore((s) => s.user);
 
-  const [savingKey, setSavingKey]         = useState<string | null>(null);
+  const [savingKey,      setSavingKey]      = useState<string | null>(null);
   const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
 
   useEffect(() => {
@@ -165,20 +150,14 @@ export default function CombosScreen() {
     const key = comboKey(combo);
     setSavingKey(key);
     const now = new Date().toISOString();
-    const payload = {
-      user_id: user.id,
-      items: combo.items.map((i) => i.id),
-      score: combo.score,
-      worn_at: now,
+    const { error } = await supabase.from('combos').insert({
+      user_id:    user.id,
+      items:      combo.items.map((i) => i.id),
+      score:      combo.score,
+      worn_at:    now,
       created_at: now,
-    };
-    console.log('[handleWear] inserting to combos:', JSON.stringify(payload));
-    const { error } = await supabase.from('combos').insert(payload);
-    if (error) {
-      console.error('[handleWear] combos insert error:', error);
-    } else {
-      markWorn(key);
-    }
+    });
+    if (!error) markWorn(key);
     setSavingKey(null);
   };
 
@@ -189,7 +168,7 @@ export default function CombosScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
-          <ActivityIndicator color={colors.accent} size="large" />
+          <ActivityIndicator color={colors.textTertiary} size="large" />
         </View>
       </SafeAreaView>
     );
@@ -197,41 +176,34 @@ export default function CombosScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Kombinler</Text>
-        {combos.length > 0 && (
-          <Text style={styles.headerCount}>{combos.length} öneri</Text>
-        )}
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Kombinler</Text>
+          {combos.length > 0 && (
+            <Text style={styles.headerCount}>{combos.length} öneri</Text>
+          )}
+        </View>
       </View>
 
-      {/* Occasion chip'leri */}
+      {/* Occasion filtreleri */}
       <ScrollView
-        horizontal={true}
+        horizontal
         showsHorizontalScrollIndicator={false}
-        style={{
-          backgroundColor: '#FAFAFA',
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-          flexShrink: 0,
-        }}
-        contentContainerStyle={{
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-          gap: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-        }}
+        style={styles.filterBar}
+        contentContainerStyle={styles.filterBarContent}
       >
         {OCCASIONS.map(({ label, value }) => {
           const active = activeOccasion === value;
           return (
             <TouchableOpacity
               key={value}
-              style={[styles.occasionChip, active && styles.occasionChipActive]}
+              style={[styles.chip, active && styles.chipActive]}
               onPress={() => setActiveOccasion(value)}
               activeOpacity={0.75}
             >
-              <Text style={[styles.occasionChipText, active && styles.occasionChipTextActive]}>
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>
                 {label}
               </Text>
             </TouchableOpacity>
@@ -239,9 +211,10 @@ export default function CombosScreen() {
         })}
       </ScrollView>
 
+      {/* İçerik */}
       {combos.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>✨</Text>
+          <Feather name="layers" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
           <Text style={styles.emptyTitle}>Kombin üretilemedi</Text>
           {missing.length > 0 ? (
             <>
@@ -250,7 +223,7 @@ export default function CombosScreen() {
               </Text>
               {missing.map((cat) => (
                 <View key={cat} style={styles.missingRow}>
-                  <Text style={styles.missingBullet}>•</Text>
+                  <Text style={styles.missingBullet}>–</Text>
                   <Text style={styles.missingText}>{cat}</Text>
                 </View>
               ))}
@@ -284,6 +257,8 @@ export default function CombosScreen() {
   );
 }
 
+// ─── Stiller ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
@@ -294,228 +269,213 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    gap: 8,
+  },
+  headerLeft: {
+    flex: 1,
+    gap: 2,
   },
   headerTitle: {
-    fontSize: 22,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    flex: 1,
+    ...typography.h2,
+    color: colors.text,
   },
   headerCount: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
-  // --- Boş durum ---
+
+  // Filtre bar
+  filterBar: {
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexShrink: 0,
+  },
+  filterBarContent: {
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.sm + 2,
+    gap: spacing.xs + 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chip: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  chipActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  chipText: {
+    ...typography.label,
+    color: colors.text,
+  },
+  chipTextActive: {
+    color: colors.white,
+  },
+
+  // Boş durum
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
+    paddingHorizontal: spacing.xl,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 10,
+    ...typography.h2,
+    color: colors.text,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   missingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   missingBullet: {
-    fontSize: 16,
-    color: colors.accent,
+    ...typography.body,
+    color: colors.textTertiary,
   },
   missingText: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
   },
-  // --- Occasion filtresi ---
-  occasionBar: {
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    flexGrow: 0,
-  },
-  occasionBarContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  occasionChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-  },
-  occasionChipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  occasionChipText: {
-    fontSize: 13,
-    fontFamily: fonts.bodyMedium,
-    color: colors.primary,
-  },
-  occasionChipTextActive: {
-    color: colors.white,
-    fontFamily: fonts.bodyBold,
-  },
-  // --- Kombin listesi ---
+
+  // Kombin listesi
   list: {
-    padding: 16,
-    gap: 16,
+    padding: layout.screenPaddingH,
+    gap: spacing.md,
   },
-  // --- Kombin kartı ---
+
+  // Kombin kartı
   card: {
     backgroundColor: colors.white,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    boxShadow: '0 2px 8px rgba(26,26,46,0.06)',
-    elevation: 2,
+    ...shadows.card,
   },
   imagesRow: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 10,
+    padding: spacing.md,
+    gap: spacing.sm,
     backgroundColor: colors.surface,
     position: 'relative',
   },
   itemImageWrap: {
     flex: 1,
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.xs,
   },
   itemImage: {
     width: '100%',
     aspectRatio: 3 / 4,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.white,
   },
   itemLabel: {
-    fontSize: 11,
-    fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    ...typography.caption,
+    color: colors.textSecondary,
   },
-  scoreBadge: {
+  scoreText: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
+    top: spacing.md,
+    right: spacing.md,
+    ...typography.label,
+    color: colors.textSecondary,
   },
-  scoreBadgeText: {
-    fontSize: 13,
-    fontFamily: fonts.bodyBold,
-    color: colors.white,
-  },
+
+  // Footer
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
   },
   comboLabel: {
     flex: 1,
-    fontSize: 14,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    ...typography.h3,
+    fontFamily: fonts.heading,
+    color: colors.text,
   },
   wearBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.text,
     minWidth: 48,
     alignItems: 'center',
   },
   wearBtnWorn: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   wearBtnText: {
-    fontSize: 13,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
   wearBtnTextWorn: {
-    color: colors.muted,
+    color: colors.textSecondary,
   },
-  // --- Tamamlayıcı öneriler ---
+
+  // Tamamlayıcı öneriler
   suggestionsSection: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
   },
   suggestionsTitle: {
-    fontSize: 11,
-    fontFamily: fonts.bodyMedium,
-    color: colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 10,
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   suggestionsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm,
   },
   suggestionWrap: {
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   suggestionImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
+    width: 72,
+    height: 72,
+    borderRadius: radius.md,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.subtle,
   },
   suggestionLabel: {
-    fontSize: 10,
-    fontFamily: fonts.body,
-    color: colors.muted,
-  },
-  outerNote: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: colors.muted,
-    marginTop: 6,
-    marginBottom: 4,
-    fontStyle: 'italic',
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 });
