@@ -301,13 +301,21 @@ export async function generateCombosAI(
 
   const occasionData = OCCASIONS.find((o) => o.id === occasion) ?? OCCASIONS[0];
 
-  const wardrobeText = pool.map((item) =>
+  const corePool     = pool.filter((i) => !['bag', 'accessory'].includes(i.category));
+  const optionalPool = pool.filter((i) => ['bag', 'accessory'].includes(i.category));
+
+  const wardrobeText = corePool.map((item) =>
     `- ID:${item.id} | ${item.itemName ?? item.subCategory ?? item.category} (${item.subCategory ?? item.category})` +
     ` | Renk: ${item.colors[0] ?? 'belirsiz'}` +
     ` | Kumaş: ${item.fabric ?? 'belirsiz'}` +
     ` | Desen: ${item.pattern ?? 'düz'}` +
     ` | Mevsim: ${item.seasons.length ? item.seasons.map(seasonDesc).join(', ') : 'tüm mevsimler'}`,
   ).join('\n');
+
+  const optionalText = optionalPool.length
+    ? `\nOPSİYONEL TAMAMLAYICI PARÇALAR (aksesuar, çanta):\n` +
+      optionalPool.map((item) => `- ID:${item.id} | ${item.itemName ?? item.subCategory ?? item.category}`).join('\n')
+    : '';
 
   const profileLines = [
     userProfile.styleProfile ? `- Stil DNA: ${userProfile.styleProfile}` : null,
@@ -336,12 +344,20 @@ OKASYON: ${occasionData.label}
 OKASYON TANIMI: ${occasionData.styleGuide}
 ${previousNote}
 
-GARDROP PARÇALARI (${pool.length} parça):
+GARDROP PARÇALARI (${corePool.length} parça):
 ${wardrobeText}
+${optionalText}
 
 GÖREV:
-Bu kişi için 5 adet kombin öner. Her kombinasyonda:
-- Mutlaka 1 üst VEYA elbise/tulum + 1 alt (elbise değilse) + 1 ayakkabı olsun
+Bu kişi için 5 adet kombin öner.
+
+ZORUNLU KOMBİN YAPISI — İSTİSNASIZ:
+- Dolaptaki parçalarda elbise/tulum varsa: 1 elbise/tulum + 1 ayakkabı (ASLA alt giyim ekleme)
+- Dolaptaki parçalarda elbise/tulum yoksa: 1 üst + 1 alt + 1 ayakkabı
+- HİÇBİR kombinasyonda 2 üst giyim veya 2 alt giyim olmamalı
+- Aksesuar ve çanta opsiyoneldir: uygunsa 4. veya 5. parça olarak eklenebilir
+
+AYRICA:
 - Okasyon tanımına kesinlikle uy
 - Ten rengine ve vücut tipine uygun parçaları tercih et
 - Stil DNA'ya uygun kombinasyonlar kur
@@ -398,7 +414,7 @@ JSON formatı:
       return {
         id: uid(),
         items: comboItems,
-        score: Math.max(0, Math.min(100, Math.round(c.score))),
+        score: Math.max(0, Math.min(98, Math.round(c.score))),
         occasion,
         label: c.reasoning,
         createdAt: now,
@@ -423,7 +439,7 @@ export function buildComboFromIds(
   return {
     id: uid(),
     items: comboItems,
-    score: Math.max(0, Math.min(100, Math.round(score))),
+    score: Math.max(0, Math.min(98, Math.round(score))),
     occasion,
     label: comboLabel(score),
     createdAt: new Date().toISOString(),

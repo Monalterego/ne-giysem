@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -294,6 +294,7 @@ export default function CombosScreen() {
   const [aiLoading,      setAiLoading]      = useState(false);
   const [page,           setPage]           = useState(0);
   const [loadingMore,    setLoadingMore]    = useState(false);
+  const comboCache = useRef<Record<string, Combo[]>>({});
 
   // Virtual model state
   const [generatingComboId,    setGeneratingComboId]    = useState<string | null>(null);
@@ -310,9 +311,23 @@ export default function CombosScreen() {
     }
   }, [user?.id]);
 
+  // items veya kullanıcı değişince cache'i sıfırla
+  useEffect(() => {
+    comboCache.current = {};
+  }, [items, user?.id]);
+
   // Claude AI kombin üretimi — her items/occasion değişiminde
   useEffect(() => {
     if (!items.length || !user) { setAiCombos([]); return; }
+
+    // Cache hit — okasyon değişince AI çağrısı yapmadan cache'den al
+    const cached = comboCache.current[activeOccasion];
+    if (cached) {
+      setAiCombos(cached);
+      setPage(0);
+      return;
+    }
+
     let cancelled = false;
     setAiLoading(true);
 
@@ -331,10 +346,16 @@ export default function CombosScreen() {
     generateCombosAI(items, profile, weather, activeOccasion, 0, [])
       .then((results) => {
         if (cancelled) return;
-        setAiCombos(results.length ? results : generateCombos(items, 5, activeOccasion));
+        const finalResults = results.length ? results : generateCombos(items, 5, activeOccasion);
+        comboCache.current[activeOccasion] = finalResults;
+        setAiCombos(finalResults);
       })
       .catch(() => {
-        if (!cancelled) setAiCombos(generateCombos(items, 5, activeOccasion));
+        if (!cancelled) {
+          const fallback = generateCombos(items, 5, activeOccasion);
+          comboCache.current[activeOccasion] = fallback;
+          setAiCombos(fallback);
+        }
       })
       .finally(() => { if (!cancelled) setAiLoading(false); });
 
@@ -359,7 +380,9 @@ export default function CombosScreen() {
     try {
       const results = await generateCombosAI(items, profile, weather, activeOccasion, nextPage, prevIds);
       if (results.length) {
-        setAiCombos((prev) => [...prev, ...results]);
+        const newAll = [...aiCombos, ...results];
+        comboCache.current[activeOccasion] = newAll;
+        setAiCombos(newAll);
         setPage(nextPage);
       }
     } catch {
