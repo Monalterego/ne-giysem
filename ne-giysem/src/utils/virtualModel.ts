@@ -116,6 +116,7 @@ export async function generateVirtualModelImage(
 
   if (!response.ok) {
     const errBody = await response.json().catch(() => ({}));
+    console.log('OpenAI error:', JSON.stringify(errBody));
     throw new Error((errBody as any)?.error?.message ?? `OpenAI API hatası: ${response.status}`);
   }
 
