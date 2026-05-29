@@ -14,7 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
-import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 

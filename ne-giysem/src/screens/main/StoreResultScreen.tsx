@@ -18,7 +18,7 @@ import type { VisionResult } from '../../utils/visionAnalysis';
 import { analyzeStoreCompatibility } from '../../utils/storeAnalysis';
 import type { CompatibilityResult } from '../../utils/storeAnalysis';
 import type { WardrobeItem, ClothingCategory } from '../../types';
-import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
