@@ -10,10 +10,11 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
@@ -133,7 +134,7 @@ export default function UploadScreen({ navigation }: Props) {
             onPress={() => pick('camera')}
             activeOpacity={0.85}
           >
-            <Text style={styles.pickCardIcon}>📷</Text>
+            <Feather name="camera" size={28} color={colors.text} />
             <View style={styles.pickCardText}>
               <Text style={styles.pickCardTitle}>Kamera ile Çek</Text>
               <Text style={styles.pickCardSub}>Şu an elindeki kıyafeti fotoğrafla</Text>
@@ -145,7 +146,7 @@ export default function UploadScreen({ navigation }: Props) {
             onPress={() => pick('gallery')}
             activeOpacity={0.85}
           >
-            <Text style={styles.pickCardIcon}>🖼️</Text>
+            <Feather name="image" size={28} color={colors.text} />
             <View style={styles.pickCardText}>
               <Text style={styles.pickCardTitle}>Galeriden Seç</Text>
               <Text style={styles.pickCardSub}>Telefonundaki fotoğraflardan seç</Text>
@@ -182,8 +183,9 @@ export default function UploadScreen({ navigation }: Props) {
               resizeMode="contain"
             />
             <View style={styles.badge}>
+              <Feather name="check" size={12} color={colors.white} />
               <Text style={styles.badgeText}>
-                {Platform.OS === 'web' ? '✓  BG Temizlendi (Web Modu)' : '✓  BG Temizlendi'}
+                {Platform.OS === 'web' ? 'BG Temizlendi (Web Modu)' : 'BG Temizlendi'}
               </Text>
             </View>
           </View>
@@ -215,22 +217,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.white,
   },
   back: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    color: colors.textSecondary,
     width: 60,
   },
   title: {
-    fontSize: 17,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
+    ...typography.h3,
+    color: colors.text,
   },
   headerRight: {
     width: 60,
@@ -238,66 +239,60 @@ const styles = StyleSheet.create({
   // --- Seçim ekranı ---
   pickContainer: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.xl,
   },
   hint: {
-    fontSize: 18,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 24,
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.lg,
     textAlign: 'center',
   },
   pickCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    padding: 20,
-    borderRadius: 16,
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.md,
     backgroundColor: colors.white,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   pickCardSecondary: {
-    backgroundColor: colors.background,
-  },
-  pickCardIcon: {
-    fontSize: 32,
+    backgroundColor: colors.surface,
   },
   pickCardText: {
     flex: 1,
   },
   pickCardTitle: {
-    fontSize: 16,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    color: colors.text,
     marginBottom: 2,
   },
   pickCardSub: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   tipBox: {
-    marginTop: 24,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: colors.overlay,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
   tipTitle: {
-    fontSize: 13,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
-    marginBottom: 8,
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
   tipText: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
-    marginBottom: 4,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
     lineHeight: 18,
   },
   // --- Yükleniyor ---
@@ -313,73 +308,76 @@ const styles = StyleSheet.create({
   loadingOverlay: {
     position: 'absolute',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.sm,
     backgroundColor: 'rgba(255,255,255,0.88)',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-    borderRadius: 16,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.lg,
   },
   loadingText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
   },
   // --- Sonuç ---
   resultContainer: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
   },
   imageWrapper: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface,
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   badge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: spacing.sm,
+    right: spacing.sm,
     backgroundColor: colors.success,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   badgeText: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.sm,
   },
   secondaryBtn: {
     flex: 1,
     height: 52,
-    borderRadius: 26,
-    borderWidth: 1.5,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
   },
   primaryBtn: {
     flex: 2,
     height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.accent,
+    borderRadius: radius.sm,
+    backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },

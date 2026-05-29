@@ -18,7 +18,8 @@ import type { VisionResult } from '../../utils/visionAnalysis';
 import { analyzeStoreCompatibility } from '../../utils/storeAnalysis';
 import type { CompatibilityResult } from '../../utils/storeAnalysis';
 import type { WardrobeItem, ClothingCategory } from '../../types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
+import { Feather } from '@expo/vector-icons';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
 
@@ -33,8 +34,8 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 function verdictColor(verdict: string): string {
-  if (verdict === 'Zaten benzeri var')           return '#F59E0B';
-  if (verdict === 'Eksik parçaları tamamlıyor') return colors.secondary;
+  if (verdict === 'Zaten benzeri var')           return colors.accent;
+  if (verdict === 'Eksik parçaları tamamlıyor') return colors.text;
   return colors.success;
 }
 
@@ -172,7 +173,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         {/* Adım 1: Vision analiz bannerı */}
         {analyzing && (
           <View style={styles.analyzingBannerPurple}>
-            <ActivityIndicator size="small" color={colors.accent} />
+            <ActivityIndicator size="small" color={colors.text} />
             <Text style={styles.analyzingText}>AI kategori tespiti yapılıyor…</Text>
           </View>
         )}
@@ -183,7 +184,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         {/* Dolap boşsa */}
         {!items.length ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>👗</Text>
+            <Feather name="shopping-bag" size={36} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>Dolabın henüz boş</Text>
             <Text style={styles.emptyDesc}>
               Dolabına parça ekledikçe uyum analizi burada gösterilecek.
@@ -194,7 +195,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
             {/* Adım 2: Dolap analiz bannerı */}
             {smartAnalyzing && (
               <View style={styles.analyzingBannerBlue}>
-                <ActivityIndicator size="small" color={colors.secondary} />
+                <ActivityIndicator size="small" color={colors.textSecondary} />
                 <Text style={styles.analyzingText}>Dolabın analiz ediliyor…</Text>
               </View>
             )}
@@ -264,35 +265,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.white,
   },
   back: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    color: colors.textSecondary,
     width: 60,
   },
   headerTitle: {
-    fontSize: 17,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
+    ...typography.h3,
+    color: colors.text,
   },
   headerRight: {
     width: 60,
   },
   scroll: {
-    paddingBottom: 40,
+    paddingBottom: spacing.xl,
   },
 
   // ── Ürün görseli ──
   productImageWrap: {
     height: 280,
-    margin: 16,
-    borderRadius: 24,
+    margin: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -304,15 +304,15 @@ const styles = StyleSheet.create({
   },
   productBadge: {
     position: 'absolute',
-    bottom: 12,
-    left: 12,
-    backgroundColor: 'rgba(26,26,46,0.75)',
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    borderRadius: 14,
+    bottom: spacing.sm,
+    left: spacing.sm,
+    backgroundColor: 'rgba(10,10,10,0.65)',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
   },
   productBadgeText: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
@@ -321,242 +321,228 @@ const styles = StyleSheet.create({
   analyzingBannerPurple: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#F3E8FF',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.accentLight,
     borderWidth: 1,
-    borderColor: '#D8B4FE',
+    borderColor: colors.border,
   },
   analyzingBannerBlue: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: colors.border,
   },
   analyzingText: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
   },
 
   // ── AI Detay Kartı ──
   aiDetailCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: '#EEF2FF',
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#C7D2FE',
-    gap: 8,
+    borderColor: colors.border,
+    gap: spacing.sm,
   },
   aiDetailName: {
-    fontSize: 16,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    color: colors.text,
   },
   aiDetailCategory: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyMedium,
-    color: colors.secondary,
+    color: colors.textSecondary,
   },
   aiDetailPills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: spacing.xs,
   },
   aiDetailPill: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 12,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: colors.border,
   },
   aiDetailPillText: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyMedium,
-    color: colors.secondary,
+    color: colors.textSecondary,
   },
   aiDetailTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: spacing.xs,
   },
   aiDetailTag: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: colors.border,
   },
   aiDetailTagText: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: colors.secondary,
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 
   // ── Section title ──
   sectionTitle: {
-    fontSize: 17,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    marginTop: 8,
+    ...typography.h3,
+    color: colors.text,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
 
   // ── Boş dolap ──
   emptyCard: {
-    marginHorizontal: 16,
-    marginBottom: 24,
-    padding: 28,
-    borderRadius: 20,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
-    gap: 8,
-  },
-  emptyIcon: {
-    fontSize: 40,
+    gap: spacing.sm,
   },
   emptyTitle: {
-    fontSize: 16,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    color: colors.text,
   },
   emptyDesc: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 19,
   },
 
   // ── Verdict ──
   verdictBadge: {
-    marginHorizontal: 16,
-    marginBottom: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 18,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
     alignItems: 'center',
   },
   verdictText: {
-    fontSize: 18,
-    fontFamily: fonts.headingBold,
+    ...typography.h3,
     color: colors.white,
     textAlign: 'center',
   },
 
   // ── Gerekçeler ──
   reasonsCard: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 18,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 10,
+    gap: spacing.sm,
   },
   reasonRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: spacing.sm,
   },
   reasonBullet: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.accent,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   reasonText: {
     flex: 1,
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.primary,
-    lineHeight: 20,
+    ...typography.body,
+    color: colors.text,
   },
 
   // ── Kombin kartı ──
   comboCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 18,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    borderRadius: radius.lg,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    boxShadow: '0 1px 6px rgba(26,26,46,0.04)',
-    elevation: 1,
+    ...shadows.subtle,
   },
   comboImagesRow: {
     flexDirection: 'row',
-    padding: 14,
-    gap: 10,
+    padding: spacing.md,
+    gap: spacing.sm,
     backgroundColor: colors.surface,
   },
   comboImgWrap: {
     flex: 1,
     alignItems: 'center',
-    gap: 5,
+    gap: spacing.xs,
   },
   comboImg: {
     width: '100%',
     aspectRatio: 3 / 4,
-    borderRadius: 10,
+    borderRadius: radius.md,
     backgroundColor: colors.white,
   },
   comboImgLabel: {
-    fontSize: 11,
+    ...typography.caption,
     fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    color: colors.textSecondary,
   },
 
   // ── Eksik parçalar ──
   missingCard: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 18,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 10,
+    gap: spacing.sm,
   },
   missingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: spacing.sm,
   },
   missingPlus: {
-    fontSize: 18,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.success,
-    lineHeight: 20,
   },
   missingText: {
     flex: 1,
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.primary,
-    lineHeight: 20,
+    ...typography.body,
+    color: colors.text,
   },
 
   bottomPad: {
-    height: 16,
+    height: spacing.md,
   },
 });

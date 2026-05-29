@@ -17,7 +17,8 @@ import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
 import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
+import { Feather } from '@expo/vector-icons';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'UploadDetail'>;
@@ -250,13 +251,14 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         {/* AI analiz banner */}
         {analyzing && (
           <View style={styles.aiBanner}>
-            <ActivityIndicator size="small" color={colors.accent} />
+            <ActivityIndicator size="small" color={colors.text} />
             <Text style={styles.aiBannerText}>AI analiz ediyor…</Text>
           </View>
         )}
         {!analyzing && aiDetected && (
           <View style={[styles.aiBanner, styles.aiBannerDone]}>
-            <Text style={styles.aiBannerText}>✨ AI tarafından dolduruldu · değiştirebilirsin</Text>
+            <Feather name="zap" size={14} color={colors.text} />
+            <Text style={styles.aiBannerText}>AI tarafından dolduruldu · değiştirebilirsin</Text>
           </View>
         )}
 
@@ -405,34 +407,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.white,
   },
   back: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    color: colors.textSecondary,
     width: 60,
   },
   title: {
-    fontSize: 17,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
+    ...typography.h3,
+    color: colors.text,
   },
   headerRight: {
     width: 60,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 48,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingBottom: spacing.xxl,
   },
   imageContainer: {
     height: 220,
-    marginVertical: 20,
-    borderRadius: 20,
+    marginVertical: spacing.lg,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     overflow: 'hidden',
     borderWidth: 1,
@@ -443,42 +444,41 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   sectionTitle: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
-    marginBottom: 10,
-    marginTop: 4,
+    color: colors.text,
+    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
   },
   required: {
     color: colors.accent,
   },
   optional: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,
   },
   chipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.text,
+    borderColor: colors.text,
   },
   chipText: {
-    fontSize: 13,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
   },
   chipTextSelected: {
     color: colors.white,
@@ -486,98 +486,98 @@ const styles = StyleSheet.create({
   aiBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#F3E8FF',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.accentLight,
     borderWidth: 1,
-    borderColor: '#D8B4FE',
+    borderColor: colors.border,
   },
   aiBannerDone: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#86EFAC',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
   aiBannerText: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
     flex: 1,
   },
   // ─── AI Detay Kartı ──────────────────────────────────────────────────────────
   detailCard: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 20,
-    gap: 10,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   detailName: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
-    lineHeight: 20,
+    color: colors.text,
   },
   detailRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   detailPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     backgroundColor: colors.white,
-    borderRadius: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   detailPillLabel: {
-    fontSize: 10,
+    ...typography.caption,
     fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    color: colors.textSecondary,
   },
   detailPillValue: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    color: colors.text,
   },
   detailTagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: spacing.xs,
   },
   detailTag: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#EEF2FF',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   detailTagText: {
-    fontSize: 11,
+    ...typography.caption,
     fontFamily: fonts.bodyMedium,
-    color: '#4F46E5',
+    color: colors.textSecondary,
   },
   saveBtn: {
     height: 54,
-    borderRadius: 27,
-    backgroundColor: colors.accent,
+    borderRadius: radius.sm,
+    backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    boxShadow: '0 4px 8px rgba(233,69,96,0.30)',
-    elevation: 4,
+    marginTop: spacing.sm,
+    ...shadows.card,
   },
   saveBtnDisabled: {
     opacity: 0.6,
   },
   saveBtnText: {
-    fontSize: 16,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },

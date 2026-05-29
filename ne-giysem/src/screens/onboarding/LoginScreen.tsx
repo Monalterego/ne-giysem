@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 
@@ -150,77 +150,72 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 24,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
   },
   backBtn: {
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   backText: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    color: colors.textSecondary,
   },
   title: {
-    fontSize: 26,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 6,
+    ...typography.h2,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
-    marginBottom: 32,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
   },
   input: {
     height: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    borderRadius: radius.md,
+    borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.primary,
-    marginBottom: 12,
+    paddingHorizontal: spacing.md,
+    ...typography.body,
+    color: colors.text,
+    marginBottom: spacing.sm,
     backgroundColor: colors.white,
   },
   errorText: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.accent,
-    marginBottom: 10,
+    ...typography.bodySmall,
+    color: colors.error,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   primaryBtn: {
     height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   primaryBtnDisabled: {
     opacity: 0.5,
   },
   primaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
   signupRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
   signupHint: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   signupLink: {
-    fontSize: 13,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
     color: colors.accent,
   },
