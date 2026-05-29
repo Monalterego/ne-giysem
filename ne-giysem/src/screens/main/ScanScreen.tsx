@@ -14,9 +14,10 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ScanStackParamList } from '../../navigation/types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
@@ -42,7 +43,6 @@ async function removeBackground(imageUri: string): Promise<string> {
   return json.data.result_b64 as string;
 }
 
-// Remove.bg JSON API — dosya URI yerine base64 kabul eder
 async function removeBackgroundFromBase64(base64: string): Promise<string> {
   const res = await fetch('https://api.remove.bg/v1.0/removebg', {
     method: 'POST',
@@ -61,15 +61,13 @@ async function removeBackgroundFromBase64(base64: string): Promise<string> {
   return (json as any).data.result_b64 as string;
 }
 
-// URL scraping'den gelen base64'ü işle
 async function processBase64(base64: string): Promise<string> {
-  if (Platform.OS === 'web') return base64; // web'de BG removal yok
+  if (Platform.OS === 'web') return base64;
   return removeBackgroundFromBase64(base64);
 }
 
 async function processImage(uri: string): Promise<string> {
   if (Platform.OS === 'web') {
-    // Web'de Remove.bg'yi atla, base64'e çevir
     const res = await fetch(uri);
     const blob = await res.blob();
     return new Promise<string>((resolve, reject) => {
@@ -86,10 +84,10 @@ async function processImage(uri: string): Promise<string> {
 }
 
 export default function ScanScreen({ navigation }: Props) {
-  const [urlInput, setUrlInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [loadingUri, setLoadingUri] = useState<string | null>(null);
-  const [loadingStep, setLoadingStep] = useState('');
+  const [urlInput,     setUrlInput]     = useState('');
+  const [loading,      setLoading]      = useState(false);
+  const [loadingUri,   setLoadingUri]   = useState<string | null>(null);
+  const [loadingStep,  setLoadingStep]  = useState('');
 
   const handlePick = async (source: 'camera' | 'gallery') => {
     let result: ImagePicker.ImagePickerResult;
@@ -141,7 +139,6 @@ export default function ScanScreen({ navigation }: Props) {
       const processedBase64 = await processBase64(imageBase64);
       navigation.navigate('StoreResult', { processedBase64, originalUri: url });
     } catch (err: any) {
-      console.error('[ScanScreen] handleUrlAnalyze hata:', err);
       Alert.alert('Hata', err.message ?? 'Ürün görseli alınamadı. Lütfen tekrar dene.');
     } finally {
       setLoading(false);
@@ -168,10 +165,12 @@ export default function ScanScreen({ navigation }: Props) {
             </Text>
           </View>
 
-          {/* Kamera seçeneği */}
+          {/* Kamera */}
           <View style={styles.card}>
             <View style={styles.cardTop}>
-              <Text style={styles.cardIcon}>📷</Text>
+              <View style={styles.iconBox}>
+                <Feather name="camera" size={20} color={colors.text} />
+              </View>
               <View style={styles.cardTextWrap}>
                 <Text style={styles.cardTitle}>Mağazada Fotoğrafla</Text>
                 <Text style={styles.cardDesc}>
@@ -195,10 +194,12 @@ export default function ScanScreen({ navigation }: Props) {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* URL seçeneği */}
+          {/* URL */}
           <View style={styles.card}>
             <View style={styles.cardTop}>
-              <Text style={styles.cardIcon}>🔗</Text>
+              <View style={styles.iconBox}>
+                <Feather name="link" size={20} color={colors.text} />
+              </View>
               <View style={styles.cardTextWrap}>
                 <Text style={styles.cardTitle}>URL Yapıştır</Text>
                 <Text style={styles.cardDesc}>
@@ -212,7 +213,7 @@ export default function ScanScreen({ navigation }: Props) {
             <TextInput
               style={[styles.urlInput, styles.inputDisabled]}
               placeholder="https://www.zara.com/..."
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textTertiary}
               value={urlInput}
               onChangeText={setUrlInput}
               autoCapitalize="none"
@@ -238,10 +239,12 @@ export default function ScanScreen({ navigation }: Props) {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Galeri seçeneği */}
+          {/* Galeri */}
           <View style={styles.card}>
             <View style={styles.cardTop}>
-              <Text style={styles.cardIcon}>🖼️</Text>
+              <View style={styles.iconBox}>
+                <Feather name="image" size={20} color={colors.text} />
+              </View>
               <View style={styles.cardTextWrap}>
                 <Text style={styles.cardTitle}>Görsel Yükle</Text>
                 <Text style={styles.cardDesc}>
@@ -270,7 +273,7 @@ export default function ScanScreen({ navigation }: Props) {
             <Image source={{ uri: loadingUri }} style={styles.loadingPreview} resizeMode="contain" />
           )}
           <View style={styles.loadingBox}>
-            <ActivityIndicator color={colors.accent} size="large" />
+            <ActivityIndicator color={colors.textSecondary} size="large" />
             <Text style={styles.loadingText}>{loadingStep}</Text>
             <Text style={styles.loadingSubText}>Dolabınla karşılaştırılıyor</Text>
           </View>
@@ -279,6 +282,8 @@ export default function ScanScreen({ navigation }: Props) {
     </SafeAreaView>
   );
 }
+
+// ─── Stiller ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   safe: {
@@ -289,133 +294,144 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingBottom: spacing.lg,
   },
+
+  // Başlık
   header: {
-    paddingTop: 20,
-    paddingBottom: 24,
-    paddingHorizontal: 4,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xs,
   },
   title: {
-    fontSize: 26,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 6,
+    ...typography.h2,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
     lineHeight: 20,
   },
-  // Kartlar
+
+  // Kart
   card: {
     backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: radius.md,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 14,
-    boxShadow: '0 1px 6px rgba(26,26,46,0.04)',
-    elevation: 1,
+    gap: spacing.md,
+    ...shadows.subtle,
   },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: spacing.md,
   },
-  cardIcon: {
-    fontSize: 28,
-    marginTop: 2,
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   cardTextWrap: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: 16,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
-    marginBottom: 3,
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.xs - 2,
   },
   cardDesc: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
     lineHeight: 18,
   },
+
+  // "Yakında" badge
   soonBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: colors.overlay,
+    paddingVertical: spacing.xs - 2,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
     alignSelf: 'flex-start',
+    flexShrink: 0,
   },
   soonText: {
-    fontSize: 11,
-    fontFamily: fonts.bodyBold,
-    color: colors.secondary,
+    ...typography.label,
+    color: colors.textSecondary,
   },
+
   comingSoonNote: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.caption,
+    color: colors.textTertiary,
     lineHeight: 17,
   },
-  // URL Input
+
+  // URL input
   urlInput: {
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    height: 44,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.primary,
+    paddingHorizontal: spacing.md,
+    ...typography.bodySmall,
+    color: colors.text,
     backgroundColor: colors.background,
   },
   inputDisabled: {
-    opacity: 0.45,
-    backgroundColor: colors.border,
+    opacity: 0.4,
+    backgroundColor: colors.surface,
   },
-  // Butonlar
+
+  // Birincil buton — siyah
   primaryBtn: {
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.accent,
+    height: 46,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 8px rgba(233,69,96,0.25)',
-    elevation: 3,
   },
   primaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
+
+  // İkincil buton — beyaz + border
   secondaryBtn: {
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1.5,
+    height: 46,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.white,
   },
   secondaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
   },
   btnDisabled: {
     opacity: 0.4,
   },
+
   // Ayırıcı
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 16,
-    gap: 12,
+    marginVertical: spacing.md,
+    gap: spacing.md,
   },
   dividerLine: {
     flex: 1,
@@ -423,47 +439,45 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   dividerText: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.caption,
+    color: colors.textTertiary,
   },
+
   bottomPad: {
-    height: 16,
+    height: spacing.md,
   },
-  // Yükleniyor
+
+  // Yükleniyor overlay
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(250,250,250,0.94)',
+    backgroundColor: 'rgba(250,250,248,0.94)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
+    gap: spacing.lg,
   },
   loadingPreview: {
-    width: 180,
-    height: 220,
-    borderRadius: 16,
-    opacity: 0.5,
+    width: 160,
+    height: 200,
+    borderRadius: radius.md,
+    opacity: 0.45,
   },
   loadingBox: {
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.sm,
     backgroundColor: colors.white,
-    paddingHorizontal: 36,
-    paddingVertical: 24,
-    borderRadius: 20,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    boxShadow: '0 4px 12px rgba(26,26,46,0.08)',
-    elevation: 4,
+    ...shadows.card,
   },
   loadingText: {
-    fontSize: 16,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    ...typography.h3,
+    color: colors.text,
   },
   loadingSubText: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
 });
