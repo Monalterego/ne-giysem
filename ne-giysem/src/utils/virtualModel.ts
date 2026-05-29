@@ -1,6 +1,7 @@
 import type { WardrobeItem } from '../types';
 
-const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
+const OPENAI_API_KEY    = process.env.EXPO_PUBLIC_OPENAI_API_KEY    ?? '';
+const REPLICATE_API_KEY = process.env.EXPO_PUBLIC_REPLICATE_API_KEY ?? '';
 
 // ─── Açıklama eşlemeleri ──────────────────────────────────────────────────────
 
@@ -56,14 +57,6 @@ const CATEGORY_DESC: Record<string, string> = {
   accessory:      'accessory',
 };
 
-// ─── Yardımcı ─────────────────────────────────────────────────────────────────
-
-function describeItem(item: WardrobeItem): string {
-  const color = item.colors?.[0] ?? '';
-  const name  = item.itemName ?? CATEGORY_DESC[item.category] ?? item.category;
-  return [color, name].filter(Boolean).join(' ');
-}
-
 // ─── Tip ──────────────────────────────────────────────────────────────────────
 
 export interface PhysicalProfile {
@@ -76,12 +69,9 @@ export interface PhysicalProfile {
   hairType:   string | null;
 }
 
-// ─── Ana fonksiyon ────────────────────────────────────────────────────────────
+// ─── GPT-4o: manken görseli üret ─────────────────────────────────────────────
 
-export async function generateVirtualModelImage(
-  profile: PhysicalProfile,
-  items: WardrobeItem[],
-): Promise<string> {
+async function generateModelImage(profile: PhysicalProfile): Promise<string> {
   if (!OPENAI_API_KEY) throw new Error('OpenAI API key eksik — .env dosyasında EXPO_PUBLIC_OPENAI_API_KEY ayarla');
 
   const skin   = SKIN_TONE_MAP[profile.skinTone   ?? ''] ?? 'medium';
@@ -89,13 +79,12 @@ export async function generateVirtualModelImage(
   const hLen   = HAIR_LENGTH_MAP[profile.hairLength ?? ''] ?? 'medium-length';
   const hType  = HAIR_TYPE_MAP[profile.hairType   ?? ''] ?? 'straight';
   const body   = BODY_TYPE_MAP[profile.bodyType   ?? ''] ?? 'average';
-  const outfit = items.map(describeItem).filter(Boolean).join(', ');
 
   const prompt =
-    `Editorial fashion photography. Female model, ${profile.height} cm tall, ` +
+    `A full-body photo of a female fashion model, ${profile.height} cm tall, ` +
     `${profile.age} years old, ${body} body type, ${skin} skin tone, ` +
     `${hLen} ${hColor} ${hType} hair. ` +
-    `Wearing: ${outfit || 'casual outfit'}. ` +
+    `Standing straight, facing forward, neutral pose, wearing plain white underwear. ` +
     `White studio background, full body shot, professional fashion photography, ` +
     `natural lighting, high quality, realistic, clean composition.`;
 
@@ -134,4 +123,80 @@ export async function generateVirtualModelImage(
   const b64 = data?.data?.[0]?.b64_json as string | undefined;
   if (!b64) throw new Error('Görsel verisi alınamadı');
   return `data:image/png;base64,${b64}`;
+}
+
+// ─── Replicate IDM-VTON: sanal deneme ────────────────────────────────────────
+
+async function applyVirtualTryOn(
+  humanImg: string,
+  garmImg: string,
+  garmentDesc: string,
+): Promise<string> {
+  if (!REPLICATE_API_KEY) throw new Error('Replicate API key eksik — .env dosyasında EXPO_PUBLIC_REPLICATE_API_KEY ayarla');
+
+  // Prediction başlat
+  const startRes = await fetch('https://api.replicate.com/v1/models/cuuupid/idm-vton/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${REPLICATE_API_KEY}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      input: {
+        human_img:       humanImg,
+        garm_img:        garmImg,
+        garment_des:     garmentDesc,
+        is_checked:      true,
+        is_checked_crop: false,
+        denoise_steps:   30,
+        seed:            42,
+      },
+    }),
+  });
+
+  if (!startRes.ok) {
+    const err = await startRes.json().catch(() => ({}));
+    throw new Error((err as any)?.detail ?? `Replicate başlatma hatası: ${startRes.status}`);
+  }
+
+  const prediction = await startRes.json() as any;
+  const predId = prediction.id as string | undefined;
+  if (!predId) throw new Error('Prediction ID alınamadı');
+
+  // Sonucu bekle — max 60 saniye, 2 saniyede bir poll
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await new Promise<void>((r) => setTimeout(r, 2000));
+    const statusRes = await fetch(`https://api.replicate.com/v1/predictions/${predId}`, {
+      headers: { 'Authorization': `Bearer ${REPLICATE_API_KEY}` },
+    });
+    const status = await statusRes.json() as any;
+    if (status.status === 'succeeded') {
+      const output = status.output;
+      return Array.isArray(output) ? (output[0] as string) : (output as string);
+    }
+    if (status.status === 'failed' || status.status === 'canceled') {
+      throw new Error(`Replicate işlemi başarısız: ${status.error ?? status.status}`);
+    }
+  }
+
+  throw new Error('Replicate zaman aşımına uğradı (60 saniye)');
+}
+
+// ─── Ana fonksiyon ────────────────────────────────────────────────────────────
+
+export async function generateVirtualModelImage(
+  profile: PhysicalProfile,
+  items: WardrobeItem[],
+): Promise<string> {
+  // 1. Fizik profiline göre manken görseli üret (GPT-4o)
+  const modelImageUri = await generateModelImage(profile);
+
+  // 2. İlk kıyafeti manken üzerinde göster (IDM-VTON)
+  //    Çok parça sıralı işlemi sonraki versiyonda
+  const item = items[0];
+  if (!item) throw new Error('Kıyafet bulunamadı');
+
+  const garmentDesc = item.itemName ?? CATEGORY_DESC[item.category] ?? item.category;
+  return applyVirtualTryOn(modelImageUri, item.processedImageUrl, garmentDesc);
 }
