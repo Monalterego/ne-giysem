@@ -13,14 +13,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
-import { colors, fonts, spacing } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { STYLE_DATA_MAP } from '../../constants/styles';
 import { STYLE_CARDS, type StyleCardData } from '../../constants/styleCards';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleExplore'>;
 
-const SWIPE_THR  = 80;
-const MIN_SWIPES = 20;
+const SWIPE_THR   = 80;
+const MIN_SWIPES  = 20;
+const CARD_RADIUS = 20;
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -56,19 +57,17 @@ function MoodboardCard({ card }: { card: StyleCardData }) {
   const data = STYLE_DATA_MAP[card.name];
   const [failed, setFailed] = useState(false);
 
-  // Mount'ta bir kez rastgele URL seç — yeniden render'da değişmesin
   const imageUri = useMemo(() => {
     if (card.images.length === 0) return null;
     return card.images[Math.floor(Math.random() * card.images.length)];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.name]);
 
-  const bg = data?.palette[0] ?? '#1A1A2E';
+  const bg = data?.palette[0] ?? colors.black;
 
   return (
-    <View style={{ flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: bg }}>
+    <View style={{ flex: 1, borderRadius: CARD_RADIUS, overflow: 'hidden', backgroundColor: bg }}>
 
-      {/* Fotoğraf — yoksa palette renk + emoji fallback */}
       {imageUri && !failed ? (
         <Image
           source={{ uri: imageUri }}
@@ -78,28 +77,46 @@ function MoodboardCard({ card }: { card: StyleCardData }) {
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-          <Text style={{ fontSize: 72, opacity: 0.45 }}>{data?.emoji ?? '✨'}</Text>
+          <Text style={{ fontSize: 72, opacity: 0.35 }}>{data?.emoji ?? '✨'}</Text>
         </View>
       )}
 
-      {/* Alt gradient overlay — siyahtan şeffafa, kartın alt yarısı */}
+      {/* Alt gradient — şeffaftan siyaha */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.85)']}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '52%', justifyContent: 'flex-end', paddingHorizontal: 22, paddingBottom: 24 }}
+        colors={['transparent', 'rgba(10,10,10,0.88)']}
+        style={cardStyles.gradient}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <Text style={{ fontSize: 26 }}>{data?.emoji ?? '✨'}</Text>
-          <Text style={{ fontSize: 21, fontFamily: fonts.headingBold, color: '#FFFFFF', flexShrink: 1 }} numberOfLines={1}>
-            {card.name}
-          </Text>
-        </View>
-        <Text style={{ fontSize: 13, fontFamily: fonts.body, color: 'rgba(255,255,255,0.82)', lineHeight: 19 }}>
+        <Text style={cardStyles.cardName} numberOfLines={1}>{card.name}</Text>
+        <Text style={cardStyles.cardDesc} numberOfLines={2}>
           {data?.turkishDesc ?? card.keywords.join(' · ')}
         </Text>
       </LinearGradient>
     </View>
   );
 }
+
+const cardStyles = StyleSheet.create({
+  gradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '52%',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.xs,
+  },
+  cardName: {
+    ...typography.h2,
+    fontFamily: fonts.heading,
+    color: colors.white,
+  },
+  cardDesc: {
+    ...typography.bodySmall,
+    color: 'rgba(255,255,255,0.7)',
+  },
+});
 
 // ─── Ana ekran ─────────────────────────────────────────────────────────────────
 
@@ -116,7 +133,6 @@ export default function StyleExploreScreen({ navigation }: Props) {
 
   const pan = useRef(new Animated.ValueXY()).current;
 
-  // Animasyon değerleri — pan'den türetilmiş
   const rotation = pan.x.interpolate({
     inputRange: [-200, 0, 200],
     outputRange: ['-14deg', '0deg', '14deg'],
@@ -221,16 +237,13 @@ export default function StyleExploreScreen({ navigation }: Props) {
       {/* Başlık + sayaç */}
       <View style={styles.header}>
         <Text style={styles.badge}>YOL C · KEŞİF MODU</Text>
-        <View style={styles.counterPill}>
-          <Text style={styles.counterText}>{swipeCount + 1} / {MIN_SWIPES}</Text>
-        </View>
+        <Text style={styles.counter}>{swipeCount + 1} / {MIN_SWIPES}</Text>
       </View>
 
       <Text style={styles.swipeHint}>Beğen → sağa · Geç → sola</Text>
 
-      {/* Kart yığını — flex:1 ile tüm boşluğu kapla */}
+      {/* Kart yığını */}
       <View style={styles.stackArea}>
-        {/* Arka kart — absolute, ön kartın arkasında */}
         {nextCard && (
           <Animated.View
             style={[
@@ -242,7 +255,6 @@ export default function StyleExploreScreen({ navigation }: Props) {
           </Animated.View>
         )}
 
-        {/* Ön kart — flex:1, layout'u sürer + etkileşimli */}
         <Animated.View
           style={[
             styles.cardSlot,
@@ -259,10 +271,10 @@ export default function StyleExploreScreen({ navigation }: Props) {
         >
           {/* Beğeni / geç göstergeleri */}
           <Animated.View style={[styles.indicator, styles.likeInd, { opacity: likeOpacity }]}>
-            <Text style={styles.indText}>❤️</Text>
+            <Feather name="heart" size={22} color={colors.success} />
           </Animated.View>
           <Animated.View style={[styles.indicator, styles.passInd, { opacity: passOpacity }]}>
-            <Text style={styles.indText}>✕</Text>
+            <Feather name="x" size={22} color={colors.error} />
           </Animated.View>
 
           <MoodboardCard card={currentCard} />
@@ -276,7 +288,7 @@ export default function StyleExploreScreen({ navigation }: Props) {
           onPress={() => handleSwipe(false)}
           activeOpacity={0.82}
         >
-          <Text style={styles.actionBtnText}>✕</Text>
+          <Feather name="x" size={22} color={colors.text} />
         </TouchableOpacity>
 
         <Text style={styles.tapHint}>veya kaydır</Text>
@@ -286,7 +298,7 @@ export default function StyleExploreScreen({ navigation }: Props) {
           onPress={() => handleSwipe(true)}
           activeOpacity={0.82}
         >
-          <Text style={styles.actionBtnText}>❤️</Text>
+          <Feather name="heart" size={22} color={colors.white} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -305,105 +317,93 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.md,
     alignSelf: 'flex-start',
   },
+
+  // Başlık
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    marginBottom: 4,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
   badge: {
-    fontSize: 11,
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    letterSpacing: 1.8,
+    ...typography.label,
+    color: colors.textTertiary,
   },
-  counterPill: {
-    backgroundColor: colors.surface ?? '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  counterText: {
-    fontSize: 12,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
+  counter: {
+    ...typography.label,
+    color: colors.textSecondary,
   },
   swipeHint: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.caption,
+    color: colors.textTertiary,
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: spacing.md,
   },
+
+  // Kart alanı
   stackArea: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 12,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingBottom: spacing.sm,
   },
   cardSlot: {
     flex: 1,
-    boxShadow: '0 8px 24px rgba(26,26,46,0.18)',
-    elevation: 8,
-    borderRadius: 24,
+    borderRadius: CARD_RADIUS,
+    ...shadows.card,
   },
+
+  // Swipe göstergeleri
   indicator: {
     position: 'absolute',
-    top: 24,
+    top: spacing.lg,
     zIndex: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    borderWidth: 3,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 2,
   },
   likeInd: {
-    right: 20,
-    borderColor: '#22C55E',
-    backgroundColor: 'rgba(34,197,94,0.12)',
+    right: spacing.lg,
+    borderColor: colors.success,
+    backgroundColor: 'rgba(45,106,79,0.1)',
   },
   passInd: {
-    left: 20,
-    borderColor: '#EF4444',
-    backgroundColor: 'rgba(239,68,68,0.12)',
+    left: spacing.lg,
+    borderColor: colors.error,
+    backgroundColor: 'rgba(192,57,43,0.1)',
   },
-  indText: {
-    fontSize: 28,
-  },
+
+  // Alt butonlar
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
-    marginTop: 20,
-    paddingHorizontal: 24,
+    gap: spacing.md,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
   },
   actionBtn: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 60,
+    height: 60,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 12px rgba(26,26,46,0.14)',
-    elevation: 4,
+    ...shadows.subtle,
   },
   passBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderWidth: 1.5,
-    borderColor: '#EF4444',
+    borderColor: colors.border,
   },
   likeBtn: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#22C55E',
-  },
-  actionBtnText: {
-    fontSize: 26,
+    backgroundColor: colors.black,
   },
   tapHint: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: '#CCCCCC',
+    ...typography.caption,
+    color: colors.textTertiary,
     flex: 1,
     textAlign: 'center',
   },
