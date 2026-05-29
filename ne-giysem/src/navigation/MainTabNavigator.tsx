@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import type { MainTabParamList } from './types';
 
 import HomeScreen from '../screens/main/HomeScreen';
@@ -16,10 +16,19 @@ export default function MainTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#E94560',
-        tabBarInactiveTintColor: '#aaa',
-        tabBarStyle: { backgroundColor: '#fff', borderTopColor: '#f0f0f0' },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+        tabBarActiveTintColor: '#1A1A1A',
+        tabBarInactiveTintColor: '#C4C4C4',
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E8E4DE',
+          paddingTop: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          letterSpacing: 0.2,
+        },
       }}
     >
       <Tab.Screen
@@ -28,7 +37,7 @@ export default function MainTabNavigator() {
         options={{
           tabBarLabel: 'Ana Sayfa',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+            <Feather name="home" size={size} color={color} strokeWidth={focused ? 2.5 : 1.8} />
           ),
         }}
       />
@@ -38,7 +47,11 @@ export default function MainTabNavigator() {
         options={{
           tabBarLabel: 'Dolap',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'shirt' : 'shirt-outline'} size={size} color={color} />
+            <Ionicons
+              name={focused ? 'shirt' : 'shirt-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -48,7 +61,11 @@ export default function MainTabNavigator() {
         options={{
           tabBarLabel: 'Kombin',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={size} color={color} />
+            <Ionicons
+              name={focused ? 'sparkles' : 'sparkles-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -58,7 +75,7 @@ export default function MainTabNavigator() {
         options={{
           tabBarLabel: 'Tara',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'scan' : 'scan-outline'} size={size} color={color} />
+            <Feather name="camera" size={size} color={color} strokeWidth={focused ? 2.5 : 1.8} />
           ),
         }}
       />
@@ -68,7 +85,7 @@ export default function MainTabNavigator() {
         options={{
           tabBarLabel: 'Profil',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={size} color={color} />
+            <Feather name="user" size={size} color={color} strokeWidth={focused ? 2.5 : 1.8} />
           ),
         }}
       />

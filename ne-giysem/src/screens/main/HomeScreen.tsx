@@ -9,17 +9,28 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
-import { colors, fonts } from '../../constants/theme';
+import { fonts } from '../../constants/theme';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
 
-// ─── Yardımcılar ─────────────────────────────────────────────────────────────
+const C = {
+  bg:      '#FAFAF8',
+  white:   '#FFFFFF',
+  primary: '#1A1A1A',
+  accent:  '#C9A96E',
+  muted:   '#8A8A8A',
+  border:  '#E8E4DE',
+  surface: '#F5F2ED',
+};
+
+// ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -36,14 +47,26 @@ function getDisplayName(name: string, email: string): string {
   return name || email.split('@')[0] || '';
 }
 
-const SCORE_COLOR = (s: number) =>
-  s >= 80 ? colors.success : s >= 65 ? colors.warning : colors.muted;
+function WeatherIcon({ description }: { description?: string }) {
+  const d = description?.toLowerCase() ?? '';
+  if (d.includes('rain') || d.includes('yağ')) {
+    return <Feather name="cloud-rain" size={22} color={C.muted} />;
+  }
+  if (d.includes('snow') || d.includes('kar')) {
+    return <Feather name="cloud-snow" size={22} color={C.muted} />;
+  }
+  if (d.includes('cloud') || d.includes('bulut')) {
+    return <Feather name="cloud" size={22} color={C.muted} />;
+  }
+  return <Feather name="sun" size={22} color={C.accent} />;
+}
 
 // ─── Alt bileşenler ───────────────────────────────────────────────────────────
 
 function TodayComboCard({ combo }: { combo: Combo }) {
   return (
     <View style={styles.comboCard}>
+      <Text style={styles.comboTag}>GÜNÜN KOMBİNİ</Text>
       <View style={styles.comboImages}>
         {combo.items.map((item: WardrobeItem) => (
           <View key={item.id} style={styles.comboImageWrap}>
@@ -54,14 +77,12 @@ function TodayComboCard({ combo }: { combo: Combo }) {
             />
           </View>
         ))}
-        <View style={[styles.scorePill, { backgroundColor: SCORE_COLOR(combo.score) }]}>
-          <Text style={styles.scorePillText}>{combo.score}%</Text>
-        </View>
       </View>
       <View style={styles.comboFooter}>
         <Text style={styles.comboLabel}>{combo.label}</Text>
-        <View style={styles.comboPill}>
-          <Text style={styles.comboPillText}>Günün Seçimi</Text>
+        <View style={styles.comboRight}>
+          <Text style={styles.comboScore}>{combo.score}%</Text>
+          <Text style={styles.comboAction}>Günün Seçimi →</Text>
         </View>
       </View>
     </View>
@@ -71,7 +92,7 @@ function TodayComboCard({ combo }: { combo: Combo }) {
 function EmptyComboCard({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.emptyCombo} onPress={onPress} activeOpacity={0.85}>
-      <Text style={styles.emptyComboIcon}>✨</Text>
+      <Feather name="plus-circle" size={32} color={C.border} style={{ marginBottom: 14 }} />
       <Text style={styles.emptyComboTitle}>Kombinin hazır değil</Text>
       <Text style={styles.emptyComboSub}>
         Üst, alt ve ayakkabı ekle — kombin otomatik oluşsun
@@ -84,17 +105,17 @@ function EmptyComboCard({ onPress }: { onPress: () => void }) {
 }
 
 function QuickAction({
-  emoji,
+  icon,
   label,
   onPress,
 }: {
-  emoji: string;
+  icon: React.ReactNode;
   label: string;
   onPress: () => void;
 }) {
   return (
     <TouchableOpacity style={styles.quickAction} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.quickActionEmoji}>{emoji}</Text>
+      {icon}
       <Text style={styles.quickActionLabel}>{label}</Text>
     </TouchableOpacity>
   );
@@ -126,7 +147,7 @@ export default function HomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-        {/* ── Üst başlık ── */}
+        {/* ── Header ── */}
         <View style={styles.topBar}>
           <View style={styles.greetingWrap}>
             <Text style={styles.greeting}>
@@ -138,6 +159,7 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
         </View>
+        <View style={styles.separator} />
 
         {/* ── Günün Kombini ── */}
         <View style={styles.sectionHeader}>
@@ -146,18 +168,20 @@ export default function HomeScreen({ navigation }: Props) {
         {todayCombo ? (
           <TodayComboCard combo={todayCombo} />
         ) : (
-          <EmptyComboCard onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })} />
+          <EmptyComboCard
+            onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
+          />
         )}
 
         {/* ── Hava Durumu ── */}
         <View style={styles.weatherCard}>
           {weatherLoading ? (
-            <ActivityIndicator color="#4A90D9" size="small" style={{ flex: 1 }} />
+            <ActivityIndicator color={C.muted} size="small" style={{ flex: 1 }} />
           ) : weather ? (
             <>
               <View style={styles.weatherLeft}>
-                <Text style={styles.weatherIcon}>{weather.icon}</Text>
-                <View>
+                <WeatherIcon description={weather.description} />
+                <View style={{ marginLeft: 10 }}>
                   <Text style={styles.weatherCity}>İstanbul</Text>
                   <Text style={styles.weatherTemp}>{weather.temp}°C · {weather.description}</Text>
                 </View>
@@ -166,35 +190,30 @@ export default function HomeScreen({ navigation }: Props) {
               <Text style={styles.weatherTip}>{weather.recommendation}</Text>
             </>
           ) : (
-            <>
-              <View style={styles.weatherLeft}>
-                <Text style={styles.weatherIcon}>🌡️</Text>
-                <View>
-                  <Text style={styles.weatherCity}>İstanbul</Text>
-                  <Text style={styles.weatherTemp}>Hava durumu alınamadı</Text>
-                </View>
+            <View style={styles.weatherLeft}>
+              <Feather name="thermometer" size={20} color={C.muted} />
+              <View style={{ marginLeft: 10 }}>
+                <Text style={styles.weatherCity}>İstanbul</Text>
+                <Text style={styles.weatherTemp}>Hava durumu alınamadı</Text>
               </View>
-            </>
+            </View>
           )}
         </View>
 
         {/* ── Hızlı Aksiyonlar ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Hızlı Erişim</Text>
-        </View>
         <View style={styles.quickRow}>
           <QuickAction
-            emoji="📸"
+            icon={<Feather name="camera" size={20} color={C.primary} />}
             label="Yükle"
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
           />
           <QuickAction
-            emoji="🛍️"
+            icon={<Feather name="shopping-bag" size={20} color={C.primary} />}
             label="Mağaza"
             onPress={() => navigation.navigate('Scan')}
           />
           <QuickAction
-            emoji="✨"
+            icon={<Ionicons name="sparkles-outline" size={20} color={C.primary} />}
             label="Kombin"
             onPress={() => navigation.navigate('Combos')}
           />
@@ -234,186 +253,189 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: C.bg,
   },
   scroll: {
     paddingBottom: 24,
   },
+  separator: {
+    height: 1,
+    backgroundColor: C.border,
+  },
 
-  // Üst başlık
+  // Header
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingHorizontal: 24,
+    paddingTop: 14,
     paddingBottom: 20,
-    backgroundColor: colors.white,
+    backgroundColor: C.bg,
   },
   greetingWrap: {
     flex: 1,
   },
   greeting: {
-    fontSize: 22,
+    fontSize: 28,
     fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 2,
+    color: C.primary,
+    marginBottom: 5,
+    lineHeight: 34,
   },
   greetingSub: {
     fontSize: 13,
     fontFamily: fonts.body,
-    color: colors.muted,
+    color: C.muted,
+    letterSpacing: 0.2,
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primary,
+    backgroundColor: C.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: fonts.bodyBold,
-    color: colors.white,
+    color: C.white,
+    letterSpacing: 0.5,
   },
 
-  // Section header
+  // Bölüm başlığı
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 12,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 14,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: fonts.headingBold,
-    color: colors.primary,
+    color: C.primary,
+    letterSpacing: 0.3,
   },
   seeAll: {
-    fontSize: 13,
-    fontFamily: fonts.bodyMedium,
-    color: colors.accent,
+    fontSize: 11,
+    fontFamily: fonts.bodyBold,
+    color: C.accent,
+    letterSpacing: 0.3,
   },
 
-  // Günün Kombini — dolu
+  // Günün kombini — dolu
   comboCard: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     borderRadius: 20,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: C.white,
     overflow: 'hidden',
-    boxShadow: '0 2px 8px rgba(26,26,46,0.06)',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
     elevation: 2,
+  },
+  comboTag: {
+    fontSize: 10,
+    fontFamily: fonts.bodyBold,
+    color: C.muted,
+    letterSpacing: 2,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   comboImages: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 16,
     gap: 10,
-    backgroundColor: colors.surface,
-    position: 'relative',
+    backgroundColor: C.bg,
   },
   comboImageWrap: {
     flex: 1,
     aspectRatio: 3 / 4,
     borderRadius: 12,
-    backgroundColor: colors.white,
+    backgroundColor: C.white,
     overflow: 'hidden',
   },
   comboImage: {
     width: '100%',
     height: '100%',
   },
-  scorePill: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-  },
-  scorePillText: {
-    fontSize: 12,
-    fontFamily: fonts.bodyBold,
-    color: colors.white,
-  },
   comboFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
   comboLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    color: C.primary,
   },
-  comboPill: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: colors.overlay,
+  comboRight: {
+    alignItems: 'flex-end',
+    gap: 3,
   },
-  comboPillText: {
-    fontSize: 12,
-    fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+  comboScore: {
+    fontSize: 13,
+    fontFamily: fonts.bodyBold,
+    color: C.primary,
+  },
+  comboAction: {
+    fontSize: 11,
+    fontFamily: fonts.body,
+    color: C.muted,
+    letterSpacing: 0.2,
   },
 
-  // Günün Kombini — boş
+  // Günün kombini — boş
   emptyCombo: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     borderRadius: 20,
-    backgroundColor: colors.white,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    backgroundColor: C.white,
+    borderWidth: 1,
+    borderColor: C.border,
     borderStyle: 'dashed',
-    padding: 28,
+    padding: 32,
     alignItems: 'center',
   },
-  emptyComboIcon: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
   emptyComboTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    color: C.primary,
     marginBottom: 6,
     textAlign: 'center',
   },
   emptyComboSub: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: fonts.body,
-    color: colors.muted,
+    color: C.muted,
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 16,
+    lineHeight: 18,
+    marginBottom: 18,
   },
   emptyComboBtn: {
     paddingVertical: 9,
     paddingHorizontal: 24,
     borderRadius: 20,
-    backgroundColor: colors.accent,
+    backgroundColor: C.primary,
   },
   emptyComboText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: fonts.bodyBold,
-    color: colors.white,
+    color: C.white,
+    letterSpacing: 0.3,
   },
 
   // Hava durumu
   weatherCard: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginTop: 20,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: '#EBF4FF',
+    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: '#C8DFFF',
+    borderColor: C.border,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -421,78 +443,76 @@ const styles = StyleSheet.create({
   weatherLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  weatherIcon: {
-    fontSize: 28,
   },
   weatherCity: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    color: C.primary,
   },
   weatherTemp: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: fonts.body,
-    color: colors.muted,
-    marginTop: 1,
+    color: C.muted,
+    marginTop: 2,
   },
   weatherDivider: {
     width: 1,
-    height: 32,
-    backgroundColor: '#C8DFFF',
+    height: 28,
+    backgroundColor: C.border,
   },
   weatherTip: {
     flex: 1,
-    fontSize: 13,
-    fontFamily: fonts.bodyMedium,
-    color: colors.secondary,
-    lineHeight: 18,
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: C.muted,
+    lineHeight: 17,
+    fontStyle: 'italic',
   },
 
   // Hızlı aksiyonlar
   quickRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     gap: 12,
+    marginTop: 24,
   },
   quickAction: {
     flex: 1,
     aspectRatio: 1,
     borderRadius: 18,
-    backgroundColor: colors.white,
+    backgroundColor: C.white,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    boxShadow: '0 1px 4px rgba(26,26,46,0.04)',
+    gap: 7,
+    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
     elevation: 1,
   },
-  quickActionEmoji: {
-    fontSize: 26,
-  },
   quickActionLabel: {
-    fontSize: 12,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    fontSize: 11,
+    fontFamily: fonts.body,
+    color: C.muted,
+    letterSpacing: 0.2,
   },
 
   // Dolap önizleme
   previewGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     gap: 10,
   },
   previewItem: {
     width: '47%',
     aspectRatio: 3 / 4,
-    borderRadius: 14,
-    backgroundColor: colors.white,
+    borderRadius: 16,
+    backgroundColor: C.white,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: C.border,
     overflow: 'hidden',
+    boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+    elevation: 1,
   },
   previewImage: {
     width: '100%',
