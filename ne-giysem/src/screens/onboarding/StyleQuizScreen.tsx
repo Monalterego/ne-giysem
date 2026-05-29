@@ -8,9 +8,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, spacing } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleQuiz'>;
 
@@ -161,6 +162,10 @@ export default function StyleQuizScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <Feather name="arrow-left" size={20} color={colors.text} />
+      </TouchableOpacity>
+
       {/* İlerleme çubuğu */}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: progressPct as `${number}%` }]} />
@@ -205,6 +210,11 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.white,
+  },
+  backBtn: {
+    paddingTop: spacing.lg,
+    paddingLeft: spacing.md,
+    alignSelf: 'flex-start',
   },
   progressTrack: {
     height: 4,
