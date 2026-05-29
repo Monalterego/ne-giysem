@@ -99,6 +99,9 @@ export async function generateVirtualModelImage(
     `White studio background, full body shot, professional fashion photography, ` +
     `natural lighting, high quality, realistic, clean composition.`;
 
+  console.log('API key:', process.env.EXPO_PUBLIC_OPENAI_API_KEY?.substring(0, 10));
+  console.log('Prompt:', prompt);
+
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
