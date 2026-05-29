@@ -110,7 +110,7 @@ export async function generateVirtualModelImage(
       prompt,
       n:       1,
       size:    '1024x1536',
-      quality: 'standard',
+      quality: 'medium',
     }),
   });
 
