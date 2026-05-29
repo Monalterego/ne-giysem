@@ -12,7 +12,7 @@ export async function generateDailyCombo(
 ): Promise<Combo | null> {
   if (!items.length) return null;
   try {
-    const results = await generateCombosAI(items, userProfile, weather ?? undefined, 'casual', 1);
+    const results = await generateCombosAI(items, userProfile, weather ?? undefined, 'gunluk', 0, []);
     return results[0] ?? null;
   } catch {
     return null;

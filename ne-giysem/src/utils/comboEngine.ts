@@ -1,4 +1,6 @@
 import type { WardrobeItem, Combo, Season } from '../types';
+import { OCCASIONS } from '../constants/occasions';
+import type { OccasionId } from '../constants/occasions';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
@@ -15,11 +17,14 @@ export interface UserProfileInput {
 
 const OCCASION_TR: Record<Occasion, string> = {
   all:     'Günlük',
-  casual:  'Günlük',
-  work:    'İş',
-  date:    'Romantik',
-  sport:   'Spor',
-  special: 'Özel Davet',
+  gunluk:  'Günlük',
+  is:      'İş',
+  brunch:  'Brunch & Kahve',
+  gece:    'Gece & Out',
+  date:    'Date',
+  davet:   'Düğün & Davet',
+  spor:    'Spor & Aktif',
+  seyahat: 'Seyahat',
 };
 
 function getCurrentSeason(): Season {
@@ -35,7 +40,8 @@ function seasonDesc(s: Season): string {
   return map[s];
 }
 
-export type Occasion = 'all' | 'casual' | 'work' | 'date' | 'sport' | 'special';
+export type Occasion = OccasionId | 'all';
+export type { OccasionId };
 
 // ─── Renk yardımcıları ───────────────────────────────────────────────────────
 
@@ -84,14 +90,14 @@ function isWarmColor(hex: string): boolean {
 
 // Bir parçanın belirli bir occasion'a uyum katsayısı (-0.15 ile +0.15 arası)
 function itemOccasionFit(item: WardrobeItem, occasion: Occasion): number {
-  if (occasion === 'all' || occasion === 'casual') return 0;
+  if (occasion === 'all' || occasion === 'gunluk' || occasion === 'brunch' || occasion === 'seyahat') return 0;
   const fabric  = item.fabric ?? 'unknown';
   const pattern = item.pattern ?? '';
   const allNeutral  = item.colors.length > 0 && item.colors.every(isNeutral);
   const hasWarm     = item.colors.some(isWarmColor);
 
   switch (occasion) {
-    case 'work': {
+    case 'is': {
       let fit = 0;
       if (allNeutral) fit += 0.08;
       if (['cotton', 'linen', 'silk', 'wool', 'blend'].includes(fabric)) fit += 0.06;
@@ -100,13 +106,14 @@ function itemOccasionFit(item: WardrobeItem, occasion: Occasion): number {
       if (pattern === 'floral') fit -= 0.05;
       return fit;
     }
-    case 'sport': {
+    case 'spor': {
       let fit = 0;
       if (fabric === 'polyester') fit += 0.15;
       if (fabric === 'cotton') fit += 0.03;
       return fit;
     }
-    case 'date': {
+    case 'date':
+    case 'gece': {
       let fit = 0;
       if (hasWarm) fit += 0.08;
       if (['silk', 'satin', 'velvet'].includes(fabric)) fit += 0.10;
@@ -114,7 +121,7 @@ function itemOccasionFit(item: WardrobeItem, occasion: Occasion): number {
       if (allNeutral && !hasWarm) fit -= 0.03;
       return fit;
     }
-    case 'special': {
+    case 'davet': {
       let fit = 0;
       if (['silk', 'satin', 'velvet'].includes(fabric)) fit += 0.12;
       if (hasWarm) fit += 0.05;
@@ -281,20 +288,21 @@ export async function generateCombosAI(
   userProfile: UserProfileInput,
   weather?: { temp: number; description: string } | null,
   occasion: Occasion = 'all',
-  count = 12,
+  page = 0,
+  previousItemIds: string[] = [],
 ): Promise<Combo[]> {
   if (!API_KEY) throw new Error('Anthropic API key eksik');
   if (!items.length) return [];
 
   // Mevsim ön filtresi
-  const season  = getCurrentSeason();
-  const filtered = items.filter(
-    (i) => i.seasons.length === 0 || i.seasons.includes(season),
-  );
-  const pool = filtered.length >= 3 ? filtered : items;
+  const season   = getCurrentSeason();
+  const filtered = items.filter((i) => i.seasons.length === 0 || i.seasons.includes(season));
+  const pool     = filtered.length >= 3 ? filtered : items;
+
+  const occasionData = OCCASIONS.find((o) => o.id === occasion) ?? OCCASIONS[0];
 
   const wardrobeText = pool.map((item) =>
-    `- ID:${item.id} | ${item.itemName ?? item.category} | ${item.category}` +
+    `- ID:${item.id} | ${item.itemName ?? item.subCategory ?? item.category} (${item.subCategory ?? item.category})` +
     ` | Renk: ${item.colors[0] ?? 'belirsiz'}` +
     ` | Kumaş: ${item.fabric ?? 'belirsiz'}` +
     ` | Desen: ${item.pattern ?? 'düz'}` +
@@ -311,11 +319,45 @@ export async function generateCombosAI(
       ? `- Saç: ${[userProfile.hairColor, userProfile.hairLength, userProfile.hairType].filter(Boolean).join(', ')}` : null,
   ].filter(Boolean).join('\n') || '- Profil bilgisi girilmemiş';
 
-  const weatherText = weather ? `${weather.temp}°C, ${weather.description}` : 'Bilinmiyor';
+  const weatherText    = weather ? `${weather.temp}°C, ${weather.description}` : 'Bilinmiyor';
+  const previousNote   = previousItemIds.length > 0
+    ? `\nDAHA ÖNCE GÖSTERİLEN PARÇALAR: ${previousItemIds.join(', ')} — Bu parçaları içeren kombinler yerine farklı parçaları ön plana çıkar.`
+    : '';
 
-  const systemPrompt = `Sen uzman bir moda stilistisin. Renk teorisi, Kibbe vücut tipleri, seasonal color analysis ve stil sistemleri konusunda derin bilgin var. Kullanıcının tüm verilerini kullanarak kişiselleştirilmiş kombin önerileri yapıyorsun. Sadece JSON döndür, başka hiçbir şey yazma.`;
+  const systemPrompt = `Sen uzman bir moda stilistisin. Renk teorisi, Kibbe vücut tipleri, seasonal color analysis ve stil sistemleri konusunda derin bilgin var. Kullanıcının fiziksel özelliklerine ve stil profiline göre kişiselleştirilmiş kombin önerileri yapıyorsun. Sadece JSON döndür, başka hiçbir şey yazma.`;
 
-  const userPrompt = `KULLANICI PROFİLİ:\n${profileLines}\n\nHAVA DURUMU: ${weatherText}\nOKASYON: ${OCCASION_TR[occasion]}\n\nGARDROP PARÇALARI:\n${wardrobeText}\n\nGÖREV:\nBu kişi için ${count} adet kombin öner. Fashion teorisi kurallarını uygula:\n- Ten rengine uygun renk paleti\n- Vücut tipine uygun silüet ve proporsiyon\n- Stil DNA'ya uygun kombinasyonlar\n- Hava durumu ve okasyona uygunluk\n- Renk uyumu (color wheel, neutral balance)\n- Kumaş kombinasyonu uyumu\n\nHer kombin için kısa bir Türkçe gerekçe yaz (1 cümle).\n\nJSON formatı:\n{\n  "combos": [\n    {\n      "items": ["item_id_1", "item_id_2", "item_id_3"],\n      "score": 92,\n      "occasion": "${OCCASION_TR[occasion]}",\n      "reasoning": "Ten renginle uyumlu nötr tonlar ve vücut tipini dengeleyen proporsiyon"\n    }\n  ]\n}`;
+  const userPrompt =
+`KULLANICI PROFİLİ:
+${profileLines}
+
+HAVA DURUMU: ${weatherText}
+
+OKASYON: ${occasionData.label}
+OKASYON TANIMI: ${occasionData.styleGuide}
+${previousNote}
+
+GARDROP PARÇALARI (${pool.length} parça):
+${wardrobeText}
+
+GÖREV:
+Bu kişi için 5 adet kombin öner. Her kombinasyonda:
+- Mutlaka 1 üst VEYA elbise/tulum + 1 alt (elbise değilse) + 1 ayakkabı olsun
+- Okasyon tanımına kesinlikle uy
+- Ten rengine ve vücut tipine uygun parçaları tercih et
+- Stil DNA'ya uygun kombinasyonlar kur
+- Renk uyumuna dikkat et
+
+JSON formatı:
+{
+  "combos": [
+    {
+      "items": ["item_id_1", "item_id_2", "item_id_3"],
+      "score": 92,
+      "occasion": "${occasionData.id}",
+      "reasoning": "Kısa Türkçe gerekçe (1 cümle)"
+    }
+  ]
+}`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -327,7 +369,7 @@ export async function generateCombosAI(
     },
     body: JSON.stringify({
       model:      'claude-sonnet-4-5-20250929',
-      max_tokens: 2048,
+      max_tokens: 1024,
       system:     systemPrompt,
       messages:   [{ role: 'user', content: userPrompt }],
     }),
@@ -363,7 +405,7 @@ export async function generateCombosAI(
       } as Combo;
     })
     .filter((c): c is Combo => c !== null)
-    .slice(0, count);
+    .slice(0, 5);
 }
 
 // ID listesinden Combo nesnesi oluşturur (Supabase cache'den geri yüklemek için)

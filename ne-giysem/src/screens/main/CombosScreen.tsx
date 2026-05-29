@@ -19,6 +19,7 @@ import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { generateCombos, generateCombosAI, missingCategories } from '../../utils/comboEngine';
 import type { Occasion, UserProfileInput } from '../../utils/comboEngine';
+import { OCCASIONS } from '../../constants/occasions';
 import { generateVirtualModelImage } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
@@ -34,15 +35,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   bag:            'Çanta',
   accessory:      'Aksesuar',
 };
-
-const OCCASIONS: { label: string; value: Occasion }[] = [
-  { label: 'Tümü',   value: 'all'     },
-  { label: 'Günlük', value: 'casual'  },
-  { label: 'İş',     value: 'work'    },
-  { label: 'Date',   value: 'date'    },
-  { label: 'Spor',   value: 'sport'   },
-  { label: 'Özel',   value: 'special' },
-];
 
 const SUGGESTED_LABEL: Record<string, string> = {
   bag:       'Çanta',
@@ -300,6 +292,8 @@ export default function CombosScreen() {
   const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
   const [aiCombos,       setAiCombos]       = useState<Combo[]>([]);
   const [aiLoading,      setAiLoading]      = useState(false);
+  const [page,           setPage]           = useState(0);
+  const [loadingMore,    setLoadingMore]    = useState(false);
 
   // Virtual model state
   const [generatingComboId,    setGeneratingComboId]    = useState<string | null>(null);
@@ -333,18 +327,47 @@ export default function CombosScreen() {
       hairType:   user.hairType,
     };
 
-    generateCombosAI(items, profile, weather, activeOccasion, 12)
+    setPage(0);
+    generateCombosAI(items, profile, weather, activeOccasion, 0, [])
       .then((results) => {
         if (cancelled) return;
-        setAiCombos(results.length ? results : generateCombos(items, 12, activeOccasion));
+        setAiCombos(results.length ? results : generateCombos(items, 5, activeOccasion));
       })
       .catch(() => {
-        if (!cancelled) setAiCombos(generateCombos(items, 12, activeOccasion));
+        if (!cancelled) setAiCombos(generateCombos(items, 5, activeOccasion));
       })
       .finally(() => { if (!cancelled) setAiLoading(false); });
 
     return () => { cancelled = true; };
   }, [items, activeOccasion, user?.id]);
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !items.length || !user) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const prevIds = [...new Set(aiCombos.flatMap((c) => c.items.map((i) => i.id)))];
+    const profile: UserProfileInput = {
+      styleProfile: user.styleProfile?.styles.map((s) => `${s.name} %${s.weight}`).join(', '),
+      height:     user.height,
+      age:        user.age,
+      bodyType:   user.bodyType,
+      skinTone:   user.skinTone,
+      hairColor:  user.hairColor,
+      hairLength: user.hairLength,
+      hairType:   user.hairType,
+    };
+    try {
+      const results = await generateCombosAI(items, profile, weather, activeOccasion, nextPage, prevIds);
+      if (results.length) {
+        setAiCombos((prev) => [...prev, ...results]);
+        setPage(nextPage);
+      }
+    } catch {
+      // sessiz hata
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleWear = async (combo: Combo) => {
     if (!user) return;
@@ -457,17 +480,29 @@ export default function CombosScreen() {
         style={styles.filterBar}
         contentContainerStyle={styles.filterBarContent}
       >
-        {OCCASIONS.map(({ label, value }) => {
-          const active = activeOccasion === value;
+        <TouchableOpacity
+          key="all"
+          style={[styles.chip, activeOccasion === 'all' && styles.chipActive]}
+          onPress={() => setActiveOccasion('all')}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.chipText, activeOccasion === 'all' && styles.chipTextActive]}>
+            Tümü
+          </Text>
+        </TouchableOpacity>
+
+        {OCCASIONS.map((occ) => {
+          const active = activeOccasion === occ.id;
           return (
             <TouchableOpacity
-              key={value}
+              key={occ.id}
               style={[styles.chip, active && styles.chipActive]}
-              onPress={() => setActiveOccasion(value)}
+              onPress={() => setActiveOccasion(occ.id)}
               activeOpacity={0.75}
             >
+              <Feather name={occ.icon as any} size={12} color={active ? colors.white : colors.text} />
               <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {label}
+                {occ.label}
               </Text>
             </TouchableOpacity>
           );
@@ -521,6 +556,17 @@ export default function CombosScreen() {
               />
             );
           }}
+          ListFooterComponent={
+            <View style={styles.loadMoreContainer}>
+              {loadingMore ? (
+                <ActivityIndicator color={colors.textSecondary} size="small" />
+              ) : (
+                <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore} activeOpacity={0.85}>
+                  <Text style={styles.loadMoreText}>Daha fazla kombin</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          }
         />
       )}
 
@@ -604,6 +650,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: radius.sm,
@@ -803,6 +852,25 @@ const styles = StyleSheet.create({
   suggestionLabel: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+
+  // Daha fazla yükle
+  loadMoreContainer: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+    alignItems: 'center',
+  },
+  loadMoreBtn: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  loadMoreText: {
+    ...typography.label,
+    color: colors.text,
   },
 
   // AI yükleme durumu
