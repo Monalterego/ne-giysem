@@ -291,6 +291,17 @@ function isOuter(item: WardrobeItem): boolean {
   return item.category === 'outer' || OUTER_SUBCATEGORIES.includes(item.subCategory ?? '');
 }
 
+const OCCASION_PRIORITY: Record<string, string[]> = {
+  gece:    ['mini_elbise', 'midi_elbise', 'topuklu', 'sandalet', 'etek'],
+  date:    ['midi_elbise', 'maxi_elbise', 'mini_elbise', 'topuklu', 'sandalet', 'etek', 'bluz'],
+  davet:   ['maxi_elbise', 'midi_elbise', 'topuklu'],
+  is:      ['blazer', 'gomlek', 'pantolon', 'topuklu', 'loafer'],
+  brunch:  ['midi_elbise', 'etek', 'bluz', 'loafer', 'sandalet'],
+  spor:    ['tayt', 'sort', 'tisort', 'hoodie', 'sneaker'],
+  seyahat: ['pantolon', 'sneaker', 'loafer', 'bluz', 'tisort'],
+  gunluk:  ['jean', 'tisort', 'bluz', 'sneaker', 'loafer'],
+};
+
 export async function generateCombosAI(
   items: WardrobeItem[],
   userProfile: UserProfileInput,
@@ -298,6 +309,7 @@ export async function generateCombosAI(
   occasion: Occasion = 'all',
   page = 0,
   previousItemIds: string[] = [],
+  styleProfile?: Record<string, number>,
 ): Promise<Combo[]> {
   if (!API_KEY) throw new Error('Anthropic API key eksik');
   if (!items.length) return [];
@@ -315,6 +327,14 @@ export async function generateCombosAI(
   const outerPool    = validPool.filter(isOuter);
   const optionalPool = validPool.filter((i) => ['bag', 'accessory'].includes(i.category));
   const corePool     = validPool.filter((i) => !isOuter(i) && !['bag', 'accessory'].includes(i.category));
+
+  // Okasyon önceliğine göre sırala — AI listedeki ilk parçalara daha fazla ağırlık verir
+  const prioritySubs = OCCASION_PRIORITY[occasion] ?? [];
+  corePool.sort((a, b) => {
+    const aScore = prioritySubs.indexOf(a.subCategory ?? '');
+    const bScore = prioritySubs.indexOf(b.subCategory ?? '');
+    return (aScore === -1 ? 999 : aScore) - (bScore === -1 ? 999 : bScore);
+  });
 
   const wardrobeText = corePool.map((item) =>
     `- ID:${item.id} | ${item.itemName} (${item.subCategory ?? item.category})` +
@@ -335,7 +355,9 @@ export async function generateCombosAI(
     : '';
 
   const profileLines = [
-    userProfile.styleProfile ? `- Stil DNA: ${userProfile.styleProfile}` : null,
+    styleProfile
+      ? `- Stil DNA: ${Object.entries(styleProfile).map(([k, v]) => `${k} %${v}`).join(', ')}`
+      : (userProfile.styleProfile ? `- Stil DNA: ${userProfile.styleProfile}` : null),
     userProfile.height       ? `- Boy: ${userProfile.height}cm`          : null,
     userProfile.age          ? `- Yaş: ${userProfile.age}`               : null,
     userProfile.bodyType     ? `- Vücut tipi: ${userProfile.bodyType}`   : null,

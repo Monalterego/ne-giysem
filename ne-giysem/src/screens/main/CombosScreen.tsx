@@ -305,8 +305,11 @@ export default function CombosScreen() {
     let cancelled = false;
     setAiLoading(true);
 
+    const styleProfileMap = user.styleProfile?.styles.reduce<Record<string, number>>(
+      (acc, s) => ({ ...acc, [s.name]: s.weight }),
+      {},
+    );
     const profile: UserProfileInput = {
-      styleProfile: user.styleProfile?.styles.map((s) => `${s.name} %${s.weight}`).join(', '),
       height:     user.height,
       age:        user.age,
       bodyType:   user.bodyType,
@@ -317,7 +320,7 @@ export default function CombosScreen() {
     };
 
     setPage(0);
-    generateCombosAI(items, profile, weather, activeOccasion, 0, [])
+    generateCombosAI(items, profile, weather, activeOccasion, 0, [], styleProfileMap)
       .then((results) => {
         if (cancelled) return;
         const finalResults = results.length ? results : generateCombos(items, 5, activeOccasion);
@@ -341,8 +344,11 @@ export default function CombosScreen() {
     setLoadingMore(true);
     const nextPage = page + 1;
     const prevIds = [...new Set(aiCombos.flatMap((c) => c.items.map((i) => i.id)))];
+    const styleProfileMap = user.styleProfile?.styles.reduce<Record<string, number>>(
+      (acc, s) => ({ ...acc, [s.name]: s.weight }),
+      {},
+    );
     const profile: UserProfileInput = {
-      styleProfile: user.styleProfile?.styles.map((s) => `${s.name} %${s.weight}`).join(', '),
       height:     user.height,
       age:        user.age,
       bodyType:   user.bodyType,
@@ -352,7 +358,7 @@ export default function CombosScreen() {
       hairType:   user.hairType,
     };
     try {
-      const results = await generateCombosAI(items, profile, weather, activeOccasion, nextPage, prevIds);
+      const results = await generateCombosAI(items, profile, weather, activeOccasion, nextPage, prevIds, styleProfileMap);
       if (results.length) {
         const newAll = [...aiCombos, ...results];
         setCache(activeOccasion, newAll);
