@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
@@ -20,7 +20,7 @@ import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { ClothingCategory, WardrobeItem } from '../../types';
 import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
 type ViewMode = 'grid' | 'list';
@@ -81,7 +81,7 @@ export default function WardrobeScreen({ navigation }: Props) {
     if (user?.id) fetchItems(user.id);
   }, [user?.id]);
 
-  // ─── Seçim modu ─────────────────────────────────────────────────────────────
+  // ─── Seçim modu ──────────────────────────────────────────────────────────────
 
   const handleLongPress = (id: string) => setSelectedIds(new Set([id]));
 
@@ -162,7 +162,7 @@ export default function WardrobeScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
-          <ActivityIndicator color={colors.accent} size="large" />
+          <ActivityIndicator color={colors.textTertiary} size="large" />
         </View>
       </SafeAreaView>
     );
@@ -172,7 +172,7 @@ export default function WardrobeScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>👗</Text>
+          <Feather name="inbox" size={48} color={colors.border} style={{ marginBottom: spacing.lg }} />
           <Text style={styles.emptyTitle}>Henüz kıyafet eklemedin</Text>
           <Text style={styles.emptySubtitle}>
             Dolabını dijitalleştirmek için{'\n'}ilk kıyafetini ekle
@@ -210,16 +210,16 @@ export default function WardrobeScreen({ navigation }: Props) {
           <TouchableOpacity
             style={styles.menuBtn}
             onPress={() => openItemMenu(item)}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="ellipsis-vertical" size={16} color={colors.primary} />
+            <Feather name="more-vertical" size={14} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
         {selectionMode && (
           <View style={[styles.selectionOverlay, selected && styles.selectionOverlaySelected]}>
             {selected && (
               <View style={styles.checkCircle}>
-                <Ionicons name="checkmark" size={16} color={colors.white} />
+                <Ionicons name="checkmark" size={14} color={colors.white} />
               </View>
             )}
           </View>
@@ -258,7 +258,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         </View>
         {selectionMode ? (
           <View style={[styles.checkCircleList, selected && styles.checkCircleListSelected]}>
-            {selected && <Ionicons name="checkmark" size={14} color={colors.white} />}
+            {selected && <Ionicons name="checkmark" size={13} color={colors.white} />}
           </View>
         ) : (
           <TouchableOpacity
@@ -266,7 +266,7 @@ export default function WardrobeScreen({ navigation }: Props) {
             onPress={() => openItemMenu(item)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="ellipsis-vertical" size={16} color={colors.muted} />
+            <Feather name="more-vertical" size={15} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -277,38 +277,40 @@ export default function WardrobeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe}>
+
       {/* Header */}
       {selectionMode ? (
         <View style={styles.header}>
           <TouchableOpacity onPress={cancelSelection} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Text style={styles.cancelBtn}>İptal</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{selectedIds.size} parça seçildi</Text>
+          <Text style={styles.selectionTitle}>{selectedIds.size} parça seçildi</Text>
           <TouchableOpacity
             onPress={confirmDeleteSelected}
             disabled={deleting}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {deleting
-              ? <ActivityIndicator color={colors.accent} size="small" />
+              ? <ActivityIndicator color={colors.error} size="small" />
               : <Text style={styles.deleteBtn}>Sil</Text>
             }
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Dolabım</Text>
-          <Text style={styles.headerCount}>{filteredItems.length} parça</Text>
-          {/* Görünüm toggle */}
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Dolabım</Text>
+            <Text style={styles.headerCount}>{filteredItems.length} parça</Text>
+          </View>
           <View style={styles.viewToggle}>
             <TouchableOpacity
               onPress={() => changeViewMode('grid')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons
-                name="grid-outline"
-                size={20}
-                color={viewMode === 'grid' ? colors.accent : colors.muted}
+                name={viewMode === 'grid' ? 'grid' : 'grid-outline'}
+                size={19}
+                color={viewMode === 'grid' ? colors.text : colors.textTertiary}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -316,40 +318,29 @@ export default function WardrobeScreen({ navigation }: Props) {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons
-                name="list-outline"
+                name={viewMode === 'list' ? 'list' : 'list-outline'}
                 size={20}
-                color={viewMode === 'list' ? colors.accent : colors.muted}
+                color={viewMode === 'list' ? colors.text : colors.textTertiary}
               />
             </TouchableOpacity>
           </View>
           <TouchableOpacity
             style={styles.addBtn}
             onPress={() => navigation.navigate('Upload')}
-            activeOpacity={0.85}
+            activeOpacity={0.82}
           >
             <Text style={styles.addBtnText}>+ Yeni Parça</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Filtre chip'leri — seçim modunda gizle */}
+      {/* Filtre bar */}
       {!selectionMode && (
         <ScrollView
-          horizontal={true}
+          horizontal
           showsHorizontalScrollIndicator={false}
-          style={{
-            backgroundColor: '#FAFAFA',
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-            flexShrink: 0,
-          }}
-          contentContainerStyle={{
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            gap: 8,
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}
+          style={styles.filterBar}
+          contentContainerStyle={styles.filterBarContent}
         >
           {FILTERS.map(({ label, value }) => {
             const active = activeFilter === value;
@@ -369,7 +360,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         </ScrollView>
       )}
 
-      {/* İçerik — key ile numColumns değişiminde yeniden mount et */}
+      {/* İçerik */}
       <FlatList
         key={viewMode}
         data={filteredItems}
@@ -396,232 +387,235 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // ─── Boş durum ───────────────────────────────────────────────────────────────
+  // Boş durum
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyEmoji: {
-    fontSize: 72,
-    marginBottom: 20,
+    paddingHorizontal: spacing.xl,
   },
   emptyTitle: {
-    fontSize: 22,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
+    ...typography.h2,
+    color: colors.text,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 36,
+    marginBottom: spacing.xl,
   },
   cta: {
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 30,
-    backgroundColor: colors.accent,
-    boxShadow: '0 6px 12px rgba(233,69,96,0.35)',
-    elevation: 6,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.sm,
+    backgroundColor: colors.text,
   },
   ctaText: {
-    fontSize: 16,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
 
-  // ─── Header ──────────────────────────────────────────────────────────────────
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    gap: 8,
+    gap: spacing.sm,
+  },
+  headerLeft: {
+    flex: 1,
+    gap: 2,
   },
   headerTitle: {
-    fontSize: 18,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    flex: 1,
+    ...typography.h2,
+    color: colors.text,
   },
   headerCount: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  selectionTitle: {
+    ...typography.h3,
+    color: colors.text,
+    flex: 1,
+    textAlign: 'center',
   },
   viewToggle: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm,
     alignItems: 'center',
   },
   addBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: colors.accent,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
   },
   addBtnText: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
   cancelBtn: {
-    fontSize: 14,
-    fontFamily: fonts.bodyMedium,
-    color: colors.muted,
-    width: 52,
+    ...typography.body,
+    color: colors.textSecondary,
+    width: 48,
   },
   deleteBtn: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    width: 52,
+    color: colors.error,
+    width: 48,
     textAlign: 'right',
   },
 
-  // ─── Filtre bar ───────────────────────────────────────────────────────────────
+  // Filtre bar
+  filterBar: {
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexShrink: 0,
+  },
+  filterBarContent: {
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.sm + 2,
+    gap: spacing.xs + 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   filterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,
   },
   filterChipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.text,
+    borderColor: colors.text,
   },
   filterChipText: {
-    fontSize: 13,
-    fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    ...typography.label,
+    color: colors.text,
   },
   filterChipTextActive: {
     color: colors.white,
-    fontFamily: fonts.bodyBold,
   },
 
-  // ─── Grid görünümü ────────────────────────────────────────────────────────────
+  // Grid
   gridContainer: {
-    padding: 10,
+    padding: spacing.sm,
   },
   gridItem: {
     flex: 1,
-    margin: 6,
+    margin: spacing.xs + 2,
     aspectRatio: 3 / 4,
-    borderRadius: 16,
+    borderRadius: radius.md,
     backgroundColor: colors.white,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.subtle,
   },
   gridImage: {
     width: '100%',
     height: '100%',
   },
 
-  // ─── Liste görünümü ───────────────────────────────────────────────────────────
+  // Liste
   listContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    gap: 12,
-    paddingRight: 12,
+    gap: spacing.md,
+    paddingRight: spacing.md,
+    ...shadows.subtle,
   },
   listItemSelected: {
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(233,69,96,0.04)',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
   },
   listImage: {
-    width: 80,
-    height: 80,
+    width: 76,
+    height: 76,
     backgroundColor: colors.surface,
   },
   listInfo: {
     flex: 1,
-    gap: 3,
+    gap: spacing.xs - 1,
   },
   listCategory: {
-    fontSize: 14,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    ...typography.body,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
   },
   listSub: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   listSeasons: {
-    fontSize: 11,
-    fontFamily: fonts.bodyMedium,
-    color: colors.accent,
+    ...typography.caption,
+    color: colors.textTertiary,
   },
   menuBtnList: {
-    padding: 4,
+    padding: spacing.xs,
   },
   checkCircleList: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: radius.full,
     borderWidth: 1.5,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkCircleListSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.text,
+    borderColor: colors.text,
   },
 
-  // ─── "…" butonu (grid) ────────────────────────────────────────────────────────
+  // "…" butonu (grid)
   menuBtn: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: spacing.xs,
+    right: spacing.xs,
+    padding: spacing.xs,
   },
 
-  // ─── Seçim overlay (grid) ─────────────────────────────────────────────────────
+  // Seçim overlay (grid)
   selectionOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: radius.md,
     alignItems: 'flex-end',
     justifyContent: 'flex-start',
-    padding: 8,
+    padding: spacing.xs,
   },
   selectionOverlaySelected: {
-    backgroundColor: 'rgba(26,26,46,0.40)',
+    backgroundColor: 'rgba(10,10,10,0.32)',
   },
   checkCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.accent,
+    width: 24,
+    height: 24,
+    borderRadius: radius.full,
+    backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
