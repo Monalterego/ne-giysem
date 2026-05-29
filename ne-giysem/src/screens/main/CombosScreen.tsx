@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
@@ -245,9 +246,47 @@ function PremiumModal({
   );
 }
 
+// ─── Fotoğraf yok modalı ─────────────────────────────────────────────────────
+
+function NoAvatarModal({
+  visible,
+  onClose,
+  onGoToProfile,
+  onUseAiModel,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onGoToProfile: () => void;
+  onUseAiModel: () => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={noAvatarStyles.overlay}>
+        <View style={noAvatarStyles.card}>
+          <Text style={noAvatarStyles.title}>Fotoğraf Gerekiyor</Text>
+          <Text style={noAvatarStyles.body}>
+            Bu özelliği kullanmak için tam boy bir fotoğrafın gerekiyor. Yüzün ve vücudun görünür
+            olmalı, iyi aydınlatmalı düz bir zeminde dur.
+          </Text>
+          <TouchableOpacity style={noAvatarStyles.primaryBtn} onPress={onGoToProfile} activeOpacity={0.85}>
+            <Text style={noAvatarStyles.primaryBtnText}>Fotoğraf Ekle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={noAvatarStyles.secondaryBtn} onPress={onUseAiModel} activeOpacity={0.75}>
+            <Text style={noAvatarStyles.secondaryBtnText}>Yapay Manken Kullan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={noAvatarStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={noAvatarStyles.cancelBtnText}>Kapat</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function CombosScreen() {
+  const navigation     = useNavigation<any>();
   const items          = useWardrobeStore((s) => s.items);
   const isLoading      = useWardrobeStore((s) => s.isLoading);
   const fetchItems     = useWardrobeStore((s) => s.fetchItems);
@@ -260,10 +299,12 @@ export default function CombosScreen() {
   const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
 
   // Virtual model state
-  const [generatingComboId,   setGeneratingComboId]   = useState<string | null>(null);
-  const [modelImageUrl,       setModelImageUrl]        = useState<string | null>(null);
-  const [modelModalVisible,   setModelModalVisible]    = useState(false);
-  const [premiumModalVisible, setPremiumModalVisible]  = useState(false);
+  const [generatingComboId,    setGeneratingComboId]    = useState<string | null>(null);
+  const [modelImageUrl,        setModelImageUrl]         = useState<string | null>(null);
+  const [modelModalVisible,    setModelModalVisible]     = useState(false);
+  const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
+  const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
+  const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -288,7 +329,17 @@ export default function CombosScreen() {
     setSavingKey(null);
   };
 
-  const handleVirtualModel = async (combo: Combo) => {
+  // Avatar kontrolü: varsa direkt IDM-VTON, yoksa seçenek modalı
+  const handleVirtualModelPress = (combo: Combo) => {
+    if (!user?.avatarUrl) {
+      setPendingCombo(combo);
+      setNoAvatarModalVisible(true);
+      return;
+    }
+    handleVirtualModel(combo, user.avatarUrl);
+  };
+
+  const handleVirtualModel = async (combo: Combo, avatarUrl?: string) => {
     console.log('handleVirtualModel çağrıldı', combo);
     console.log('user physical profile:', user?.height, user?.bodyType, user?.skinTone);
     if (!user) return;
@@ -320,7 +371,7 @@ export default function CombosScreen() {
         hairType:   (profile?.hair_type  ?? null) as string | null,
       };
 
-      const url = await generateVirtualModelImage(physProfile, combo.items);
+      const url = await generateVirtualModelImage(physProfile, combo.items, avatarUrl);
 
       // Render sayısını artır
       await supabase
@@ -428,7 +479,7 @@ export default function CombosScreen() {
                 isSaving={savingKey === key}
                 isGenerating={generatingComboId === item.id}
                 onWear={() => handleWear(item)}
-                onVirtualModel={() => handleVirtualModel(item)}
+                onVirtualModel={() => handleVirtualModelPress(item)}
               />
             );
           }}
@@ -444,6 +495,20 @@ export default function CombosScreen() {
       <PremiumModal
         visible={premiumModalVisible}
         onClose={() => setPremiumModalVisible(false)}
+      />
+      <NoAvatarModal
+        visible={noAvatarModalVisible}
+        onClose={() => { setNoAvatarModalVisible(false); setPendingCombo(null); }}
+        onGoToProfile={() => {
+          setNoAvatarModalVisible(false);
+          setPendingCombo(null);
+          navigation.navigate('Profile');
+        }}
+        onUseAiModel={() => {
+          setNoAvatarModalVisible(false);
+          if (pendingCombo) handleVirtualModel(pendingCombo, undefined);
+          setPendingCombo(null);
+        }}
       />
 
     </SafeAreaView>
@@ -755,6 +820,69 @@ const modalStyles = StyleSheet.create({
     ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
+  },
+});
+
+// ─── Fotoğraf yok modal stilleri ─────────────────────────────────────────────
+
+const noAvatarStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: layout.screenPaddingH,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  title: {
+    ...typography.h2,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  body: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  primaryBtn: {
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtnText: {
+    ...typography.body,
+    fontFamily: fonts.bodyBold,
+    color: colors.white,
+  },
+  secondaryBtn: {
+    height: 44,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryBtnText: {
+    ...typography.body,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
+  },
+  cancelBtn: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  cancelBtnText: {
+    ...typography.body,
+    color: colors.textTertiary,
   },
 });
 

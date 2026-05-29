@@ -10,6 +10,7 @@ export interface UserState {
   setUser: (user: User | null) => void;
   setStyleProfile: (profile: StyleProfile) => void;
   setPhysicalProfile: (fields: Partial<Pick<User, 'height' | 'age' | 'bodyType' | 'skinTone' | 'hairColor' | 'hairLength' | 'hairType'>>) => void;
+  setAvatarUrl: (url: string) => void;
   setOnboarded: (value: boolean) => void;
   setTargetOnboardingScreen: (screen: keyof OnboardingStackParamList | null) => void;
   logout: () => void;
@@ -28,6 +29,10 @@ export const useUserStore = create<UserState>((set) => ({
   setPhysicalProfile: (fields) =>
     set((state) => ({
       user: state.user ? { ...state.user, ...fields } : null,
+    })),
+  setAvatarUrl: (url) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, avatarUrl: url } : null,
     })),
   setOnboarded: (value) =>
     set({ isOnboarded: value, ...(value ? { targetOnboardingScreen: null } : {}) }),

@@ -8,7 +8,9 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -58,6 +60,7 @@ export default function ProfileScreen() {
   const setUser                   = useUserStore((s: UserState) => s.setUser);
   const setOnboarded              = useUserStore((s: UserState) => s.setOnboarded);
   const setPhysicalProfile        = useUserStore((s: UserState) => s.setPhysicalProfile);
+  const setAvatarUrl              = useUserStore((s: UserState) => s.setAvatarUrl);
   const setTargetOnboardingScreen = useUserStore((s: UserState) => s.setTargetOnboardingScreen);
   const items    = useWardrobeStore((s) => s.items);
   const setItems = useWardrobeStore((s) => s.setItems);
@@ -117,6 +120,54 @@ export default function ProfileScreen() {
     { label: 'Saç Uzunluğu', value: user?.hairLength ? HAIR_LENGTH_TR[user.hairLength] ?? user.hairLength : null },
     { label: 'Saç Tipi',     value: user?.hairType   ? HAIR_TYPE_TR[user.hairType]   ?? user.hairType   : null },
   ];
+
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handlePickAvatar = async () => {
+    if (!user) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('İzin Gerekiyor', 'Fotoğraflara erişim için izin vermeniz gerekiyor.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setUploadingAvatar(true);
+    try {
+      const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const path = `${user.id}/avatar.${ext}`;
+
+      const fetchRes = await fetch(asset.uri);
+      const blob     = await fetchRes.blob();
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+    } catch {
+      Alert.alert('Hata', 'Fotoğraf yüklenemedi. Lütfen tekrar dene.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput,   setNameInput]   = useState(user?.name ?? '');
@@ -227,6 +278,32 @@ export default function ProfileScreen() {
               ))}
             </View>
           )}
+        </View>
+
+        {/* ── Fotoğrafım ── */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>FOTOĞRAFIM</Text>
+          <View style={styles.avatarPickerSection}>
+            <TouchableOpacity
+              style={styles.avatarPickerCircle}
+              onPress={handlePickAvatar}
+              activeOpacity={0.8}
+              disabled={uploadingAvatar}
+            >
+              {uploadingAvatar ? (
+                <ActivityIndicator color={colors.textSecondary} />
+              ) : user?.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} />
+              ) : (
+                <Feather name="user" size={48} color={colors.border} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7} disabled={uploadingAvatar}>
+              <Text style={styles.avatarPickerBtn}>
+                {user?.avatarUrl ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Fiziki Profil ── */}
@@ -544,6 +621,32 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
+  },
+
+  // Fotoğrafım
+  avatarPickerSection: {
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  avatarPickerCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarPickerImage: {
+    width: 120,
+    height: 120,
+    borderRadius: radius.full,
+  },
+  avatarPickerBtn: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 
   // Fiziki profil — kart başlık satırı

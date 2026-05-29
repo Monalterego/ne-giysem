@@ -26,7 +26,7 @@ export default function App() {
           .select('name, height, age, body_type, skin_tone, hair_color, hair_length, hair_type')
           .eq('id', u.id)
           .maybeSingle()
-          .then(({ data: profile }: { data: { name: string; height: number | null; age: number | null; body_type: string | null; skin_tone: string | null; hair_color: string | null; hair_length: string | null; hair_type: string | null } | null }) => {
+          .then(({ data: profile }: { data: { name: string; avatar_url: string | null; height: number | null; age: number | null; body_type: string | null; skin_tone: string | null; hair_color: string | null; hair_length: string | null; hair_type: string | null } | null }) => {
             console.log('[App] INITIAL_SESSION setUser — name:', profile?.name ?? '(yok)');
             const { setUser, setPhysicalProfile, setOnboarded } = useUserStore.getState();
             setUser({
@@ -35,6 +35,7 @@ export default function App() {
               name: profile?.name ?? '',
               isPremium: false,
               createdAt: u.created_at,
+              avatarUrl: profile?.avatar_url ?? undefined,
             });
             if (profile?.height != null) {
               setPhysicalProfile({

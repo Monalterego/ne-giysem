@@ -189,15 +189,14 @@ async function applyVirtualTryOn(
 export async function generateVirtualModelImage(
   profile: PhysicalProfile,
   items: WardrobeItem[],
+  avatarUrl?: string,
 ): Promise<string> {
-  // 1. Fizik profiline göre manken görseli üret (GPT-4o)
-  const modelImageUri = await generateModelImage(profile);
-
-  // 2. İlk kıyafeti manken üzerinde göster (IDM-VTON)
-  //    Çok parça sıralı işlemi sonraki versiyonda
   const item = items[0];
   if (!item) throw new Error('Kıyafet bulunamadı');
 
+  // avatarUrl varsa GPT-4o adımını atla, direkt IDM-VTON'a gönder
+  const humanImg = avatarUrl ?? await generateModelImage(profile);
+
   const garmentDesc = item.itemName ?? CATEGORY_DESC[item.category] ?? item.category;
-  return applyVirtualTryOn(modelImageUri, item.processedImageUrl, garmentDesc);
+  return applyVirtualTryOn(humanImg, item.processedImageUrl, garmentDesc);
 }

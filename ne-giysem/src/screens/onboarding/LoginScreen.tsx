@@ -44,7 +44,7 @@ export default function LoginScreen({ navigation }: Props) {
     if (data.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('name, height, age, body_type, skin_tone, hair_color, hair_length, hair_type')
+        .select('name, height, age, body_type, skin_tone, hair_color, hair_length, hair_type, avatar_url')
         .eq('id', data.user.id)
         .maybeSingle();
 
@@ -54,6 +54,7 @@ export default function LoginScreen({ navigation }: Props) {
         name: profile?.name ?? '',
         isPremium: false,
         createdAt: data.user.created_at,
+        avatarUrl:   profile?.avatar_url  ?? undefined,
         height:      profile?.height      ?? undefined,
         age:         profile?.age         ?? undefined,
         bodyType:    profile?.body_type   ?? undefined,
