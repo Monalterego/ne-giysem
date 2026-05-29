@@ -102,29 +102,36 @@ export async function generateVirtualModelImage(
   console.log('API key:', process.env.EXPO_PUBLIC_OPENAI_API_KEY?.substring(0, 10));
   console.log('Prompt:', prompt);
 
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model:   'gpt-image-1',
-      prompt,
-      n:       1,
-      size:    '1024x1536',
-      quality: 'medium',
-    }),
-  });
+  let data: any;
+  try {
+    console.log('fetch başlıyor...');
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model:   'gpt-image-1',
+        prompt,
+        n:       1,
+        size:    '1024x1536',
+        quality: 'medium',
+      }),
+    });
+    console.log('fetch bitti, status:', response.status);
+    data = await response.json();
+    console.log('OpenAI response:', JSON.stringify(data));
 
-  if (!response.ok) {
-    const errBody = await response.json().catch(() => ({}));
-    console.log('OpenAI error:', JSON.stringify(errBody));
-    throw new Error((errBody as any)?.error?.message ?? `OpenAI API hatası: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(data?.error?.message ?? `OpenAI API hatası: ${response.status}`);
+    }
+  } catch (error) {
+    console.log('fetch HATA:', error);
+    throw error;
   }
 
-  const data = await response.json();
-  const url  = (data as any)?.data?.[0]?.url as string | undefined;
+  const url = data?.data?.[0]?.url as string | undefined;
   if (!url) throw new Error('Görsel URL alınamadı');
   return url;
 }
