@@ -17,7 +17,7 @@ import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
 import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
-import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
 
