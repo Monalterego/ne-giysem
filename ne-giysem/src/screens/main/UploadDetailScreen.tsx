@@ -58,6 +58,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const [category,    setCategory]    = useState<ClothingCategory | null>(existingItem?.category ?? null);
   const [subCategory, setSubCategory] = useState<string | undefined>(existingItem?.subCategory ?? undefined);
   const [fabric,      setFabric]      = useState<Fabric>(existingItem?.fabric ?? 'unknown');
+  const [itemPattern, setItemPattern] = useState<string | undefined>(existingItem?.pattern ?? undefined);
   const [seasons,     setSeasons]     = useState<Season[]>(existingItem?.seasons ?? []);
   const [itemColors,  setItemColors]  = useState<string[]>(existingItem?.colors ?? []);
   const [aiDetails, setAiDetails] = useState<{
@@ -84,6 +85,8 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         if (result.subcategory) setSubCategory(result.subcategory);
         if (result.seasons.length > 0) setSeasons(result.seasons);
         if (result.colors.length > 0) setItemColors(result.colors);
+        if (result.fabric) setFabric(result.fabric as Fabric);
+        if (result.pattern) setItemPattern(result.pattern);
         setAiDetails({
           itemName:     result.itemName,
           fit:          result.fit,
@@ -157,6 +160,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         category,
         subcategory:         subCategory           ?? null,
         colors:              itemColors,
+        pattern:             itemPattern           ?? null,
         season:              seasons,
         fabric,
         item_name:           aiDetails?.itemName   ?? null,
@@ -177,6 +181,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         category,
         subCategory,
         colors:       itemColors,
+        pattern:      itemPattern,
         seasons,
         fabric,
         itemName:     aiDetails?.itemName,

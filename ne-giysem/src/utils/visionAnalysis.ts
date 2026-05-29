@@ -7,6 +7,7 @@ export interface VisionResult {
   subcategory?: string;
   colors: string[];
   pattern?: string;
+  fabric?: string;
   seasons: Season[];
   itemName?: string;
   fit?: string;
@@ -51,6 +52,7 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
   "details": öne çıkan max 3 detay — örn. ["dugmeli", "cepli", "firfirli", "bagcikli", "seritli", "fermanuarli", "kapsonlu", "kesiksiz", "asimetrik"],
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
   "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
+  "fabric": kumaş tahmini — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "polyester" | "viskon" | "saten" | "kadife" | "karisim" | "bilmiyorum",
   "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
 }`;
 
@@ -76,6 +78,7 @@ function parseVisionResponse(text: string): VisionResult {
     subcategory:  typeof raw.subcategory === 'string' ? raw.subcategory : undefined,
     colors,
     pattern:      typeof raw.pattern  === 'string' ? raw.pattern  : undefined,
+    fabric:       typeof raw.fabric   === 'string' ? raw.fabric   : undefined,
     seasons,
     itemName:     typeof raw.name     === 'string' ? raw.name     : undefined,
     fit:          typeof raw.fit      === 'string' ? raw.fit      : undefined,
