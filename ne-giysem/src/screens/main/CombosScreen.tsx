@@ -289,6 +289,8 @@ export default function CombosScreen() {
   };
 
   const handleVirtualModel = async (combo: Combo) => {
+    console.log('handleVirtualModel çağrıldı', combo);
+    console.log('user physical profile:', user?.height, user?.bodyType, user?.skinTone);
     if (!user) return;
 
     // Fiziksel profil + render sayısını çek
