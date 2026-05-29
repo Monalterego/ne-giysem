@@ -35,7 +35,8 @@ export default function ProfileScreen() {
   const logout   = useUserStore((s) => s.logout);
   const setUser  = useUserStore((s) => s.setUser);
   const items    = useWardrobeStore((s) => s.items);
-  const setItems = useWardrobeStore((s) => s.setItems);
+  const setItems      = useWardrobeStore((s) => s.setItems);
+  const setOnboarded  = useUserStore((s) => s.setOnboarded);
 
   const combos = useMemo(() => generateCombos(items, 50), [items]);
   const avgScore = combos.length > 0
@@ -138,7 +139,16 @@ export default function ProfileScreen() {
           {loadingStyles ? (
             <ActivityIndicator color={colors.textTertiary} size="small" />
           ) : styleEntries.length === 0 ? (
-            <Text style={styles.emptyMuted}>Stil profili henüz oluşturulmadı.</Text>
+            <View style={styles.emptyDna}>
+              <Text style={styles.emptyMuted}>Stil profili henüz oluşturulmadı.</Text>
+              <TouchableOpacity
+                style={styles.styleBtn}
+                onPress={() => setOnboarded(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.styleBtnText}>Stilini Belirle →</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.dnaList}>
               {styleEntries.map((entry, i) => (
@@ -318,6 +328,21 @@ const styles = StyleSheet.create({
   emptyMuted: {
     ...typography.bodySmall,
     color: colors.textSecondary,
+  },
+  emptyDna: {
+    gap: spacing.sm,
+  },
+  styleBtn: {
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  styleBtnText: {
+    ...typography.body,
+    fontFamily: fonts.bodyMedium,
+    color: colors.white,
   },
 
   // Stil DNA
