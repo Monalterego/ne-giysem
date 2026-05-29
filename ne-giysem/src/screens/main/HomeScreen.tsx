@@ -16,19 +16,9 @@ import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
-import { fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
-
-const C = {
-  bg:      '#FAFAF8',
-  white:   '#FFFFFF',
-  primary: '#1A1A1A',
-  accent:  '#C9A96E',
-  muted:   '#8A8A8A',
-  border:  '#E8E4DE',
-  surface: '#F5F2ED',
-};
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -50,15 +40,15 @@ function getDisplayName(name: string, email: string): string {
 function WeatherIcon({ description }: { description?: string }) {
   const d = description?.toLowerCase() ?? '';
   if (d.includes('rain') || d.includes('yağ')) {
-    return <Feather name="cloud-rain" size={22} color={C.muted} />;
+    return <Feather name="cloud-rain" size={20} color={colors.textSecondary} />;
   }
   if (d.includes('snow') || d.includes('kar')) {
-    return <Feather name="cloud-snow" size={22} color={C.muted} />;
+    return <Feather name="cloud-snow" size={20} color={colors.textSecondary} />;
   }
   if (d.includes('cloud') || d.includes('bulut')) {
-    return <Feather name="cloud" size={22} color={C.muted} />;
+    return <Feather name="cloud" size={20} color={colors.textSecondary} />;
   }
-  return <Feather name="sun" size={22} color={C.accent} />;
+  return <Feather name="sun" size={20} color={colors.accent} />;
 }
 
 // ─── Alt bileşenler ───────────────────────────────────────────────────────────
@@ -91,7 +81,7 @@ function TodayComboCard({ combo }: { combo: Combo }) {
 function EmptyComboCard({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.emptyCombo} onPress={onPress} activeOpacity={0.85}>
-      <Feather name="plus-circle" size={32} color={C.border} style={{ marginBottom: 14 }} />
+      <Feather name="plus-circle" size={28} color={colors.border} style={{ marginBottom: spacing.md }} />
       <Text style={styles.emptyComboTitle}>Kombinin hazır değil</Text>
       <Text style={styles.emptyComboSub}>
         Üst, alt ve ayakkabı ekle — kombin otomatik oluşsun
@@ -175,12 +165,12 @@ export default function HomeScreen({ navigation }: Props) {
         {/* ── Hava Durumu ── */}
         <View style={styles.weatherCard}>
           {weatherLoading ? (
-            <ActivityIndicator color={C.muted} size="small" style={{ flex: 1 }} />
+            <ActivityIndicator color={colors.textSecondary} size="small" style={{ flex: 1 }} />
           ) : weather ? (
             <>
               <View style={styles.weatherLeft}>
                 <WeatherIcon description={weather.description} />
-                <View style={{ marginLeft: 10 }}>
+                <View style={{ marginLeft: spacing.sm }}>
                   <Text style={styles.weatherCity}>İstanbul</Text>
                   <Text style={styles.weatherTemp}>{weather.temp}°C · {weather.description}</Text>
                 </View>
@@ -190,8 +180,8 @@ export default function HomeScreen({ navigation }: Props) {
             </>
           ) : (
             <View style={styles.weatherLeft}>
-              <Feather name="thermometer" size={20} color={C.muted} />
-              <View style={{ marginLeft: 10 }}>
+              <Feather name="thermometer" size={18} color={colors.textSecondary} />
+              <View style={{ marginLeft: spacing.sm }}>
                 <Text style={styles.weatherCity}>İstanbul</Text>
                 <Text style={styles.weatherTemp}>Hava durumu alınamadı</Text>
               </View>
@@ -200,19 +190,22 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
 
         {/* ── Hızlı Aksiyonlar ── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Keşfet</Text>
+        </View>
         <View style={styles.quickRow}>
           <QuickAction
-            icon={<Feather name="camera" size={20} color={C.primary} />}
+            icon={<Feather name="camera" size={20} color={colors.text} />}
             label="Yükle"
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
           />
           <QuickAction
-            icon={<Feather name="shopping-bag" size={20} color={C.primary} />}
+            icon={<Feather name="shopping-bag" size={20} color={colors.text} />}
             label="Mağaza"
             onPress={() => navigation.navigate('Scan')}
           />
           <QuickAction
-            icon={<Ionicons name="sparkles-outline" size={20} color={C.primary} />}
+            icon={<Ionicons name="sparkles-outline" size={20} color={colors.text} />}
             label="Kombin"
             onPress={() => navigation.navigate('Combos')}
           />
@@ -252,54 +245,49 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: colors.background,
   },
   scroll: {
-    paddingBottom: 24,
+    paddingBottom: spacing.lg,
   },
   separator: {
     height: 1,
-    backgroundColor: C.border,
+    backgroundColor: colors.border,
   },
 
   // Header
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 14,
-    paddingBottom: 20,
-    backgroundColor: C.bg,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.background,
   },
   greetingWrap: {
     flex: 1,
   },
   greeting: {
-    fontSize: 28,
-    fontFamily: fonts.headingBold,
-    color: C.primary,
-    marginBottom: 5,
-    lineHeight: 34,
+    ...typography.h2,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   greetingSub: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: C.muted,
-    letterSpacing: 0.2,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: C.primary,
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 17,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
-    color: C.white,
-    letterSpacing: 0.5,
+    color: colors.white,
   },
 
   // Bölüm başlığı
@@ -307,52 +295,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 12,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: layout.sectionSpacing,
+    paddingBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: fonts.headingBold,
-    color: C.primary,
-    letterSpacing: 0.3,
+    ...typography.h3,
+    color: colors.text,
   },
   seeAll: {
-    fontSize: 11,
-    fontFamily: fonts.bodyBold,
-    color: C.accent,
-    letterSpacing: 0.3,
+    ...typography.caption,
+    fontFamily: fonts.bodyMedium,
+    color: colors.accent,
   },
 
   // Günün kombini — dolu
   comboCard: {
-    marginHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: C.white,
+    marginHorizontal: layout.screenPaddingH,
+    borderRadius: radius.lg,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    elevation: 2,
-  },
-  comboTag: {
-    fontSize: 10,
-    fontFamily: fonts.bodyBold,
-    color: C.muted,
-    letterSpacing: 2,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 12,
+    ...shadows.card,
   },
   comboImages: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 10,
-    backgroundColor: C.bg,
+    padding: spacing.md,
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
   },
   comboImageWrap: {
     flex: 1,
     aspectRatio: 3 / 4,
-    borderRadius: 12,
-    backgroundColor: C.white,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
     overflow: 'hidden',
   },
   comboImage: {
@@ -362,156 +339,141 @@ const styles = StyleSheet.create({
   comboFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
   comboLabel: {
     flex: 1,
-    fontSize: 13,
-    fontFamily: fonts.bodyBold,
-    color: C.primary,
+    ...typography.body,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
   },
   comboRight: {
     alignItems: 'flex-end',
-    gap: 3,
+    gap: spacing.xs,
   },
   comboScore: {
-    fontSize: 13,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: C.primary,
+    color: colors.text,
   },
   comboAction: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: C.muted,
-    letterSpacing: 0.2,
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 
   // Günün kombini — boş
   emptyCombo: {
-    marginHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: C.white,
+    marginHorizontal: layout.screenPaddingH,
+    borderRadius: radius.lg,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
-    padding: 32,
+    padding: spacing.xl,
     alignItems: 'center',
   },
   emptyComboTitle: {
-    fontSize: 15,
-    fontFamily: fonts.bodyBold,
-    color: C.primary,
-    marginBottom: 6,
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   emptyComboSub: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: C.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 18,
+    marginBottom: spacing.md,
   },
   emptyComboBtn: {
-    paddingVertical: 9,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-    backgroundColor: C.primary,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.full,
+    backgroundColor: colors.text,
   },
   emptyComboText: {
-    fontSize: 12,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
-    color: C.white,
-    letterSpacing: 0.3,
+    color: colors.white,
   },
 
   // Hava durumu
   weatherCard: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: C.surface,
+    marginHorizontal: layout.screenPaddingH,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: spacing.md,
   },
   weatherLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   weatherCity: {
-    fontSize: 14,
-    fontFamily: fonts.bodyBold,
-    color: C.primary,
+    ...typography.body,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
   },
   weatherTemp: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: C.muted,
+    ...typography.caption,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   weatherDivider: {
     width: 1,
     height: 28,
-    backgroundColor: C.border,
+    backgroundColor: colors.border,
   },
   weatherTip: {
     flex: 1,
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: C.muted,
-    lineHeight: 17,
+    ...typography.caption,
+    color: colors.textSecondary,
     fontStyle: 'italic',
   },
 
   // Hızlı aksiyonlar
   quickRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 8,
-    marginTop: 18,
+    paddingHorizontal: layout.screenPaddingH,
+    gap: spacing.sm,
   },
   quickAction: {
     flex: 1,
     height: 72,
-    borderRadius: 16,
-    backgroundColor: C.white,
+    borderRadius: radius.sm,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#EDEBE6',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-    elevation: 1,
+    gap: spacing.xs + 2,
   },
   quickActionLabel: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: C.muted,
-    letterSpacing: 0.2,
+    ...typography.caption,
+    color: colors.textSecondary,
   },
 
   // Dolap önizleme
   previewGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingHorizontal: layout.screenPaddingH,
+    gap: spacing.sm,
   },
   previewItem: {
     width: '47%',
     aspectRatio: 3 / 4,
-    borderRadius: 16,
-    backgroundColor: C.white,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     overflow: 'hidden',
-    boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
-    elevation: 1,
+    ...shadows.subtle,
   },
   previewImage: {
     width: '100%',
@@ -519,6 +481,6 @@ const styles = StyleSheet.create({
   },
 
   bottomPad: {
-    height: 12,
+    height: spacing.md,
   },
 });

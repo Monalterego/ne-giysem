@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { colors } from '../constants/theme';
 import type { MainTabParamList } from './types';
 
 import HomeScreen from '../screens/main/HomeScreen';
@@ -16,12 +17,12 @@ export default function MainTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#1A1A1A',
+        tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: '#C4C4C4',
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.white,
           borderTopWidth: 1,
-          borderTopColor: '#E8E4DE',
+          borderTopColor: colors.border,
           paddingTop: 4,
         },
         tabBarLabelStyle: {
