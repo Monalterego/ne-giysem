@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { STYLE_GROUPS, STYLE_DATA_MAP } from '../../constants/styles';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleSelect'>;
@@ -21,8 +21,8 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleSelect'>;
 
 const MIN_WEIGHT  = 5;
 const THUMB       = 20;
-const TRACK_H     = 6;
-const CONTAINER_H = 36;
+const TRACK_H     = 4;
+const CONTAINER_H = 32;
 const TRACK_TOP   = (CONTAINER_H - TRACK_H) / 2;
 const THUMB_TOP   = (CONTAINER_H - THUMB)   / 2;
 
@@ -43,8 +43,8 @@ function redistributeWeights(
   const others = entries.filter((e) => e.name !== changedName);
   if (others.length === 0) return entries;
 
-  const maxVal   = 100 - others.length * MIN_WEIGHT;
-  const newVal   = Math.max(MIN_WEIGHT, Math.min(maxVal, rawValue));
+  const maxVal      = 100 - others.length * MIN_WEIGHT;
+  const newVal      = Math.max(MIN_WEIGHT, Math.min(maxVal, rawValue));
   const remaining   = 100 - newVal;
   const othersTotal = others.reduce((sum, e) => sum + e.weight, 0);
 
@@ -154,25 +154,16 @@ function StyleCard({
 
       {/* İsim + açıklama */}
       <View style={styles.cardInfo}>
-        <Text style={[styles.cardName, isSelected && styles.cardNameSelected]} numberOfLines={1}>
-          {name}
-        </Text>
-        <Text style={styles.cardDesc} numberOfLines={1}>
-          {data.turkishDesc}
-        </Text>
+        <Text style={styles.cardName} numberOfLines={1}>{name}</Text>
+        <Text style={styles.cardDesc} numberOfLines={1}>{data.turkishDesc}</Text>
       </View>
 
-      {/* Emoji */}
-      <Text style={styles.cardEmoji}>{data.emoji}</Text>
-
-      {/* Seçim göstergesi */}
+      {/* Seçim badge */}
       {isSelected && (
         <View style={styles.checkBadge}>
-          {showWeight ? (
-            <Text style={styles.checkBadgeText}>{weight}%</Text>
-          ) : (
-            <Text style={styles.checkBadgeText}>✓</Text>
-          )}
+          <Text style={styles.checkBadgeText}>
+            {showWeight ? `${weight}%` : '✓'}
+          </Text>
         </View>
       )}
     </TouchableOpacity>
@@ -188,7 +179,7 @@ export default function StyleSelectScreen({ navigation }: Props) {
     setEntries((prev) => {
       const isSelected = prev.some((e) => e.name === styleName);
       if (isSelected) {
-        if (prev.length <= 1) return prev; // en az 1 seçili kalmalı
+        if (prev.length <= 1) return prev;
         return equalWeights(prev.filter((e) => e.name !== styleName).map((e) => e.name));
       }
       return equalWeights([...prev.map((e) => e.name), styleName]);
@@ -204,7 +195,6 @@ export default function StyleSelectScreen({ navigation }: Props) {
     navigation.navigate('StyleResult', { selectedStyles: entries });
   };
 
-  const selectedNames = new Set(entries.map((e) => e.name));
   const showWeightPct = entries.length >= 2;
 
   return (
@@ -220,11 +210,9 @@ export default function StyleSelectScreen({ navigation }: Props) {
           Birden fazla seçebilirsin — ağırlıkları ayarlayabilirsin
         </Text>
 
-        {/* Grup ve kart listesi */}
         {STYLE_GROUPS.map((group) => (
           <View key={group.groupName} style={styles.group}>
             <View style={styles.groupHeader}>
-              <Text style={styles.groupEmoji}>{group.groupEmoji}</Text>
               <Text style={styles.groupName}>{group.groupName}</Text>
             </View>
             {group.styles.map((style) => {
@@ -248,23 +236,18 @@ export default function StyleSelectScreen({ navigation }: Props) {
         {entries.length >= 2 && (
           <View style={styles.weightBox}>
             <Text style={styles.weightTitle}>AĞIRLIK DAĞILIMI</Text>
-            {entries.map((entry) => {
-              const data = STYLE_DATA_MAP[entry.name];
-              return (
-                <View key={entry.name} style={styles.sliderRow}>
-                  <View style={styles.sliderHeader}>
-                    <Text style={styles.sliderLabel}>
-                      {data?.emoji ?? ''} {entry.name}
-                    </Text>
-                    <Text style={styles.sliderPct}>{entry.weight}%</Text>
-                  </View>
-                  <WeightSlider
-                    value={entry.weight}
-                    onChange={(v) => handleSliderChange(entry.name, v)}
-                  />
+            {entries.map((entry) => (
+              <View key={entry.name} style={styles.sliderRow}>
+                <View style={styles.sliderHeader}>
+                  <Text style={styles.sliderLabel}>{entry.name}</Text>
+                  <Text style={styles.sliderPct}>{entry.weight}%</Text>
                 </View>
-              );
-            })}
+                <WeightSlider
+                  value={entry.weight}
+                  onChange={(v) => handleSliderChange(entry.name, v)}
+                />
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>
@@ -277,7 +260,7 @@ export default function StyleSelectScreen({ navigation }: Props) {
           activeOpacity={0.85}
           disabled={entries.length === 0}
         >
-          <Text style={styles.primaryBtnText}>
+          <Text style={[styles.primaryBtnText, entries.length === 0 && styles.primaryBtnTextDisabled]}>
             {entries.length === 0
               ? 'En az 1 stil seç'
               : `Devam Et (${entries.length} stil) →`}
@@ -296,66 +279,59 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   container: {
-    paddingHorizontal: 20,
-    paddingTop: 32,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.xl,
     paddingBottom: 120,
   },
+
+  // Başlık
   badge: {
-    fontSize: 11,
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    letterSpacing: 2,
-    marginBottom: 8,
+    ...typography.label,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 26,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 6,
+    ...typography.h1,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
-    marginBottom: 28,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
     lineHeight: 19,
   },
 
-  // ── Gruplar ──
+  // Gruplar
   group: {
-    marginBottom: 28,
+    marginBottom: spacing.xl,
   },
   groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  groupEmoji: {
-    fontSize: 18,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: spacing.sm,
   },
   groupName: {
-    fontSize: 15,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
-    letterSpacing: 0.3,
+    ...typography.label,
+    color: colors.textSecondary,
   },
 
-  // ── Stil kartı ──
+  // Stil kartı
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    marginBottom: 8,
-    borderRadius: 16,
-    borderWidth: 1.5,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 3,
+    marginBottom: spacing.xs + 2,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,
   },
   cardSelected: {
-    borderColor: colors.primary,
+    borderColor: colors.text,
     borderWidth: 2,
     backgroundColor: colors.surface,
   },
@@ -367,9 +343,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   colorDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: radius.full,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.8)',
   },
@@ -383,73 +359,63 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   cardName: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
-  },
-  cardNameSelected: {
-    color: colors.primary,
+    color: colors.text,
   },
   cardDesc: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
-  },
-
-  // Emoji
-  cardEmoji: {
-    fontSize: 22,
-    flexShrink: 0,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
 
   // Seçim badge
   checkBadge: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    minWidth: 28,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+    backgroundColor: colors.text,
+    borderRadius: radius.xs,
+    minWidth: 32,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: spacing.xs - 1,
     alignItems: 'center',
   },
   checkBadgeText: {
-    fontSize: 11,
+    ...typography.caption,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
 
-  // ── Ağırlık kutusu ──
+  // Ağırlık kutusu
   weightBox: {
     backgroundColor: colors.surface,
-    borderRadius: 18,
-    padding: 18,
-    marginTop: 4,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginTop: spacing.xs,
   },
   weightTitle: {
-    fontSize: 10,
-    fontFamily: fonts.bodyBold,
-    color: colors.muted,
-    letterSpacing: 1.5,
-    marginBottom: 16,
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
   },
   sliderRow: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   sliderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   sliderLabel: {
-    fontSize: 13,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
     flex: 1,
   },
   sliderPct: {
-    fontSize: 13,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.accent,
+    color: colors.text,
     minWidth: 36,
     textAlign: 'right',
   },
@@ -474,7 +440,7 @@ const styles = StyleSheet.create({
     top: TRACK_TOP,
     height: TRACK_H,
     borderRadius: TRACK_H / 2,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.text,
   },
   sliderThumb: {
     position: 'absolute',
@@ -483,38 +449,40 @@ const styles = StyleSheet.create({
     height: THUMB,
     borderRadius: THUMB / 2,
     backgroundColor: colors.white,
-    borderWidth: 2.5,
-    borderColor: colors.accent,
-    boxShadow: '0 2px 6px rgba(233,69,96,0.30)',
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: colors.text,
+    elevation: 2,
   },
 
-  // ── Footer ──
+  // Footer
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: colors.white,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 28,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   primaryBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.primary,
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryBtnDisabled: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.surface,
   },
   primaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
+  },
+  primaryBtnTextDisabled: {
+    color: colors.textTertiary,
   },
 });
