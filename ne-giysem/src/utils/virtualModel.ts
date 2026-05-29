@@ -131,7 +131,7 @@ export async function generateVirtualModelImage(
     throw error;
   }
 
-  const url = data?.data?.[0]?.url as string | undefined;
-  if (!url) throw new Error('Görsel URL alınamadı');
-  return url;
+  const b64 = data?.data?.[0]?.b64_json as string | undefined;
+  if (!b64) throw new Error('Görsel verisi alınamadı');
+  return `data:image/png;base64,${b64}`;
 }
