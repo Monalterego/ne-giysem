@@ -11,20 +11,21 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Signup'>;
 
 export default function SignupScreen({ navigation }: Props) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name,     setName]     = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
 
   const setUser = useUserStore((s) => s.setUser);
 
@@ -77,44 +78,42 @@ export default function SignupScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* Başlık */}
           <Text style={styles.title}>Hesap Oluştur</Text>
           <Text style={styles.subtitle}>60 saniyede kişisel stiline kavuş</Text>
 
-          {/* Social buttons — kapsam dışı (V2) */}
+          {/* Sosyal butonlar — V2 */}
           <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
-            <Text style={styles.socialIcon}>🍎</Text>
-            <Text style={[styles.socialText, styles.socialTextDisabled]}>Apple ile devam et</Text>
+            <Feather name="smartphone" size={16} color={colors.text} />
+            <Text style={styles.socialText}>Apple ile devam et</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
-            <Text style={styles.socialIcon}>🌐</Text>
-            <Text style={[styles.socialText, styles.socialTextDisabled]}>Google ile devam et</Text>
+            <Feather name="globe" size={16} color={colors.text} />
+            <Text style={styles.socialText}>Google ile devam et</Text>
           </TouchableOpacity>
 
-          {/* Divider */}
+          {/* Separator */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>veya</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Ad */}
+          {/* Inputlar */}
           <TextInput
             style={styles.input}
             placeholder="Adın"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textTertiary}
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
             autoComplete="name"
           />
-
-          {/* Email / password */}
           <TextInput
             style={styles.input}
             placeholder="E-posta"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textTertiary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -124,19 +123,22 @@ export default function SignupScreen({ navigation }: Props) {
           <TextInput
             style={styles.input}
             placeholder="Şifre"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textTertiary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="password"
           />
 
-          {/* Hata mesajı */}
+          {/* Hata */}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {/* Signup CTA */}
+          {/* Kayıt Ol */}
           <TouchableOpacity
-            style={[styles.primaryBtn, (!name.trim() || !email || !password || loading) && styles.primaryBtnDisabled]}
+            style={[
+              styles.primaryBtn,
+              (!name.trim() || !email || !password || loading) && styles.primaryBtnDisabled,
+            ]}
             onPress={handleSignup}
             activeOpacity={0.85}
             disabled={loading}
@@ -147,7 +149,7 @@ export default function SignupScreen({ navigation }: Props) {
             }
           </TouchableOpacity>
 
-          {/* Login link */}
+          {/* Giriş Yap */}
           <View style={styles.loginRow}>
             <Text style={styles.loginHint}>Zaten hesabın var mı?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
@@ -169,47 +171,51 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 24,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
   },
+
+  // Başlık
   title: {
-    fontSize: 26,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 6,
+    ...typography.h1,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
-    marginBottom: 32,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
   },
+
+  // Sosyal butonlar
   socialBtn: {
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    height: 48,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
     backgroundColor: colors.white,
   },
-  socialIcon: {
-    fontSize: 18,
+  socialBtnDisabled: {
+    opacity: 0.4,
   },
   socialText: {
-    fontSize: 14,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.primary,
+    ...typography.body,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
   },
+
+  // Separator
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
-    gap: 12,
+    marginVertical: spacing.lg,
+    gap: spacing.md,
   },
   dividerLine: {
     flex: 1,
@@ -217,64 +223,63 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   dividerText: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: '#BBBBBB',
+    ...typography.caption,
+    color: colors.textTertiary,
   },
+
+  // Inputlar
   input: {
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    height: 48,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.primary,
-    marginBottom: 12,
+    paddingHorizontal: spacing.md,
+    ...typography.body,
+    color: colors.text,
+    marginBottom: spacing.sm,
     backgroundColor: colors.white,
   },
+
+  // Hata
+  errorText: {
+    ...typography.bodySmall,
+    color: colors.error,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+
+  // Kayıt Ol
   primaryBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.accent,
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   primaryBtnDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   primaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
+
+  // Giriş Yap
   loginRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
   loginHint: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   loginLink: {
-    fontSize: 13,
+    ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
-    color: colors.accent,
-  },
-  socialBtnDisabled: {
-    opacity: 0.4,
-  },
-  socialTextDisabled: {
-    color: colors.muted,
-  },
-  errorText: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.accent,
-    marginBottom: 10,
-    textAlign: 'center',
+    color: colors.text,
+    textDecorationLine: 'underline',
   },
 });
