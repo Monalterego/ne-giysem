@@ -283,6 +283,14 @@ export function missingCategories(items: WardrobeItem[]): string[] {
 
 // ─── Claude AI kombin motoru ─────────────────────────────────────────────────
 
+const OUTER_SUBCATEGORIES = [
+  'hirka', 'yelek', 'ceket', 'blazer', 'mont', 'kaban', 'trenchkot', 'yagmurluk',
+];
+
+function isOuter(item: WardrobeItem): boolean {
+  return item.category === 'outer' || OUTER_SUBCATEGORIES.includes(item.subCategory ?? '');
+}
+
 export async function generateCombosAI(
   items: WardrobeItem[],
   userProfile: UserProfileInput,
@@ -299,22 +307,31 @@ export async function generateCombosAI(
   const filtered = items.filter((i) => i.seasons.length === 0 || i.seasons.includes(season));
   const pool     = filtered.length >= 3 ? filtered : items;
 
+  // İsimsiz parçaları AI prompt'undan çıkar — AI doğru ID eşleştirmesi yapamaz
+  const validPool = pool.filter((i) => i.itemName && i.itemName.trim() !== '');
+
   const occasionData = OCCASIONS.find((o) => o.id === occasion) ?? OCCASIONS[0];
 
-  const corePool     = pool.filter((i) => !['bag', 'accessory'].includes(i.category));
-  const optionalPool = pool.filter((i) => ['bag', 'accessory'].includes(i.category));
+  const outerPool    = validPool.filter(isOuter);
+  const optionalPool = validPool.filter((i) => ['bag', 'accessory'].includes(i.category));
+  const corePool     = validPool.filter((i) => !isOuter(i) && !['bag', 'accessory'].includes(i.category));
 
   const wardrobeText = corePool.map((item) =>
-    `- ID:${item.id} | ${item.itemName ?? item.subCategory ?? item.category} (${item.subCategory ?? item.category})` +
+    `- ID:${item.id} | ${item.itemName} (${item.subCategory ?? item.category})` +
     ` | Renk: ${item.colors[0] ?? 'belirsiz'}` +
     ` | Kumaş: ${item.fabric ?? 'belirsiz'}` +
     ` | Desen: ${item.pattern ?? 'düz'}` +
     ` | Mevsim: ${item.seasons.length ? item.seasons.map(seasonDesc).join(', ') : 'tüm mevsimler'}`,
   ).join('\n');
 
+  const outerText = outerPool.length
+    ? `\nDIŞ GİYİM (hırka, ceket, blazer vb.):\n` +
+      outerPool.map((item) => `- ID:${item.id} | ${item.itemName}`).join('\n')
+    : '';
+
   const optionalText = optionalPool.length
     ? `\nOPSİYONEL TAMAMLAYICI PARÇALAR (aksesuar, çanta):\n` +
-      optionalPool.map((item) => `- ID:${item.id} | ${item.itemName ?? item.subCategory ?? item.category}`).join('\n')
+      optionalPool.map((item) => `- ID:${item.id} | ${item.itemName}`).join('\n')
     : '';
 
   const profileLines = [
@@ -347,6 +364,7 @@ ${previousNote}
 
 GARDROP PARÇALARI (${corePool.length} parça):
 ${wardrobeText}
+${outerText}
 ${optionalText}
 
 GÖREV:
@@ -383,6 +401,13 @@ Tüm parçaları (üst, alt, ayakkabı, çanta, aksesuar, dış giyim) tek "item
     }
   ]
 }`;
+
+  console.log('=== KOMBIN PROMPT ===');
+  console.log('SYSTEM:', systemPrompt);
+  console.log('USER:', userPrompt);
+  console.log('Core pool count:', corePool.length);
+  console.log('Outer pool count:', outerPool.length);
+  console.log('Optional pool count:', optionalPool.length);
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
