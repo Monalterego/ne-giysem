@@ -8,6 +8,9 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  Share,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -15,6 +18,8 @@ import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
+import { generateVirtualModelImage } from '../../utils/virtualModel';
+import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -44,20 +49,28 @@ const SUGGESTED_LABEL: Record<string, string> = {
   accessory: 'Aksesuar',
 };
 
+const FREE_RENDER_LIMIT = 3;
+
 function comboKey(combo: Combo): string {
   return combo.items.map((i) => i.id).sort().join('|');
 }
+
+// ─── ComboCard bileşeni ───────────────────────────────────────────────────────
 
 function ComboCard({
   combo,
   isWorn,
   isSaving,
+  isGenerating,
   onWear,
+  onVirtualModel,
 }: {
   combo: Combo;
   isWorn: boolean;
   isSaving: boolean;
+  isGenerating: boolean;
   onWear: () => void;
+  onVirtualModel: () => void;
 }) {
   const hasSuggestions = (combo.suggestedItems?.length ?? 0) > 0;
 
@@ -76,7 +89,6 @@ function ComboCard({
             <Text style={styles.itemLabel}>{CATEGORY_LABEL[item.category] ?? item.category}</Text>
           </View>
         ))}
-        {/* Skor — badge değil, sağ üstte sade metin */}
         <Text style={styles.scoreText}>{combo.score}%</Text>
       </View>
 
@@ -104,27 +116,136 @@ function ComboCard({
       {/* Footer */}
       <View style={styles.cardFooter}>
         <Text style={styles.comboLabel}>{combo.label}</Text>
-        {isWorn ? (
-          <View style={[styles.wearBtn, styles.wearBtnWorn]}>
-            <Text style={[styles.wearBtnText, styles.wearBtnTextWorn]}>✓ Giyildi</Text>
+
+        {isGenerating ? (
+          <View style={styles.generatingState}>
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+            <Text style={styles.generatingText}>Manken hazırlanıyor...</Text>
           </View>
         ) : (
-          <TouchableOpacity
-            style={styles.wearBtn}
-            onPress={onWear}
-            activeOpacity={0.85}
-            disabled={isSaving}
-          >
-            {isSaving
-              ? <ActivityIndicator size="small" color={colors.white} />
-              : <Text style={styles.wearBtnText}>Giy →</Text>
-            }
-          </TouchableOpacity>
+          <View style={styles.footerActions}>
+            {/* Sanal Manken butonu */}
+            <TouchableOpacity
+              style={styles.modelBtn}
+              onPress={onVirtualModel}
+              activeOpacity={0.85}
+            >
+              <Feather name="user" size={14} color={colors.text} />
+            </TouchableOpacity>
+
+            {/* Giy butonu */}
+            {isWorn ? (
+              <View style={[styles.wearBtn, styles.wearBtnWorn]}>
+                <Text style={[styles.wearBtnText, styles.wearBtnTextWorn]}>✓ Giyildi</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.wearBtn}
+                onPress={onWear}
+                activeOpacity={0.85}
+                disabled={isSaving}
+              >
+                {isSaving
+                  ? <ActivityIndicator size="small" color={colors.white} />
+                  : <Text style={styles.wearBtnText}>Giy →</Text>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     </View>
   );
 }
+
+// ─── Model sonuç modalı ───────────────────────────────────────────────────────
+
+function ModelModal({
+  visible,
+  imageUrl,
+  onClose,
+}: {
+  visible: boolean;
+  imageUrl: string | null;
+  onClose: () => void;
+}) {
+  const handleShare = async () => {
+    if (!imageUrl) return;
+    await Share.share({
+      message: `Sanal manken kombinim — Ne Giysem? ile oluşturuldu: ${imageUrl}`,
+      url: imageUrl,
+    });
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
+      <SafeAreaView style={modalStyles.safe}>
+
+        {/* Kapat butonu */}
+        <View style={modalStyles.header}>
+          <TouchableOpacity style={modalStyles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+            <Feather name="x" size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Görsel */}
+        <ScrollView
+          contentContainerStyle={modalStyles.imageContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={modalStyles.image}
+              resizeMode="contain"
+            />
+          ) : null}
+        </ScrollView>
+
+        {/* Paylaş */}
+        <View style={modalStyles.footer}>
+          <TouchableOpacity style={modalStyles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
+            <Feather name="share-2" size={16} color={colors.white} />
+            <Text style={modalStyles.shareBtnText}>Paylaş</Text>
+          </TouchableOpacity>
+        </View>
+
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+// ─── Premium modalı ───────────────────────────────────────────────────────────
+
+function PremiumModal({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={premiumStyles.overlay}>
+        <View style={premiumStyles.card}>
+          <Text style={premiumStyles.title}>Limit Doldu</Text>
+          <Text style={premiumStyles.body}>
+            Ücretsiz planda {FREE_RENDER_LIMIT} sanal manken hakkın var.{'\n'}
+            Premium'a geçerek sınırsız kullan.
+          </Text>
+          <TouchableOpacity style={premiumStyles.premiumBtn} onPress={onClose} activeOpacity={0.85}>
+            <Text style={premiumStyles.premiumBtnText}>Premium'a Geç →</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={premiumStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={premiumStyles.cancelBtnText}>Kapat</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function CombosScreen() {
   const items          = useWardrobeStore((s) => s.items);
@@ -137,6 +258,12 @@ export default function CombosScreen() {
 
   const [savingKey,      setSavingKey]      = useState<string | null>(null);
   const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
+
+  // Virtual model state
+  const [generatingComboId,   setGeneratingComboId]   = useState<string | null>(null);
+  const [modelImageUrl,       setModelImageUrl]        = useState<string | null>(null);
+  const [modelModalVisible,   setModelModalVisible]    = useState(false);
+  const [premiumModalVisible, setPremiumModalVisible]  = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -159,6 +286,56 @@ export default function CombosScreen() {
     });
     if (!error) markWorn(key);
     setSavingKey(null);
+  };
+
+  const handleVirtualModel = async (combo: Combo) => {
+    if (!user) return;
+
+    // Fiziksel profil + render sayısını çek
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('height, age, body_type, skin_tone, hair_color, hair_length, hair_type, virtual_model_renders')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const renderCount = (profile?.virtual_model_renders ?? 0) as number;
+
+    if (renderCount >= FREE_RENDER_LIMIT && !user.isPremium) {
+      setPremiumModalVisible(true);
+      return;
+    }
+
+    setGeneratingComboId(combo.id);
+
+    try {
+      const physProfile: PhysicalProfile = {
+        height:     (profile?.height     ?? 165) as number,
+        age:        (profile?.age        ?? 25)  as number,
+        bodyType:   (profile?.body_type  ?? null) as string | null,
+        skinTone:   (profile?.skin_tone  ?? null) as string | null,
+        hairColor:  (profile?.hair_color ?? null) as string | null,
+        hairLength: (profile?.hair_length ?? null) as string | null,
+        hairType:   (profile?.hair_type  ?? null) as string | null,
+      };
+
+      const url = await generateVirtualModelImage(physProfile, combo.items);
+
+      // Render sayısını artır
+      await supabase
+        .from('profiles')
+        .update({ virtual_model_renders: renderCount + 1 })
+        .eq('id', user.id);
+
+      setModelImageUrl(url);
+      setModelModalVisible(true);
+    } catch (err) {
+      Alert.alert(
+        'Hata',
+        err instanceof Error ? err.message : 'Manken görüntüsü oluşturulamadı. Lütfen tekrar dene.',
+      );
+    } finally {
+      setGeneratingComboId(null);
+    }
   };
 
   const combos  = useMemo(() => generateCombos(items, 12, activeOccasion), [items, activeOccasion]);
@@ -247,12 +424,26 @@ export default function CombosScreen() {
                 combo={item}
                 isWorn={wornComboKeys.has(key)}
                 isSaving={savingKey === key}
+                isGenerating={generatingComboId === item.id}
                 onWear={() => handleWear(item)}
+                onVirtualModel={() => handleVirtualModel(item)}
               />
             );
           }}
         />
       )}
+
+      {/* Modaller */}
+      <ModelModal
+        visible={modelModalVisible}
+        imageUrl={modelImageUrl}
+        onClose={() => setModelModalVisible(false)}
+      />
+      <PremiumModal
+        visible={premiumModalVisible}
+        onClose={() => setPremiumModalVisible(false)}
+      />
+
     </SafeAreaView>
   );
 }
@@ -407,7 +598,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
-  // Footer
+  // Kart footer
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -421,6 +612,36 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     color: colors.text,
   },
+  footerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+  },
+
+  // Sanal manken butonu
+  modelBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Üretim yükleme durumu
+  generatingState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  generatingText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+
+  // Giy butonu
   wearBtn: {
     paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
@@ -477,5 +698,110 @@ const styles = StyleSheet.create({
   suggestionLabel: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+});
+
+// ─── Modal stilleri ───────────────────────────────────────────────────────────
+
+const modalStyles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageContainer: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: layout.screenPaddingH,
+  },
+  image: {
+    width: '100%',
+    aspectRatio: 1024 / 1792,
+    borderRadius: radius.md,
+  },
+  footer: {
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  shareBtn: {
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  shareBtnText: {
+    ...typography.body,
+    fontFamily: fonts.bodyBold,
+    color: colors.white,
+  },
+});
+
+// ─── Premium modal stilleri ───────────────────────────────────────────────────
+
+const premiumStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: layout.screenPaddingH,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  title: {
+    ...typography.h2,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  body: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  premiumBtn: {
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumBtnText: {
+    ...typography.body,
+    fontFamily: fonts.bodyBold,
+    color: colors.white,
+  },
+  cancelBtn: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  cancelBtnText: {
+    ...typography.body,
+    color: colors.textTertiary,
   },
 });
