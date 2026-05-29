@@ -10,6 +10,7 @@ export type OnboardingStackParamList = {
   StyleQuiz: undefined;
   StyleExplore: undefined;
   StyleResult: { selectedStyles: StyleEntry[] };
+  PhysicalProfile: undefined;
 };
 
 import type { WardrobeItem } from '../types';

@@ -91,9 +91,8 @@ async function fetchDnaFromClaude(
 
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
-export default function StyleResultScreen({ route }: Props) {
+export default function StyleResultScreen({ route, navigation }: Props) {
   const { selectedStyles } = route.params;
-  const setOnboarded    = useUserStore((s: UserState) => s.setOnboarded);
   const setStyleProfile = useUserStore((s: UserState) => s.setStyleProfile);
   const user            = useUserStore((s: UserState) => s.user);
 
@@ -139,7 +138,7 @@ export default function StyleResultScreen({ route }: Props) {
       return;
     }
     setStyleProfile({ styles: selectedStyles, colorPalette: palette });
-    setOnboarded(true);
+    navigation.navigate('PhysicalProfile');
   };
 
   const handleShare = async () => {

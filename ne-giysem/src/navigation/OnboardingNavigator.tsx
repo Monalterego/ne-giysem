@@ -12,6 +12,7 @@ import StyleSelectScreen from '../screens/onboarding/StyleSelectScreen';
 import StyleQuizScreen from '../screens/onboarding/StyleQuizScreen';
 import StyleExploreScreen from '../screens/onboarding/StyleExploreScreen';
 import StyleResultScreen from '../screens/onboarding/StyleResultScreen';
+import PhysicalProfileScreen from '../screens/onboarding/PhysicalProfileScreen';
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
@@ -32,6 +33,7 @@ export default function OnboardingNavigator() {
       <Stack.Screen name="StyleQuiz" component={StyleQuizScreen} />
       <Stack.Screen name="StyleExplore" component={StyleExploreScreen} />
       <Stack.Screen name="StyleResult" component={StyleResultScreen} />
+      <Stack.Screen name="PhysicalProfile" component={PhysicalProfileScreen} />
     </Stack.Navigator>
   );
 }
