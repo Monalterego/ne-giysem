@@ -66,7 +66,6 @@ function WeatherIcon({ description }: { description?: string }) {
 function TodayComboCard({ combo }: { combo: Combo }) {
   return (
     <View style={styles.comboCard}>
-      <Text style={styles.comboTag}>GÜNÜN KOMBİNİ</Text>
       <View style={styles.comboImages}>
         {combo.items.map((item: WardrobeItem) => (
           <View key={item.id} style={styles.comboImageWrap}>
@@ -309,8 +308,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 14,
+    paddingTop: 22,
+    paddingBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
@@ -430,7 +429,7 @@ const styles = StyleSheet.create({
   // Hava durumu
   weatherCard: {
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 16,
     padding: 16,
     borderRadius: 16,
     backgroundColor: C.surface,
@@ -473,19 +472,19 @@ const styles = StyleSheet.create({
   quickRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 12,
-    marginTop: 24,
+    gap: 8,
+    marginTop: 18,
   },
   quickAction: {
     flex: 1,
-    aspectRatio: 1,
-    borderRadius: 18,
+    height: 72,
+    borderRadius: 16,
     backgroundColor: C.white,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: '#EDEBE6',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 6,
     boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
     elevation: 1,
   },
@@ -501,7 +500,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 20,
-    gap: 10,
+    gap: 8,
   },
   previewItem: {
     width: '47%',
