@@ -1,32 +1,30 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleChoice'>;
 
 const PATHS = [
   {
-    icon: '🎯',
+    num: '01',
     title: 'Tarzımı Biliyorum',
     description: 'Stil kategorilerinden direkt seçim yap',
-    accentColor: colors.accent,
     route: 'StyleSelect' as const,
   },
   {
-    icon: '🧩',
+    num: '02',
     title: 'Keşfetmek İstiyorum',
     description: 'Quiz ile tarzını bul, 8 soruda profilini çıkar',
-    accentColor: colors.secondary,
     route: 'StyleQuiz' as const,
   },
   {
-    icon: '✨',
+    num: '03',
     title: 'İlham Ver',
-    description: 'Görselleri beğen/geç — 15 swipe ile stil DNA\'n hazır',
-    accentColor: '#6C5CE7',
+    description: 'Görselleri beğen/geç — 20 swipe ile stil DNA\'n hazır',
     route: 'StyleExplore' as const,
   },
 ];
@@ -38,34 +36,29 @@ export default function StyleChoiceScreen({ navigation }: Props) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Stilini Tanıyalım</Text>
           <Text style={styles.subtitle}>Sana en uygun yolu seç</Text>
         </View>
 
-        {/* Path cards */}
-        {PATHS.map((path, index) => (
+        {PATHS.map((path) => (
           <TouchableOpacity
-            key={index}
+            key={path.num}
             style={styles.card}
             onPress={() => navigation.navigate(path.route)}
             activeOpacity={0.8}
           >
-            <View style={[styles.iconBox, { backgroundColor: `${path.accentColor}14` }]}>
-              <Text style={styles.iconText}>{path.icon}</Text>
-            </View>
+            <Text style={styles.cardNum}>{path.num}</Text>
             <View style={styles.cardBody}>
               <Text style={styles.cardTitle}>{path.title}</Text>
               <Text style={styles.cardDesc}>{path.description}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <Feather name="chevron-right" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
         ))}
 
-        {/* Footer hint */}
         <Text style={styles.hint}>
-          Her üç yol da aynı çıktıyı üretir → Stil DNA Kartın
+          Her üç yol da aynı çıktıyı üretir — Stil DNA Kartın
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -78,73 +71,65 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   container: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 32,
+    paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
   },
+
+  // Başlık
   header: {
-    marginBottom: 32,
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 26,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 6,
+    ...typography.h1,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
+
+  // Kart
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1.5,
+    borderRadius: radius.md,
+    borderWidth: 1,
     borderColor: colors.border,
-    padding: 18,
-    marginBottom: 14,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     backgroundColor: colors.white,
-    boxShadow: '0 2px 8px rgba(26,26,46,0.04)',
-    elevation: 2,
+    gap: spacing.md,
+    ...shadows.subtle,
   },
-  iconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  iconText: {
-    fontSize: 24,
+  cardNum: {
+    ...typography.h3,
+    fontFamily: fonts.heading,
+    color: colors.textTertiary,
+    width: 28,
   },
   cardBody: {
     flex: 1,
+    gap: spacing.xs - 2,
   },
   cardTitle: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.primary,
-    marginBottom: 4,
+    color: colors.text,
   },
   cardDesc: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
     lineHeight: 18,
   },
-  chevron: {
-    fontSize: 22,
-    color: '#CCCCCC',
-    marginLeft: 8,
-  },
+
+  // Alt not
   hint: {
-    marginTop: 16,
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: '#BBBBBB',
+    ...typography.caption,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
     textAlign: 'center',
-    lineHeight: 18,
+    marginTop: spacing.md,
   },
 });
