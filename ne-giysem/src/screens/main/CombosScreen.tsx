@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
+import { useComboStore } from '../../store/useComboStore';
 import { generateCombos, generateCombosAI, missingCategories } from '../../utils/comboEngine';
 import type { Occasion, UserProfileInput } from '../../utils/comboEngine';
 import { OCCASIONS } from '../../constants/occasions';
@@ -260,6 +261,7 @@ export default function CombosScreen() {
   const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
   const weather        = useWardrobeStore((s) => s.weather);
   const user           = useUserStore((s) => s.user);
+  const { cache: comboCache, setCache, clearCache } = useComboStore();
 
   const [savingKey,      setSavingKey]      = useState<string | null>(null);
   const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
@@ -267,7 +269,6 @@ export default function CombosScreen() {
   const [aiLoading,      setAiLoading]      = useState(false);
   const [page,           setPage]           = useState(0);
   const [loadingMore,    setLoadingMore]    = useState(false);
-  const comboCache = useRef<Record<string, Combo[]>>({});
 
   // Virtual model state
   const [generatingComboId,    setGeneratingComboId]    = useState<string | null>(null);
@@ -284,9 +285,9 @@ export default function CombosScreen() {
     }
   }, [user?.id]);
 
-  // items veya kullanıcı değişince cache'i sıfırla
+  // Yeni parça eklenince veya kullanıcı değişince cache'i sıfırla
   useEffect(() => {
-    comboCache.current = {};
+    clearCache();
   }, [items, user?.id]);
 
   // Claude AI kombin üretimi — her items/occasion değişiminde
@@ -294,7 +295,7 @@ export default function CombosScreen() {
     if (!items.length || !user) { setAiCombos([]); return; }
 
     // Cache hit — okasyon değişince AI çağrısı yapmadan cache'den al
-    const cached = comboCache.current[activeOccasion];
+    const cached = comboCache[activeOccasion];
     if (cached) {
       setAiCombos(cached);
       setPage(0);
@@ -320,13 +321,13 @@ export default function CombosScreen() {
       .then((results) => {
         if (cancelled) return;
         const finalResults = results.length ? results : generateCombos(items, 5, activeOccasion);
-        comboCache.current[activeOccasion] = finalResults;
+        setCache(activeOccasion, finalResults);
         setAiCombos(finalResults);
       })
       .catch(() => {
         if (!cancelled) {
           const fallback = generateCombos(items, 5, activeOccasion);
-          comboCache.current[activeOccasion] = fallback;
+          setCache(activeOccasion, fallback);
           setAiCombos(fallback);
         }
       })
@@ -354,7 +355,7 @@ export default function CombosScreen() {
       const results = await generateCombosAI(items, profile, weather, activeOccasion, nextPage, prevIds);
       if (results.length) {
         const newAll = [...aiCombos, ...results];
-        comboCache.current[activeOccasion] = newAll;
+        setCache(activeOccasion, newAll);
         setAiCombos(newAll);
         setPage(nextPage);
       }
