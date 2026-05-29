@@ -36,12 +36,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   accessory:      'Aksesuar',
 };
 
-const SUGGESTED_LABEL: Record<string, string> = {
-  bag:       'Çanta',
-  outer:     'Dış Giyim',
-  accessory: 'Aksesuar',
-};
-
 const FREE_RENDER_LIMIT = 3;
 
 function comboKey(combo: Combo): string {
@@ -65,14 +59,14 @@ function ComboCard({
   onWear: () => void;
   onVirtualModel: () => void;
 }) {
-  const hasSuggestions = (combo.suggestedItems?.length ?? 0) > 0;
+  const allItems = [...combo.items, ...(combo.suggestedItems ?? [])];
 
   return (
     <View style={styles.card}>
 
-      {/* Çekirdek parça görselleri */}
-      <View style={styles.imagesRow}>
-        {combo.items.map((item) => (
+      {/* Tüm parçalar — tek düzende, kategori etiketiyle */}
+      <View style={styles.imagesGrid}>
+        {allItems.map((item) => (
           <View key={item.id} style={styles.itemImageWrap}>
             <Image
               source={{ uri: item.processedImageUrl }}
@@ -84,27 +78,6 @@ function ComboCard({
         ))}
         <Text style={styles.scoreText}>{combo.score}%</Text>
       </View>
-
-      {/* Tamamlayıcı öneriler */}
-      {hasSuggestions && (
-        <View style={styles.suggestionsSection}>
-          <Text style={styles.suggestionsTitle}>Tamamlayıcı Öneriler</Text>
-          <View style={styles.suggestionsRow}>
-            {combo.suggestedItems!.map((item) => (
-              <View key={item.id} style={styles.suggestionWrap}>
-                <Image
-                  source={{ uri: item.processedImageUrl }}
-                  style={styles.suggestionImage}
-                  resizeMode="contain"
-                />
-                <Text style={styles.suggestionLabel}>
-                  {SUGGESTED_LABEL[item.category] ?? item.category}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
 
       {/* Footer */}
       <View style={styles.cardFooter}>
@@ -745,15 +718,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadows.card,
   },
-  imagesRow: {
+  imagesGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     padding: spacing.md,
     gap: spacing.sm,
     backgroundColor: colors.surface,
     position: 'relative',
   },
   itemImageWrap: {
-    flex: 1,
+    width: '30%',
     alignItems: 'center',
     gap: spacing.xs,
   },
@@ -838,42 +812,6 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   wearBtnTextWorn: {
-    color: colors.textSecondary,
-  },
-
-  // Tamamlayıcı öneriler
-  suggestionsSection: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  suggestionsTitle: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  suggestionsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  suggestionWrap: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  suggestionImage: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.subtle,
-  },
-  suggestionLabel: {
-    ...typography.caption,
     color: colors.textSecondary,
   },
 

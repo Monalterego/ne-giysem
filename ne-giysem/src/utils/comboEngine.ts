@@ -328,6 +328,7 @@ export async function generateCombosAI(
   ].filter(Boolean).join('\n') || '- Profil bilgisi girilmemiş';
 
   const weatherText    = weather ? `${weather.temp}°C, ${weather.description}` : 'Bilinmiyor';
+  const needsOuter     = weather ? weather.temp < 18 : false;
   const previousNote   = previousItemIds.length > 0
     ? `\nDAHA ÖNCE GÖSTERİLEN PARÇALAR: ${previousItemIds.join(', ')} — Bu parçaları içeren kombinler yerine farklı parçaları ön plana çıkar.`
     : '';
@@ -349,13 +350,20 @@ ${wardrobeText}
 ${optionalText}
 
 GÖREV:
-Bu kişi için 5 adet kombin öner.
+Bu kişi için 5 adet kombin öner. Aşağıdaki KATMANLı yapıya kesinlikle uy:
 
-ZORUNLU KOMBİN YAPISI — İSTİSNASIZ:
-- Dolaptaki parçalarda elbise/tulum varsa: 1 elbise/tulum + 1 ayakkabı (ASLA alt giyim ekleme)
-- Dolaptaki parçalarda elbise/tulum yoksa: 1 üst + 1 alt + 1 ayakkabı
-- HİÇBİR kombinasyonda 2 üst giyim veya 2 alt giyim olmamalı
-- Aksesuar ve çanta opsiyoneldir: uygunsa 4. veya 5. parça olarak eklenebilir
+KATMAN 1 — ZORUNLU (her kombinasyonda mutlaka olmalı):
+• 1 ÜST GİYİM + 1 ALT GİYİM + 1 AYAKKABI
+• VEYA: 1 ELBİSE/TULUM + 1 AYAKKABI
+Not: Hiçbir kombinasyonda 2 üst veya 2 alt giyim olamaz.
+Not: Dış giyim (hırka, ceket, blazer, mont) ÜST GİYİM sayılmaz — ayrı katmandır.
+
+KATMAN 2 — HER KOMBİNDE OLMALI:
+• 1 ÇANTA — dolaptaki çantalardan seç. Dolabında çanta yoksa reasoning'e "Dolabında çanta yok, eklemeyi düşün" yaz ve çanta ID'si verme.
+• 1 AKSESUAR — kolye, küpe, kemer, fular vb. dolaptaki aksesuarlardan seç. Yoksa reasoning'e not ekle.
+
+KATMAN 3 — DIŞ GİYİM:
+${needsOuter ? '• Hava 18°C altında — her kombinlere dolaptaki dış giyimden 1 parça EKLE (hırka, ceket, blazer, mont).' : '• Hava uygun — dış giyim opsiyonel, ekleme zorunluluğu yok.'}
 
 AYRICA:
 - Okasyon tanımına kesinlikle uy
@@ -364,10 +372,11 @@ AYRICA:
 - Renk uyumuna dikkat et
 
 JSON formatı:
+Tüm parçaları (üst, alt, ayakkabı, çanta, aksesuar, dış giyim) tek "items" array'ine koy. Ayrı field kullanma.
 {
   "combos": [
     {
-      "items": ["item_id_1", "item_id_2", "item_id_3"],
+      "items": ["upper_id", "lower_id", "shoes_id", "bag_id", "accessory_id"],
       "score": 92,
       "occasion": "${occasionData.id}",
       "reasoning": "Kısa Türkçe gerekçe (1 cümle)"
