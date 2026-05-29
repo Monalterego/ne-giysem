@@ -1,20 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, ActivityIndicator, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Share,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { STYLE_DATA_MAP } from '../../constants/styles';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleResult'>;
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
-// Seçili stillerin paletlerini ağırlık sırasına göre birleştir, max 5 unique renk
+// ─── Yardımcılar ──────────────────────────────────────────────────────────────
+
 function buildPalette(entries: StyleEntry[]): string[] {
   const seen   = new Set<string>();
   const result: string[] = [];
@@ -80,6 +89,8 @@ async function fetchDnaFromClaude(
   };
 }
 
+// ─── Ana ekran ────────────────────────────────────────────────────────────────
+
 export default function StyleResultScreen({ route }: Props) {
   const { selectedStyles } = route.params;
   const setOnboarded    = useUserStore((s: UserState) => s.setOnboarded);
@@ -133,20 +144,21 @@ export default function StyleResultScreen({ route }: Props) {
 
   const handleShare = async () => {
     await Share.share({
-      message: `Stil DNA'm: ${dnaName || primary.name} (${breakdown}) — Ne Giysem? ile keşfettim! 👗`,
+      message: `Stil DNA'm: ${dnaName || primary.name} (${breakdown}) — Ne Giysem? ile keşfettim!`,
     });
   };
 
   return (
-    <LinearGradient colors={['#1A1A2E', '#0F3460', '#1A1A2E']} style={styles.gradient}>
+    <View style={styles.bg}>
       <SafeAreaView style={styles.safe}>
+
         <Text style={styles.badge}>STİL DNA KARTIN</Text>
 
-        {/* Kart */}
+        {/* DNA Kartı */}
         <View style={styles.card}>
-          {/* DNA İsmi */}
+
           {aiLoading ? (
-            <ActivityIndicator color="rgba(255,255,255,0.7)" size="small" style={styles.nameSpinner} />
+            <ActivityIndicator color="rgba(255,255,255,0.5)" size="small" style={styles.nameSpinner} />
           ) : (
             <Text style={styles.dnaName}>{dnaName}</Text>
           )}
@@ -161,7 +173,7 @@ export default function StyleResultScreen({ route }: Props) {
           </View>
           <Text style={styles.paletteLabel}>RENK PALETİN</Text>
 
-          {/* Trait tag'ler */}
+          {/* Trait badge'leri */}
           {!aiLoading && traits.length > 0 && (
             <View style={styles.traitsWrap}>
               {traits.map((t: string) => (
@@ -176,6 +188,7 @@ export default function StyleResultScreen({ route }: Props) {
               <ActivityIndicator color="rgba(255,255,255,0.4)" size="small" />
             </View>
           )}
+
         </View>
 
         {/* Aksiyonlar */}
@@ -187,130 +200,137 @@ export default function StyleResultScreen({ route }: Props) {
             disabled={saving}
           >
             {saving
-              ? <ActivityIndicator color="#fff" />
+              ? <ActivityIndicator color={colors.black} />
               : <Text style={styles.primaryBtnText}>Dolabımı Oluştur →</Text>
             }
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.75}>
-            <Text style={styles.shareBtnText}>🤍  Paylaş</Text>
+            <Feather name="share-2" size={14} color="rgba(255,255,255,0.4)" />
+            <Text style={styles.shareBtnText}>Paylaş</Text>
           </TouchableOpacity>
         </View>
+
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
+// ─── Stiller ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  gradient: {
+  bg: {
     flex: 1,
+    backgroundColor: colors.black,
   },
   safe: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: layout.screenPaddingH,
     justifyContent: 'center',
   },
+
+  // Başlık badge
   badge: {
-    fontSize: 11,
-    fontFamily: fonts.bodyBold,
-    color: colors.accent,
-    letterSpacing: 3,
+    ...typography.label,
+    color: colors.textTertiary,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
+
+  // Kart
   card: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    padding: 24,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: spacing.lg,
     alignItems: 'center',
-    marginBottom: 32,
-    minHeight: 240,
+    marginBottom: spacing.xl,
   },
   nameSpinner: {
-    marginBottom: 12,
-    marginTop: 4,
-    height: 34,
+    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
+    height: 48,
   },
   dnaName: {
-    fontSize: 28,
-    fontFamily: fonts.headingBold,
+    ...typography.hero,
     color: colors.white,
-    marginBottom: 8,
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   breakdown: {
-    fontSize: 12,
-    fontFamily: fonts.body,
+    ...typography.caption,
     color: 'rgba(255,255,255,0.5)',
-    marginBottom: 24,
+    marginBottom: spacing.lg,
     textAlign: 'center',
   },
+
+  // Renk paleti
   paletteRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   paletteCircle: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: radius.full,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   paletteLabel: {
-    fontSize: 10,
-    fontFamily: fonts.bodyMedium,
+    ...typography.label,
     color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 1.5,
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
+
+  // Trait badge'leri
   traitsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
     justifyContent: 'center',
   },
   traitTag: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 12,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   traitText: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: 'rgba(255,255,255,0.75)',
+    ...typography.bodySmall,
+    color: 'rgba(255,255,255,0.7)',
   },
   traitsPlaceholder: {
     height: 32,
     justifyContent: 'center',
   },
+
+  // Aksiyonlar
   actions: {
-    gap: 12,
+    gap: spacing.sm,
   },
   primaryBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.accent,
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 6px 12px rgba(233,69,96,0.35)',
-    elevation: 6,
   },
   primaryBtnText: {
-    fontSize: 15,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.white,
+    color: colors.black,
   },
   shareBtn: {
     height: 44,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.xs,
   },
   shareBtnText: {
-    fontSize: 14,
-    fontFamily: fonts.bodyMedium,
-    color: 'rgba(255,255,255,0.5)',
+    ...typography.body,
+    color: 'rgba(255,255,255,0.4)',
   },
 });
