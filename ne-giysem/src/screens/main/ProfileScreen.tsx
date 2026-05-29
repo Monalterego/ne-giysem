@@ -7,16 +7,17 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,  // isim güncelleme hatası için korunuyor
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
-import { colors, fonts } from '../../constants/theme';
+import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
-// ─── Yardımcılar ─────────────────────────────────────────────────────────────
+// ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
 function initials(name: string): string {
   return name
@@ -27,33 +28,21 @@ function initials(name: string): string {
     .join('');
 }
 
-const STYLE_LABEL: Record<string, string> = {
-  minimalist:   'Minimalist',
-  streetwear:   'Streetwear',
-  old_money:    'Old Money',
-  smart_casual: 'Smart Casual',
-  bohemian:     'Bohemian',
-  athleisure:   'Athleisure',
-  avant_garde:  'Avant-garde',
-};
-
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const user      = useUserStore((s) => s.user);
-  const logout    = useUserStore((s) => s.logout);
-  const setUser   = useUserStore((s) => s.setUser);
-  const items     = useWardrobeStore((s) => s.items);
-  const setItems  = useWardrobeStore((s) => s.setItems);
+  const user     = useUserStore((s) => s.user);
+  const logout   = useUserStore((s) => s.logout);
+  const setUser  = useUserStore((s) => s.setUser);
+  const items    = useWardrobeStore((s) => s.items);
+  const setItems = useWardrobeStore((s) => s.setItems);
 
-  // İstatistikler
   const combos = useMemo(() => generateCombos(items, 50), [items]);
   const avgScore = combos.length > 0
     ? Math.round(combos.reduce((sum, c) => sum + c.score, 0) / combos.length)
     : 0;
 
-  // Stil DNA
-  const [styleEntries, setStyleEntries] = useState<{ name: string; weight: number }[]>([]);
+  const [styleEntries,  setStyleEntries]  = useState<{ name: string; weight: number }[]>([]);
   const [loadingStyles, setLoadingStyles] = useState(true);
 
   useEffect(() => {
@@ -69,10 +58,9 @@ export default function ProfileScreen() {
       .finally(() => setLoadingStyles(false));
   }, [user?.id]);
 
-  // İsim güncelleme
   const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(user?.name ?? '');
-  const [savingName, setSavingName] = useState(false);
+  const [nameInput,   setNameInput]   = useState(user?.name ?? '');
+  const [savingName,  setSavingName]  = useState(false);
 
   const handleSaveName = async () => {
     if (!user) return;
@@ -95,18 +83,10 @@ export default function ProfileScreen() {
     setEditingName(false);
   };
 
-  // Çıkış
   const handleLogout = () => {
-    console.log('[ProfileScreen] handleLogout çağrıldı');
-    console.log('[ProfileScreen] signOut öncesi — supabase.auth.signOut() çağrılıyor');
     supabase.auth.signOut()
-      .then(({ error }) => {
-        console.log('[ProfileScreen] signOut sonrası — error:', error ?? null);
-        if (error) console.warn('[ProfileScreen] signOut error.message:', error.message);
-      })
-      .catch((err) => console.warn('[ProfileScreen] signOut exception (catch):', err))
+      .catch((err) => console.warn('[ProfileScreen] signOut exception:', err))
       .finally(() => {
-        console.log('[ProfileScreen] finally — setItems([]) ve logout() çağrılıyor');
         setItems([]);
         logout();
       });
@@ -120,6 +100,7 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+
         {/* ── Avatar + bilgi ── */}
         <View style={styles.avatarSection}>
           <View style={styles.avatar}>
@@ -129,7 +110,9 @@ export default function ProfileScreen() {
           <Text style={styles.userEmail}>{user.email}</Text>
         </View>
 
-        {/* ── İstatistikler ── */}
+        <View style={styles.separator} />
+
+        {/* ── İstatistikler — kart yok, direkt ekranda ── */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{items.length}</Text>
@@ -147,41 +130,48 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <View style={styles.separator} />
+
         {/* ── Stil DNA ── */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Stil DNA</Text>
+          <Text style={styles.sectionLabel}>STİL DNA</Text>
           {loadingStyles ? (
-            <ActivityIndicator color={colors.accent} size="small" style={styles.loader} />
+            <ActivityIndicator color={colors.textTertiary} size="small" />
           ) : styleEntries.length === 0 ? (
             <Text style={styles.emptyMuted}>Stil profili henüz oluşturulmadı.</Text>
           ) : (
-            <View style={styles.dnaTagRow}>
-              {styleEntries.map((entry) => (
-                <View key={entry.name} style={styles.dnaTag}>
-                  <Text style={styles.dnaTagName}>
-                    {STYLE_LABEL[entry.name] ?? entry.name}
-                  </Text>
-                  <Text style={styles.dnaTagWeight}>{entry.weight}%</Text>
+            <View style={styles.dnaList}>
+              {styleEntries.map((entry, i) => (
+                <View key={entry.name}>
+                  <View style={styles.dnaRow}>
+                    <Text style={styles.dnaName}>{entry.name}</Text>
+                    <Text style={styles.dnaWeight}>{entry.weight}%</Text>
+                  </View>
+                  <View style={styles.progressBg}>
+                    <View style={[styles.progressFill, { width: `${entry.weight}%` }]} />
+                  </View>
+                  {i < styleEntries.length - 1 && <View style={styles.dnaSeparator} />}
                 </View>
               ))}
             </View>
           )}
         </View>
 
-        {/* ── İsim güncelleme ── */}
+        {/* ── Hesap ── */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Hesap</Text>
+          <Text style={styles.sectionLabel}>HESAP</Text>
 
           {!editingName ? (
             <TouchableOpacity
-              style={styles.textBtn}
+              style={styles.listItem}
               onPress={() => {
                 setNameInput(user.name);
                 setEditingName(true);
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.textBtnLabel}>İsmini Güncelle</Text>
+              <Text style={styles.listItemText}>İsmini Güncelle</Text>
+              <Feather name="chevron-right" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           ) : (
             <View style={styles.nameEditWrap}>
@@ -190,7 +180,7 @@ export default function ProfileScreen() {
                 value={nameInput}
                 onChangeText={setNameInput}
                 placeholder="Adın"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.textTertiary}
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={handleSaveName}
@@ -224,7 +214,7 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.logoutBtn}
           onPress={handleLogout}
-          activeOpacity={0.85}
+          activeOpacity={0.7}
         >
           <Text style={styles.logoutText}>Çıkış Yap</Text>
         </TouchableOpacity>
@@ -243,200 +233,201 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: spacing.xl,
+  },
+
+  // Separator
+  separator: {
+    height: 1,
+    backgroundColor: colors.border,
   },
 
   // Avatar
   avatarSection: {
     alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 28,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: layout.screenPaddingH,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary,
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: colors.black,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: spacing.md,
   },
   avatarText: {
-    fontSize: 28,
+    ...typography.h3,
     fontFamily: fonts.bodyBold,
     color: colors.white,
     letterSpacing: 1,
   },
   userName: {
-    fontSize: 20,
-    fontFamily: fonts.headingBold,
-    color: colors.primary,
-    marginBottom: 4,
+    ...typography.h2,
+    color: colors.text,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
   },
   userEmail: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
 
   // İstatistikler
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 16,
-    paddingVertical: 20,
-    boxShadow: '0 1px 6px rgba(26,26,46,0.04)',
-    elevation: 1,
+    paddingVertical: spacing.xl,
+    backgroundColor: colors.background,
   },
   statBox: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   statDivider: {
     width: 1,
     backgroundColor: colors.border,
   },
   statValue: {
-    fontSize: 22,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
+    ...typography.h1,
+    color: colors.text,
   },
   statLabel: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.label,
+    color: colors.textSecondary,
   },
 
-  // Kart
+  // Kartlar
   card: {
+    marginHorizontal: layout.screenPaddingH,
+    marginTop: spacing.lg,
     backgroundColor: colors.white,
-    borderRadius: 20,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 20,
-    marginBottom: 16,
-    gap: 14,
-    boxShadow: '0 1px 6px rgba(26,26,46,0.04)',
-    elevation: 1,
+    padding: spacing.md,
+    gap: spacing.md,
+    ...shadows.subtle,
   },
-  cardTitle: {
-    fontSize: 15,
-    fontFamily: fonts.bodyBold,
-    color: colors.primary,
-  },
-  loader: {
-    alignSelf: 'flex-start',
+  sectionLabel: {
+    ...typography.label,
+    color: colors.textSecondary,
   },
   emptyMuted: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.muted,
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
 
-  // Stil DNA etiketleri
-  dnaTagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  // Stil DNA
+  dnaList: {
+    gap: 0,
   },
-  dnaTag: {
+  dnaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
   },
-  dnaTagName: {
-    fontSize: 13,
+  dnaName: {
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.white,
+    color: colors.text,
   },
-  dnaTagWeight: {
-    fontSize: 11,
+  dnaWeight: {
+    ...typography.body,
     fontFamily: fonts.bodyBold,
-    color: colors.accent,
+    color: colors.text,
+  },
+  progressBg: {
+    height: 2,
+    backgroundColor: colors.border,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 2,
+    backgroundColor: colors.text,
+    borderRadius: radius.full,
+  },
+  dnaSeparator: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
   },
 
-  // İsim güncelleme
-  textBtn: {
-    alignSelf: 'flex-start',
+  // Hesap — liste item
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
   },
-  textBtnLabel: {
-    fontSize: 14,
-    fontFamily: fonts.bodyMedium,
-    color: colors.accent,
+  listItemText: {
+    ...typography.body,
+    color: colors.text,
   },
+
+  // İsim düzenleme
   nameEditWrap: {
-    gap: 12,
+    gap: spacing.sm,
   },
   nameInput: {
-    height: 46,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    height: 44,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    fontFamily: fonts.body,
-    color: colors.primary,
+    paddingHorizontal: spacing.md,
+    ...typography.body,
+    color: colors.text,
     backgroundColor: colors.background,
   },
   nameEditBtns: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm,
   },
   cancelBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
+    height: 42,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelBtnText: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyMedium,
-    color: colors.muted,
+    color: colors.textSecondary,
   },
   saveBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.accent,
+    height: 42,
+    borderRadius: radius.sm,
+    backgroundColor: colors.black,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
-    fontSize: 14,
+    ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
   },
 
-  // Çıkış
+  // Çıkış Yap
   logoutBtn: {
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1.5,
-    borderColor: '#FFCDD2',
+    marginTop: spacing.xl,
+    marginHorizontal: layout.screenPaddingH,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF5F5',
-    marginTop: 4,
+    paddingVertical: spacing.sm,
   },
   logoutText: {
-    fontSize: 15,
-    fontFamily: fonts.bodyBold,
-    color: '#C62828',
+    ...typography.body,
+    color: colors.error,
   },
 
   bottomPad: {
-    height: 16,
+    height: spacing.md,
   },
 });
