@@ -19,12 +19,16 @@ export default function App() {
       }
 
       if (event === 'INITIAL_SESSION' && session?.user) {
-        // Uygulama açılışında mevcut oturum — profiles tablosundan adı çek
+        // Uygulama açılışında mevcut oturum — profiles tablosundan profil çek
         const u = session.user;
-        supabase.from('profiles').select('name').eq('id', u.id).maybeSingle()
-          .then(({ data: profile }: { data: { name: string } | null }) => {
+        supabase
+          .from('profiles')
+          .select('name, height, age, body_type, skin_tone, hair_color, hair_length, hair_type')
+          .eq('id', u.id)
+          .maybeSingle()
+          .then(({ data: profile }: { data: { name: string; height: number | null; age: number | null; body_type: string | null; skin_tone: string | null; hair_color: string | null; hair_length: string | null; hair_type: string | null } | null }) => {
             console.log('[App] INITIAL_SESSION setUser — name:', profile?.name ?? '(yok)');
-            const { setUser, setOnboarded } = useUserStore.getState();
+            const { setUser, setPhysicalProfile, setOnboarded } = useUserStore.getState();
             setUser({
               id: u.id,
               email: u.email ?? '',
@@ -32,6 +36,17 @@ export default function App() {
               isPremium: false,
               createdAt: u.created_at,
             });
+            if (profile?.height != null) {
+              setPhysicalProfile({
+                height:     profile.height      ?? undefined,
+                age:        profile.age         ?? undefined,
+                bodyType:   profile.body_type   ?? undefined,
+                skinTone:   profile.skin_tone   ?? undefined,
+                hairColor:  profile.hair_color  ?? undefined,
+                hairLength: profile.hair_length ?? undefined,
+                hairType:   profile.hair_type   ?? undefined,
+              });
+            }
             setOnboarded(true);
           });
         return;
