@@ -135,13 +135,14 @@ async function applyVirtualTryOn(
   if (!REPLICATE_API_KEY) throw new Error('Replicate API key eksik — .env dosyasında EXPO_PUBLIC_REPLICATE_API_KEY ayarla');
 
   // Prediction başlat
-  const startRes = await fetch('https://api.replicate.com/v1/models/cuuupid/idm-vton/predictions', {
+  const startRes = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${REPLICATE_API_KEY}`,
       'Content-Type':  'application/json',
     },
     body: JSON.stringify({
+      version: 'c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4',
       input: {
         human_img:       humanImg,
         garm_img:        garmImg,
