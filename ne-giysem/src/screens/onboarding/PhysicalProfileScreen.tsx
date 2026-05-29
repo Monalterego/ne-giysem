@@ -14,6 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
+import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 
@@ -131,8 +132,9 @@ const stepperStyles = StyleSheet.create({
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function PhysicalProfileScreen(_: Props) {
-  const user         = useUserStore((s) => s.user);
-  const setOnboarded = useUserStore((s) => s.setOnboarded);
+  const user                = useUserStore((s: UserState) => s.user);
+  const setOnboarded        = useUserStore((s: UserState) => s.setOnboarded);
+  const setPhysicalProfile  = useUserStore((s: UserState) => s.setPhysicalProfile);
 
   const [height,     setHeight]     = useState(165);
   const [age,        setAge]        = useState(25);
@@ -163,6 +165,15 @@ export default function PhysicalProfileScreen(_: Props) {
         setSaving(false);
         return;
       }
+      setPhysicalProfile({
+        height,
+        age,
+        bodyType:   bodyType   ?? undefined,
+        skinTone:   skinTone   ?? undefined,
+        hairColor:  hairColor  ?? undefined,
+        hairLength: hairLength ?? undefined,
+        hairType:   hairType   ?? undefined,
+      });
     }
     setSaving(false);
     setOnboarded(true);

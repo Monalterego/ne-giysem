@@ -44,7 +44,7 @@ export default function LoginScreen({ navigation }: Props) {
     if (data.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('name')
+        .select('name, height, age, body_type, skin_tone, hair_color, hair_length, hair_type')
         .eq('id', data.user.id)
         .maybeSingle();
 
@@ -54,6 +54,13 @@ export default function LoginScreen({ navigation }: Props) {
         name: profile?.name ?? '',
         isPremium: false,
         createdAt: data.user.created_at,
+        height:      profile?.height      ?? undefined,
+        age:         profile?.age         ?? undefined,
+        bodyType:    profile?.body_type   ?? undefined,
+        skinTone:    profile?.skin_tone   ?? undefined,
+        hairColor:   profile?.hair_color  ?? undefined,
+        hairLength:  profile?.hair_length ?? undefined,
+        hairType:    profile?.hair_type   ?? undefined,
       });
       // Geri dönen kullanıcı — onboarding atlansın
       setOnboarded(true);

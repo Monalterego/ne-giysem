@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from './types';
 import { useUserStore } from '../store/useUserStore';
+import type { UserState } from '../store/useUserStore';
 
 import SplashScreen from '../screens/onboarding/SplashScreen';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
@@ -19,8 +20,15 @@ const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 export default function OnboardingNavigator() {
   // Kimlik doğrulaması var ama onboarding tekrar açıldıysa (profil güncelleme)
   // doğrudan StyleChoice'a git, Splash/Signup akışını atla
-  const isAuthenticated = useUserStore((s) => s.isAuthenticated);
-  const initialRoute: keyof OnboardingStackParamList = isAuthenticated ? 'StyleChoice' : 'Splash';
+  const isAuthenticated        = useUserStore((s: UserState) => s.isAuthenticated);
+  const targetOnboardingScreen = useUserStore((s: UserState) => s.targetOnboardingScreen);
+
+  let initialRoute: keyof OnboardingStackParamList;
+  if (!isAuthenticated) {
+    initialRoute = 'Splash';
+  } else {
+    initialRoute = targetOnboardingScreen ?? 'StyleChoice';
+  }
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>

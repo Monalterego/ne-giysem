@@ -13,9 +13,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
+import type { UserState } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+
+// ─── Sabit eşlemeler ──────────────────────────────────────────────────────────
+
+const BODY_TYPE_TR: Record<string, string> = {
+  hourglass: 'Kum Saati', pear: 'Armut', apple: 'Elma',
+  rectangle: 'Dikdörtgen', triangle: 'Üçgen',
+};
+const SKIN_TONE_TR: Record<string, string> = {
+  very_light: 'Çok Açık', light: 'Açık', wheat: 'Buğday',
+  medium: 'Orta', tan: 'Bronz', dark: 'Koyu',
+};
+const HAIR_COLOR_TR: Record<string, string> = {
+  black: 'Siyah', dark_brown: 'Koyu Kahve', brown: 'Kahve',
+  light_brown: 'Açık Kahve', honey: 'Bal', red: 'Kızıl', gray: 'Gri', colored: 'Renkli',
+};
+const HAIR_LENGTH_TR: Record<string, string> = {
+  short: 'Kısa', medium: 'Orta', long: 'Uzun', very_long: 'Çok Uzun',
+};
+const HAIR_TYPE_TR: Record<string, string> = {
+  straight: 'Düz', wavy: 'Dalgalı', curly: 'Kıvırcık', afro: 'Afro',
+};
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -31,12 +53,14 @@ function initials(name: string): string {
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const user     = useUserStore((s) => s.user);
-  const logout   = useUserStore((s) => s.logout);
-  const setUser  = useUserStore((s) => s.setUser);
+  const user                      = useUserStore((s: UserState) => s.user);
+  const logout                    = useUserStore((s: UserState) => s.logout);
+  const setUser                   = useUserStore((s: UserState) => s.setUser);
+  const setOnboarded              = useUserStore((s: UserState) => s.setOnboarded);
+  const setPhysicalProfile        = useUserStore((s: UserState) => s.setPhysicalProfile);
+  const setTargetOnboardingScreen = useUserStore((s: UserState) => s.setTargetOnboardingScreen);
   const items    = useWardrobeStore((s) => s.items);
-  const setItems      = useWardrobeStore((s) => s.setItems);
-  const setOnboarded  = useUserStore((s) => s.setOnboarded);
+  const setItems = useWardrobeStore((s) => s.setItems);
 
   const combos = useMemo(() => generateCombos(items, 50), [items]);
   const avgScore = combos.length > 0
@@ -58,6 +82,41 @@ export default function ProfileScreen() {
       })
       .finally(() => setLoadingStyles(false));
   }, [user?.id]);
+
+  // Fiziki profil store'da yoksa Supabase'den çek ve store'a yaz
+  useEffect(() => {
+    if (!user || user.height != null) return;
+    supabase
+      .from('profiles')
+      .select('height, age, body_type, skin_tone, hair_color, hair_length, hair_type')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.height != null) {
+          setPhysicalProfile({
+            height:     data.height      ?? undefined,
+            age:        data.age         ?? undefined,
+            bodyType:   data.body_type   ?? undefined,
+            skinTone:   data.skin_tone   ?? undefined,
+            hairColor:  data.hair_color  ?? undefined,
+            hairLength: data.hair_length ?? undefined,
+            hairType:   data.hair_type   ?? undefined,
+          });
+        }
+      });
+  }, [user?.id]);
+
+  const hasPhysProfile = (user?.height ?? null) !== null;
+
+  const physItems = [
+    { label: 'Boy',          value: user?.height   ? `${user.height} cm`                      : null },
+    { label: 'Yaş',          value: user?.age      ? `${user.age}`                            : null },
+    { label: 'Vücut Tipi',   value: user?.bodyType   ? BODY_TYPE_TR[user.bodyType]   ?? user.bodyType   : null },
+    { label: 'Ten Rengi',    value: user?.skinTone   ? SKIN_TONE_TR[user.skinTone]   ?? user.skinTone   : null },
+    { label: 'Saç Rengi',    value: user?.hairColor  ? HAIR_COLOR_TR[user.hairColor] ?? user.hairColor  : null },
+    { label: 'Saç Uzunluğu', value: user?.hairLength ? HAIR_LENGTH_TR[user.hairLength] ?? user.hairLength : null },
+    { label: 'Saç Tipi',     value: user?.hairType   ? HAIR_TYPE_TR[user.hairType]   ?? user.hairType   : null },
+  ];
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput,   setNameInput]   = useState(user?.name ?? '');
@@ -143,7 +202,10 @@ export default function ProfileScreen() {
               <Text style={styles.emptyMuted}>Stil profili henüz oluşturulmadı.</Text>
               <TouchableOpacity
                 style={styles.styleBtn}
-                onPress={() => setOnboarded(false)}
+                onPress={() => {
+                  setTargetOnboardingScreen('StyleChoice');
+                  setOnboarded(false);
+                }}
                 activeOpacity={0.85}
               >
                 <Text style={styles.styleBtnText}>Stilini Belirle →</Text>
@@ -163,6 +225,50 @@ export default function ProfileScreen() {
                   {i < styleEntries.length - 1 && <View style={styles.dnaSeparator} />}
                 </View>
               ))}
+            </View>
+          )}
+        </View>
+
+        {/* ── Fiziki Profil ── */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionLabel}>FİZİKİ PROFİL</Text>
+            {hasPhysProfile && (
+              <TouchableOpacity
+                onPress={() => {
+                  setTargetOnboardingScreen('PhysicalProfile');
+                  setOnboarded(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.editLink}>Düzenle</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {hasPhysProfile ? (
+            <View style={styles.physList}>
+              {physItems.map(({ label, value }) =>
+                value ? (
+                  <View key={label} style={styles.physRow}>
+                    <Text style={styles.physRowLabel}>{label}</Text>
+                    <Text style={styles.physRowValue}>{value}</Text>
+                  </View>
+                ) : null,
+              )}
+            </View>
+          ) : (
+            <View style={styles.emptyDna}>
+              <Text style={styles.emptyMuted}>Fiziki profilin eksik.</Text>
+              <TouchableOpacity
+                style={styles.styleBtn}
+                onPress={() => {
+                  setTargetOnboardingScreen('PhysicalProfile');
+                  setOnboarded(false);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.styleBtnText}>Profili Tamamla →</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -438,6 +544,35 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
+  },
+
+  // Fiziki profil — kart başlık satırı
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  editLink: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+
+  // Fiziki profil — liste satırları
+  physList: {
+    gap: spacing.sm,
+  },
+  physRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  physRowLabel: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  physRowValue: {
+    ...typography.body,
+    color: colors.text,
   },
 
   // Çıkış Yap

@@ -67,6 +67,14 @@ export interface User {
   styleProfile?: StyleProfile;
   isPremium: boolean;
   createdAt: string;
+  // Fiziki profil (onboarding sırasında doldurulur)
+  height?: number;
+  age?: number;
+  bodyType?: string;
+  skinTone?: string;
+  hairColor?: string;
+  hairLength?: string;
+  hairType?: string;
 }
 
 export interface Combo {
