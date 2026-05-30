@@ -2,7 +2,8 @@ import type { WardrobeItem, Combo, Season } from '../types';
 import { OCCASIONS } from '../constants/occasions';
 import type { OccasionId } from '../constants/occasions';
 import { hexToHsl, isNeutral } from './colorUtils';
-import { isItemAllowed, getFormalityFit } from './occasionRules';
+import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules';
+import { getVisualWeight, isStatement } from './itemTraits';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
@@ -90,7 +91,90 @@ function bestMatches(core: WardrobeItem[], candidates: WardrobeItem[], n: number
     .map((x) => x.item);
 }
 
+const OUTER_SUBCATEGORIES = [
+  'hirka', 'yelek', 'ceket', 'blazer', 'mont', 'kaban', 'trenchkot', 'yagmurluk',
+];
+
+function isOuter(item: WardrobeItem): boolean {
+  return item.category === 'outer' || OUTER_SUBCATEGORIES.includes(item.subCategory ?? '');
+}
+
+// Aksesuar bölge haritası — her bölgeden kombinde en fazla 1 parça
+const ACCESSORY_ZONES: Record<string, string> = {
+  kupe: 'yuz', gozluk: 'yuz', sapka: 'yuz',
+  kolye: 'boyun', fular: 'boyun', kaskol: 'boyun', bandana: 'boyun',
+  bileklik: 'bilek', yuzuk: 'bilek',
+  kemer: 'bel',
+};
+
+// Bu okasyonlarda dış giyim her zaman denenir (hava durumundan bağımsız)
+const FORMAL_OUTER_OCCASIONS = new Set<string>(['is', 'davet', 'gece', 'date', 'brunch']);
+
+interface ComposedOutfit {
+  items: WardrobeItem[];
+  points: number;
+  completeness: number;
+}
+
+// 7-puan outfit kompozisyon motoru
+// core üzerine sırayla çanta → dış giyim → aksesuar ekler; puan bütçesi + tek-odak kuralına uyar
+function composeOutfit(
+  core: WardrobeItem[],
+  pools: { bags: WardrobeItem[]; outers: WardrobeItem[]; accessories: WardrobeItem[] },
+  occasion: Occasion,
+): ComposedOutfit {
+  const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
+  const rule = OCCASION_RULES[ruleKey];
+  const outfitItems = [...core];
+  const pts = () => outfitItems.reduce((s, i) => s + getVisualWeight(i), 0);
+
+  // a) ÇANTA: renk uyumlu en iyi çantayı ekle
+  const bag = bestMatches(core, pools.bags, 1)[0];
+  if (bag) outfitItems.push(bag);
+
+  // b) DIŞ GİYİM: spor dışı + (formal okasyon veya puan henüz hedefe ulaşmadıysa)
+  if (occasion !== 'spor') {
+    const outer = bestMatches(core, pools.outers, 1)[0];
+    if (outer && (FORMAL_OUTER_OCCASIONS.has(occasion) || pts() < rule.pointTarget[0])) {
+      outfitItems.push(outer);
+    }
+  }
+
+  // c) AKSESUARLAR — bölge tekil + tek-odak (yüz/boyun) + puan bütçesi döngüsü
+  const ranked = bestMatches(core, pools.accessories, pools.accessories.length);
+  let accStatements = 0;
+  const usedZones = new Set<string>();
+  let faceNeckStatement = false;
+
+  for (const acc of ranked) {
+    if (pts() >= rule.pointTarget[0]) break;  // Chanel kuralı: hedefe ulaştıysa dur
+    if (pts() >= rule.pointTarget[1]) break;  // maksimumu asla aşma
+    const zone = ACCESSORY_ZONES[acc.subCategory ?? ''];
+    if (!zone) continue;
+    if (usedZones.has(zone)) continue;
+    if (isStatement(acc)) {
+      if (accStatements >= rule.maxStatementAccessories) continue;
+      if ((zone === 'yuz' || zone === 'boyun') && faceNeckStatement) continue;
+      accStatements++;
+      if (zone === 'yuz' || zone === 'boyun') faceNeckStatement = true;
+    }
+    outfitItems.push(acc);
+    usedZones.add(zone);
+  }
+
+  // d) Tamamlama skoru: hedefteyse 1, dışındaysa mesafeye göre lineer düşer
+  const p = pts();
+  const [min, max] = rule.pointTarget;
+  const completeness = (p >= min && p <= max)
+    ? 1
+    : Math.max(0, 1 - (p < min ? min - p : p - max) * 0.15);
+
+  return { items: outfitItems, points: p, completeness };
+}
+
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
+
+const CANDIDATE_CAP = 40;
 
 function comboLabel(score: number): string {
   return score >= 80 ? 'Mükemmel Uyum' : score >= 65 ? 'İyi Kombin' : 'Kabul Edilebilir';
@@ -105,87 +189,77 @@ export function generateCombos(
   const allow = (item: WardrobeItem) =>
     occasion === 'all' || isItemAllowed(item, occasion as OccasionId);
 
-  const uppers      = items.filter((i) => i.category === 'upper' && allow(i));
+  // Hırka/yelek dahil tüm dış giyim outers havuzuna — çekirdek üst sayılmaz
+  const uppers      = items.filter((i) => i.category === 'upper' && !isOuter(i) && allow(i));
   const lowers      = items.filter((i) => i.category === 'lower' && allow(i));
   const shoes       = items.filter((i) => i.category === 'shoes' && allow(i));
   const dresses     = items.filter((i) => i.category === 'dress_jumpsuit' && allow(i));
   const bags        = items.filter((i) => i.category === 'bag');
-  const outers      = items.filter((i) => i.category === 'outer');
+  const outers      = items.filter(isOuter);
   const accessories = items.filter((i) => i.category === 'accessory');
 
-  const results: Combo[] = [];
-  const now = new Date().toISOString();
+  // ─── 1. GEÇİŞ: ucuz renk + formalite skoru, composeOutfit çağrısı yok ──────
+  type Candidate = { core: WardrobeItem[]; baseRaw: number };
+  const candidates: Candidate[] = [];
 
-  // ─── Üst + Alt + Ayakkabı kombileri ────────────────────────────────────────
   if (uppers.length && lowers.length && shoes.length) {
     for (const upper of uppers) {
       for (const lower of lowers) {
         for (const shoe of shoes) {
-          // Üst-Alt uyumu en ağır; Alt-Ayakkabı önemli; Üst-Ayakkabı daha az kritik
           const ulScore  = itemColorScore(upper, lower);
           const lsScore  = itemColorScore(lower, shoe);
           const usScore  = itemColorScore(upper, shoe);
           const colorRaw = ulScore * 0.45 + lsScore * 0.35 + usScore * 0.20;
-
           const occasionFit =
             (formalityMod(upper, occasion) +
              formalityMod(lower, occasion) +
              formalityMod(shoe, occasion)) / 3;
-
-          const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
-          const score = Math.round(raw * 100);
-
-          const coreItems = [upper, lower, shoe];
-          const suggestedItems = [
-            ...bestMatches(coreItems, bags, 1),
-            ...bestMatches(coreItems, outers, 1),
-            ...bestMatches(coreItems, accessories, 2),
-          ];
-
-          results.push({
-            id: uid(),
-            items: coreItems,
-            suggestedItems: suggestedItems.length ? suggestedItems : undefined,
-            score,
-            occasion,
-            label: comboLabel(score),
-            createdAt: now,
+          candidates.push({
+            core: [upper, lower, shoe],
+            baseRaw: Math.max(0, Math.min(1, colorRaw + occasionFit)),
           });
         }
       }
     }
   }
 
-  // ─── Elbise/Tulum + Ayakkabı kombileri ────────────────────────────────────
   if (dresses.length && shoes.length) {
     for (const dress of dresses) {
       for (const shoe of shoes) {
-        const colorRaw = itemColorScore(dress, shoe);
+        const colorRaw    = itemColorScore(dress, shoe);
         const occasionFit = (formalityMod(dress, occasion) + formalityMod(shoe, occasion)) / 2;
-        const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
-        const score = Math.round(raw * 100);
-
-        const coreItems = [dress, shoe];
-        const suggestedItems = [
-          ...bestMatches(coreItems, bags, 1),
-          ...bestMatches(coreItems, outers, 1),
-          ...bestMatches(coreItems, accessories, 2),
-        ];
-
-        results.push({
-          id: uid(),
-          items: coreItems,
-          suggestedItems: suggestedItems.length ? suggestedItems : undefined,
-          score,
-          occasion,
-          label: comboLabel(score),
-          createdAt: now,
+        candidates.push({
+          core: [dress, shoe],
+          baseRaw: Math.max(0, Math.min(1, colorRaw + occasionFit)),
         });
       }
     }
   }
 
-  return results.sort((a, b) => b.score - a.score).slice(0, maxCombos);
+  // baseRaw'a göre sırala, en iyi CANDIDATE_CAP çekirdeği seç
+  candidates.sort((a, b) => b.baseRaw - a.baseRaw);
+  const top = candidates.slice(0, CANDIDATE_CAP);
+
+  // ─── 2. GEÇİŞ: composeOutfit çağır, final skor hesapla ──────────────────────
+  const now = new Date().toISOString();
+  const pools = { bags, outers, accessories };
+
+  return top
+    .map(({ core, baseRaw }) => {
+      const { items: outfitItems, completeness } = composeOutfit(core, pools, occasion);
+      const final01 = Math.max(0, Math.min(1, baseRaw * 0.85 + completeness * 0.15));
+      const score   = Math.round(final01 * 100);
+      return {
+        id: uid(),
+        items: outfitItems,
+        score,
+        occasion,
+        label: comboLabel(score),
+        createdAt: now,
+      } as Combo;
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxCombos);
 }
 
 // Dolabın kombin üretmek için hangi kategorilerde eksik olduğunu döner
@@ -203,14 +277,6 @@ export function missingCategories(items: WardrobeItem[]): string[] {
 }
 
 // ─── Claude AI kombin motoru ─────────────────────────────────────────────────
-
-const OUTER_SUBCATEGORIES = [
-  'hirka', 'yelek', 'ceket', 'blazer', 'mont', 'kaban', 'trenchkot', 'yagmurluk',
-];
-
-function isOuter(item: WardrobeItem): boolean {
-  return item.category === 'outer' || OUTER_SUBCATEGORIES.includes(item.subCategory ?? '');
-}
 
 const OCCASION_PRIORITY: Record<string, string[]> = {
   gece:    ['mini_elbise', 'midi_elbise', 'topuklu', 'sandalet', 'etek'],
@@ -458,4 +524,59 @@ export function analyzeStoreItem(
   const sameCategory = wardrobeItems.filter((i) => i.category === scannedItem.category).length;
 
   return { totalChecked: wardrobeItems.length, compatibleCount, avgScore, topCombos, sameCategory };
+}
+
+// ─── Manuel test bloğu ───────────────────────────────────────────────────────
+// Kullanım: npx ts-node src/utils/comboEngine.ts
+// Doğrulama: (1) küpe+kolye aynı kombinde yok, (2) puan hedefte, (3) hırka çekirdek üst değil
+
+if (require.main === module) {
+  const T = (
+    id: string, label: string, category: string, subCategory: string,
+    colors: string[], fabric: string,
+  ): WardrobeItem => ({
+    id, userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: category as WardrobeItem['category'], subCategory,
+    colors, fabric: fabric as WardrobeItem['fabric'],
+    pattern: 'duz', seasons: [], createdAt: '',
+    itemName: label,
+  });
+
+  const testWardrobe: WardrobeItem[] = [
+    T('u1', 'beyaz bluz',    'upper',     'bluz',     ['#FFFFFF'], 'silk'),
+    T('u2', 'siyah pantolon','lower',     'pantolon', ['#1A1A1A'], 'wool'),
+    T('u3', 'siyah topuklu', 'shoes',     'topuklu',  ['#1A1A1A'], 'velvet'),
+    T('u4', 'altın clutch',  'bag',       'clutch',   ['#D4A017'], 'satin'),
+    T('u5', 'kırmızı küpe',  'accessory', 'kupe',     ['#E94560'], 'blend'),  // statement (kırmızı)
+    T('u6', 'altın kolye',   'accessory', 'kolye',    ['#D4A017'], 'blend'),  // statement (altın)
+    T('u7', 'sade bileklik', 'accessory', 'bileklik', ['#1A1A1A'], 'blend'),  // staple (nötr)
+    T('u8', 'siyah blazer',  'outer',     'blazer',   ['#1A1A1A'], 'wool'),
+    T('u9', 'bej hırka',     'upper',     'hirka',    ['#F5F5DC'], 'cotton'), // isOuter → dış giyim katmanı
+  ];
+
+  // Havuz doğrulaması
+  const uppersCorePool = testWardrobe.filter((i) => i.category === 'upper' && !isOuter(i));
+  const outersPool     = testWardrobe.filter(isOuter);
+  console.log('\n── Havuz Doğrulama ──────────────────────────────────────────────────────');
+  console.log(`Çekirdek üst: [${uppersCorePool.map((i) => i.subCategory).join(', ')}]  ← hırka OLMAMALI`);
+  console.log(`Dış giyim:    [${outersPool.map((i) => i.subCategory).join(', ')}]  ← hırka+blazer OLMALI`);
+
+  for (const occ of ['gece', 'is'] as Occasion[]) {
+    const rule = OCCASION_RULES[occ as OccasionId];
+    console.log(`\n══ OKASYON: ${occ.toUpperCase()} — hedef puan [${rule.pointTarget[0]}, ${rule.pointTarget[1]}], maxStatement: ${rule.maxStatementAccessories} ══`);
+
+    const combos = generateCombos(testWardrobe, 3, occ);
+    if (!combos.length) { console.log('  ⚠ Kombin üretilemedi'); continue; }
+
+    for (const combo of combos) {
+      const subs   = combo.items.map((i) => i.subCategory ?? i.category);
+      const points = combo.items.reduce((s, i) => s + getVisualWeight(i), 0);
+      const dualStatement = subs.includes('kupe') && subs.includes('kolye');
+      const inRange = points >= rule.pointTarget[0] && points <= rule.pointTarget[1];
+
+      console.log(`  Skor:${combo.score} | Puan:${points} | [${subs.join(', ')}]`);
+      console.log(`    Tek-odak (küpe+kolye beraber): ${dualStatement ? '❌ İHLAL' : '✅ OK'}`);
+      console.log(`    Puan [${rule.pointTarget[0]}-${rule.pointTarget[1]}]:         ${inRange ? '✅ OK' : '⚠ hedef dışı (' + points + ')'}`);
+    }
+  }
 }
