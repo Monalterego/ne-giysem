@@ -11,6 +11,8 @@ export interface OccasionRule {
   pointTarget: [number, number];
   /** Kombinasyonda izin verilen maksimum statement aksesuar sayısı */
   maxStatementAccessories: number;
+  /** Kombine eklenmesi garanti edilen minimum aksesuar sayısı */
+  minAccessories: number;
   /** ASLA doğru olmayan subCategory'ler — dress-code veya fonksiyonel çelişki */
   hardExcluded: string[];
   /** İdeal subCategory'ler — gelecekte küçük skor bonusu için */
@@ -24,6 +26,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [0, 3],
     pointTarget:            [3, 4],
     maxStatementAccessories: 0,
+    minAccessories:          0,
     hardExcluded:           ['topuklu', 'clutch'],
     encouraged:             ['tayt', 'sort', 'tisort', 'hoodie', 'sweatshirt', 'sneaker'],
   },
@@ -31,6 +34,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [2, 6],
     pointTarget:            [4, 6],
     maxStatementAccessories: 1,
+    minAccessories:          0,
     hardExcluded:           [],
     encouraged:             ['jean', 'tisort', 'bluz', 'sneaker', 'loafer'],
   },
@@ -38,6 +42,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [2, 6],
     pointTarget:            [4, 6],
     maxStatementAccessories: 1,
+    minAccessories:          0,
     hardExcluded:           [],
     encouraged:             ['pantolon', 'sneaker', 'loafer', 'bluz', 'tisort', 'bot'],
   },
@@ -45,6 +50,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [4, 7],
     pointTarget:            [5, 7],
     maxStatementAccessories: 1,
+    minAccessories:          1,
     hardExcluded:           [],
     encouraged:             ['midi_elbise', 'etek', 'bluz', 'loafer', 'sandalet'],
   },
@@ -52,6 +58,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [5, 9],
     pointTarget:            [5, 7],
     maxStatementAccessories: 1,
+    minAccessories:          1,
     hardExcluded:           ['terlik', 'tayt', 'sort'],
     encouraged:             ['blazer', 'gomlek', 'pantolon', 'topuklu', 'loafer'],
   },
@@ -59,6 +66,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [5, 8],
     pointTarget:            [6, 8],
     maxStatementAccessories: 1,
+    minAccessories:          1,
     hardExcluded:           ['terlik'],
     encouraged:             ['midi_elbise', 'mini_elbise', 'topuklu', 'sandalet', 'etek', 'bluz'],
   },
@@ -66,6 +74,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [5, 9],
     pointTarget:            [6, 8],
     maxStatementAccessories: 1,
+    minAccessories:          1,
     hardExcluded:           ['terlik'],
     encouraged:             ['mini_elbise', 'midi_elbise', 'topuklu', 'bot', 'clutch', 'etek'],
   },
@@ -73,6 +82,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [7, 10],
     pointTarget:            [7, 9],
     maxStatementAccessories: 2,
+    minAccessories:          2,
     hardExcluded:           ['terlik', 'sneaker', 'hoodie', 'sweatshirt', 'tayt', 'sort', 'jean'],
     encouraged:             ['maxi_elbise', 'midi_elbise', 'topuklu', 'clutch'],
   },
