@@ -1,6 +1,8 @@
 import type { WardrobeItem, Combo, Season } from '../types';
 import { OCCASIONS } from '../constants/occasions';
 import type { OccasionId } from '../constants/occasions';
+import { hexToHsl, isNeutral } from './colorUtils';
+import { isItemAllowed, getFormalityFit } from './occasionRules';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
@@ -43,96 +45,11 @@ function seasonDesc(s: Season): string {
 export type Occasion = OccasionId | 'all';
 export type { OccasionId };
 
-// ─── Renk yardımcıları ───────────────────────────────────────────────────────
-
-function hexToHsl(hex: string): [number, number, number] | null {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return null;
-  const r = parseInt(clean.slice(0, 2), 16) / 255;
-  const g = parseInt(clean.slice(2, 4), 16) / 255;
-  const b = parseInt(clean.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  let h = 0;
-  let s = 0;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
-    }
-  }
-  return [h * 360, s * 100, l * 100];
-}
-
-// Nötr renkler (siyah, beyaz, gri, bej, lacivert) her şeyle uyumlu
-function isNeutral(hex: string): boolean {
-  const hsl = hexToHsl(hex);
-  if (!hsl) return true;
-  const [h, s, l] = hsl;
-  if (s < 15) return true;                              // düşük doygunluk → nötr
-  if (l > 90) return true;                              // çok açık → kırık beyaz / krem
-  if (h >= 200 && h <= 255 && s < 45 && l < 30) return true; // lacivert
-  return false;
-}
-
-// Sıcak renkler: kırmızı, turuncu, sarı, pembe (hue 0-60 veya 300-360)
-function isWarmColor(hex: string): boolean {
-  const hsl = hexToHsl(hex);
-  if (!hsl) return false;
-  const [h, s, l] = hsl;
-  if (s < 15 || l > 90) return false;
-  return h <= 60 || h >= 300;
-}
-
-// Bir parçanın belirli bir occasion'a uyum katsayısı (-0.15 ile +0.15 arası)
-function itemOccasionFit(item: WardrobeItem, occasion: Occasion): number {
-  if (occasion === 'all' || occasion === 'gunluk' || occasion === 'brunch' || occasion === 'seyahat') return 0;
-  const fabric  = item.fabric ?? 'unknown';
-  const pattern = item.pattern ?? '';
-  const allNeutral  = item.colors.length > 0 && item.colors.every(isNeutral);
-  const hasWarm     = item.colors.some(isWarmColor);
-
-  switch (occasion) {
-    case 'is': {
-      let fit = 0;
-      if (allNeutral) fit += 0.08;
-      if (['cotton', 'linen', 'silk', 'wool', 'blend'].includes(fabric)) fit += 0.06;
-      if (fabric === 'denim') fit -= 0.12;
-      if (fabric === 'polyester') fit -= 0.06;
-      if (pattern === 'floral') fit -= 0.05;
-      return fit;
-    }
-    case 'spor': {
-      let fit = 0;
-      if (fabric === 'polyester') fit += 0.15;
-      if (fabric === 'cotton') fit += 0.03;
-      return fit;
-    }
-    case 'date':
-    case 'gece': {
-      let fit = 0;
-      if (hasWarm) fit += 0.08;
-      if (['silk', 'satin', 'velvet'].includes(fabric)) fit += 0.10;
-      if (pattern === 'floral') fit += 0.06;
-      if (allNeutral && !hasWarm) fit -= 0.03;
-      return fit;
-    }
-    case 'davet': {
-      let fit = 0;
-      if (['silk', 'satin', 'velvet'].includes(fabric)) fit += 0.12;
-      if (hasWarm) fit += 0.05;
-      if (pattern === 'floral') fit += 0.04;
-      if (fabric === 'denim') fit -= 0.10;
-      if (fabric === 'polyester') fit -= 0.08;
-      return fit;
-    }
-    default:
-      return 0;
-  }
+// getFormalityFit (0-1) → additive modifier (-0.18..+0.12)
+// Mükemmel uyum (1.0) → +0.12 bonus; zayıf uyum (0.0) → -0.18 ceza
+function formalityMod(item: WardrobeItem, occasion: Occasion): number {
+  if (occasion === 'all') return 0;
+  return getFormalityFit(item, occasion as OccasionId) * 0.30 - 0.18;
 }
 
 // İki hex renk arasındaki uyum skoru (0–1)
@@ -184,10 +101,14 @@ export function generateCombos(
   maxCombos = 12,
   occasion: Occasion = 'all',
 ): Combo[] {
-  const uppers      = items.filter((i) => i.category === 'upper');
-  const lowers      = items.filter((i) => i.category === 'lower');
-  const shoes       = items.filter((i) => i.category === 'shoes');
-  const dresses     = items.filter((i) => i.category === 'dress_jumpsuit');
+  // Hard-filter: dress-code ihlalleri (terlik+davet, sneaker+davet vb.) elenir
+  const allow = (item: WardrobeItem) =>
+    occasion === 'all' || isItemAllowed(item, occasion as OccasionId);
+
+  const uppers      = items.filter((i) => i.category === 'upper' && allow(i));
+  const lowers      = items.filter((i) => i.category === 'lower' && allow(i));
+  const shoes       = items.filter((i) => i.category === 'shoes' && allow(i));
+  const dresses     = items.filter((i) => i.category === 'dress_jumpsuit' && allow(i));
   const bags        = items.filter((i) => i.category === 'bag');
   const outers      = items.filter((i) => i.category === 'outer');
   const accessories = items.filter((i) => i.category === 'accessory');
@@ -207,9 +128,9 @@ export function generateCombos(
           const colorRaw = ulScore * 0.45 + lsScore * 0.35 + usScore * 0.20;
 
           const occasionFit =
-            (itemOccasionFit(upper, occasion) +
-             itemOccasionFit(lower, occasion) +
-             itemOccasionFit(shoe, occasion)) / 3;
+            (formalityMod(upper, occasion) +
+             formalityMod(lower, occasion) +
+             formalityMod(shoe, occasion)) / 3;
 
           const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
           const score = Math.round(raw * 100);
@@ -240,7 +161,7 @@ export function generateCombos(
     for (const dress of dresses) {
       for (const shoe of shoes) {
         const colorRaw = itemColorScore(dress, shoe);
-        const occasionFit = (itemOccasionFit(dress, occasion) + itemOccasionFit(shoe, occasion)) / 2;
+        const occasionFit = (formalityMod(dress, occasion) + formalityMod(shoe, occasion)) / 2;
         const raw   = Math.max(0, Math.min(1, colorRaw + occasionFit));
         const score = Math.round(raw * 100);
 

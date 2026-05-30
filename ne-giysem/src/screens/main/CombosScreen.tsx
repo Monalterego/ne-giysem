@@ -319,6 +319,8 @@ export default function CombosScreen() {
       hairType:   user.hairType,
     };
 
+    console.log('styleProfile raw:', user?.styleProfile);
+    console.log('styleProfileMap:', styleProfileMap);
     setPage(0);
     generateCombosAI(items, profile, weather, activeOccasion, 0, [], styleProfileMap)
       .then((results) => {
