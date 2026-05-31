@@ -1,7 +1,7 @@
 import type { WardrobeItem, Combo, Season } from '../types';
 import { OCCASIONS } from '../constants/occasions';
 import type { OccasionId } from '../constants/occasions';
-import { hexToHsl, isNeutral } from './colorUtils';
+import { itemColorScore } from './colorTheory';
 import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules';
 import { getVisualWeight, isStatement } from './itemTraits';
 
@@ -45,34 +45,6 @@ function seasonDesc(s: Season): string {
 
 export type Occasion = OccasionId | 'all';
 export type { OccasionId };
-
-// getFormalityFit (0-1) → additive modifier (-0.18..+0.12)
-// Mükemmel uyum (1.0) → +0.12 bonus; zayıf uyum (0.0) → -0.18 ceza
-function formalityMod(item: WardrobeItem, occasion: Occasion): number {
-  if (occasion === 'all') return 0;
-  return getFormalityFit(item, occasion as OccasionId) * 0.30 - 0.18;
-}
-
-// İki hex renk arasındaki uyum skoru (0–1)
-function pairScore(hex1: string, hex2: string): number {
-  if (isNeutral(hex1) || isNeutral(hex2)) return 1.0;
-  const hsl1 = hexToHsl(hex1);
-  const hsl2 = hexToHsl(hex2);
-  if (!hsl1 || !hsl2) return 0.85;
-  const diff = Math.abs(hsl1[0] - hsl2[0]);
-  const hueDiff = Math.min(diff, 360 - diff);
-  if (hueDiff <= 30) return 0.9;                        // analog / monokromatik
-  if (hueDiff >= 150 && hueDiff <= 210) return 0.85;   // komplementer
-  if (hueDiff >= 110 && hueDiff <= 130) return 0.75;   // triadik
-  return 0.35;                                          // uyumsuz
-}
-
-// İki parça arasındaki ortalama renk uyum skoru
-function itemColorScore(a: WardrobeItem, b: WardrobeItem): number {
-  if (!a.colors.length || !b.colors.length) return 0.82; // renk bilinmiyorsa makul varsayılan
-  const scores = a.colors.flatMap((c1) => b.colors.map((c2) => pairScore(c1, c2)));
-  return scores.reduce((sum, s) => sum + s, 0) / scores.length;
-}
 
 function uid(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -241,26 +213,24 @@ export function generateCombos(
   const outers      = items.filter(isOuter);
   const accessories = items.filter((i) => i.category === 'accessory');
 
-  // ─── 1. GEÇİŞ: ucuz renk + formalite skoru, composeOutfit çağrısı yok ──────
-  type Candidate = { core: WardrobeItem[]; baseRaw: number };
+  // ─── 1. GEÇİŞ: ucuz proxy (colorHarmony + occFit), composeOutfit çağrısı yok ──────
+  const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
+  type Candidate = { core: WardrobeItem[]; colorHarmony: number; occFit: number };
   const candidates: Candidate[] = [];
 
   if (uppers.length && lowers.length && shoes.length) {
     for (const upper of uppers) {
       for (const lower of lowers) {
         for (const shoe of shoes) {
-          const ulScore  = itemColorScore(upper, lower);
-          const lsScore  = itemColorScore(lower, shoe);
-          const usScore  = itemColorScore(upper, shoe);
-          const colorRaw = ulScore * 0.45 + lsScore * 0.35 + usScore * 0.20;
-          const occasionFit =
-            (formalityMod(upper, occasion) +
-             formalityMod(lower, occasion) +
-             formalityMod(shoe, occasion)) / 3;
-          candidates.push({
-            core: [upper, lower, shoe],
-            baseRaw: Math.max(0, Math.min(1, colorRaw + occasionFit)),
-          });
+          const colorHarmony =
+            itemColorScore(upper, lower) * 0.45 +
+            itemColorScore(lower, shoe)  * 0.35 +
+            itemColorScore(upper, shoe)  * 0.20;
+          const occFit =
+            (getFormalityFit(upper, ruleKey) +
+             getFormalityFit(lower, ruleKey) +
+             getFormalityFit(shoe, ruleKey)) / 3;
+          candidates.push({ core: [upper, lower, shoe], colorHarmony, occFit });
         }
       }
     }
@@ -269,28 +239,30 @@ export function generateCombos(
   if (dresses.length && shoes.length) {
     for (const dress of dresses) {
       for (const shoe of shoes) {
-        const colorRaw    = itemColorScore(dress, shoe);
-        const occasionFit = (formalityMod(dress, occasion) + formalityMod(shoe, occasion)) / 2;
-        candidates.push({
-          core: [dress, shoe],
-          baseRaw: Math.max(0, Math.min(1, colorRaw + occasionFit)),
-        });
+        const colorHarmony = itemColorScore(dress, shoe);
+        const occFit       = (getFormalityFit(dress, ruleKey) + getFormalityFit(shoe, ruleKey)) / 2;
+        candidates.push({ core: [dress, shoe], colorHarmony, occFit });
       }
     }
   }
 
-  // baseRaw'a göre sırala, en iyi CANDIDATE_CAP çekirdeği seç
-  candidates.sort((a, b) => b.baseRaw - a.baseRaw);
+  // colorHarmony + occFit proxy'ye göre sırala, en iyi CANDIDATE_CAP çekirdeği seç
+  candidates.sort((a, b) => (b.colorHarmony + b.occFit) - (a.colorHarmony + a.occFit));
   const top = candidates.slice(0, CANDIDATE_CAP);
 
   // ─── 2. GEÇİŞ: composeOutfit çağır, final skor hesapla ──────────────────────
   const now = new Date().toISOString();
   const pools = { bags, outers, accessories };
 
+  const encouraged = OCCASION_RULES[ruleKey].encouraged;
+
   const results = top
-    .map(({ core, baseRaw }) => {
+    .map(({ core, colorHarmony, occFit }) => {
       const { items: outfitItems, completeness } = composeOutfit(core, pools, occasion);
-      const final01 = Math.max(0, Math.min(1, baseRaw * 0.85 + completeness * 0.15));
+      // Çekirdek içinde okasyon tarafından teşvik edilen subCategory'lerin oranı
+      const encCoverage = core.filter((i) => encouraged.includes(i.subCategory ?? '')).length / core.length;
+      // Ağırlıklar toplamı = 1.0 → clamp gerekmez
+      const final01 = 0.45 * colorHarmony + 0.25 * occFit + 0.15 * completeness + 0.15 * encCoverage;
       const score   = Math.round(final01 * 100);
       return {
         id: uid(),
