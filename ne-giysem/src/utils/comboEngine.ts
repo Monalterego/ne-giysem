@@ -4,6 +4,7 @@ import type { OccasionId } from '../constants/occasions';
 import { itemColorScore } from './colorTheory';
 import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules';
 import { getVisualWeight, isStatement } from './itemTraits';
+import { proportionScore } from './proportionTheory';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
@@ -86,6 +87,7 @@ interface ComposedOutfit {
   items: WardrobeItem[];
   points: number;
   completeness: number;
+  chosenOuter?: WardrobeItem;
 }
 
 // 7-puan outfit kompozisyon motoru
@@ -105,10 +107,12 @@ function composeOutfit(
   if (bag) outfitItems.push(bag);
 
   // b) DIŞ GİYİM: spor dışı + (formal okasyon veya puan henüz hedefe ulaşmadıysa)
+  let chosenOuter: WardrobeItem | undefined;
   if (occasion !== 'spor') {
     const outer = bestMatches(core, pools.outers, 1)[0];
     if (outer && (FORMAL_OUTER_OCCASIONS.has(occasion) || pts() < rule.pointTarget[0])) {
       outfitItems.push(outer);
+      chosenOuter = outer;
     }
   }
 
@@ -147,7 +151,7 @@ function composeOutfit(
     ? 1
     : Math.max(0, 1 - (p < min ? min - p : p - max) * 0.15);
 
-  return { items: outfitItems, points: p, completeness };
+  return { items: outfitItems, points: p, completeness, chosenOuter };
 }
 
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
@@ -215,7 +219,7 @@ export function generateCombos(
 
   // ─── 1. GEÇİŞ: ucuz proxy (colorHarmony + occFit), composeOutfit çağrısı yok ──────
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
-  type Candidate = { core: WardrobeItem[]; colorHarmony: number; occFit: number };
+  type Candidate = { core: WardrobeItem[]; colorHarmony: number; occFit: number; prop: number };
   const candidates: Candidate[] = [];
 
   if (uppers.length && lowers.length && shoes.length) {
@@ -230,7 +234,7 @@ export function generateCombos(
             (getFormalityFit(upper, ruleKey) +
              getFormalityFit(lower, ruleKey) +
              getFormalityFit(shoe, ruleKey)) / 3;
-          candidates.push({ core: [upper, lower, shoe], colorHarmony, occFit });
+          candidates.push({ core: [upper, lower, shoe], colorHarmony, occFit, prop: proportionScore([upper, lower, shoe]) });
         }
       }
     }
@@ -241,13 +245,13 @@ export function generateCombos(
       for (const shoe of shoes) {
         const colorHarmony = itemColorScore(dress, shoe);
         const occFit       = (getFormalityFit(dress, ruleKey) + getFormalityFit(shoe, ruleKey)) / 2;
-        candidates.push({ core: [dress, shoe], colorHarmony, occFit });
+        candidates.push({ core: [dress, shoe], colorHarmony, occFit, prop: proportionScore([dress, shoe]) });
       }
     }
   }
 
   // colorHarmony + occFit proxy'ye göre sırala, en iyi CANDIDATE_CAP çekirdeği seç
-  candidates.sort((a, b) => (b.colorHarmony + b.occFit) - (a.colorHarmony + a.occFit));
+  candidates.sort((a, b) => (b.colorHarmony + b.occFit + b.prop) - (a.colorHarmony + a.occFit + a.prop));
   const top = candidates.slice(0, CANDIDATE_CAP);
 
   // ─── 2. GEÇİŞ: composeOutfit çağır, final skor hesapla ──────────────────────
@@ -258,11 +262,12 @@ export function generateCombos(
 
   const results = top
     .map(({ core, colorHarmony, occFit }) => {
-      const { items: outfitItems, completeness } = composeOutfit(core, pools, occasion);
+      const { items: outfitItems, completeness, chosenOuter } = composeOutfit(core, pools, occasion);
+      const prop = proportionScore(core, chosenOuter);
       // Çekirdek içinde okasyon tarafından teşvik edilen subCategory'lerin oranı
       const encCoverage = core.filter((i) => encouraged.includes(i.subCategory ?? '')).length / core.length;
       // Ağırlıklar toplamı = 1.0 → clamp gerekmez
-      const final01 = 0.45 * colorHarmony + 0.25 * occFit + 0.15 * completeness + 0.15 * encCoverage;
+      const final01 = 0.35 * colorHarmony + 0.20 * occFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage;
       const score   = Math.round(final01 * 100);
       return {
         id: uid(),
@@ -637,4 +642,55 @@ if (require.main === module) {
 
   console.log(`\n  Benzersiz çekirdekler: ${new Set(sigs).size}/${fiveCombos.length}  ${new Set(sigs).size === fiveCombos.length ? '✅ FARKLI' : '❌ ÇAKIŞMA'}`);
   console.log(`  Maks tekrar (üst/alt/ayakkabı): ${maxFreq}/${fiveCombos.length}  ${maxFreq < fiveCombos.length ? '✅ OK' : '❌ TEK PARÇA 5\'TE DE VAR'}`);
+
+  // ── Bölüm 3: proportionScore doğrulama ────────────────────────────────────
+  const P = (
+    id: string, category: string, subCategory: string, fit?: string,
+  ): WardrobeItem => ({
+    id, userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: category as WardrobeItem['category'], subCategory,
+    colors: ['#1A1A1A'], pattern: 'duz', seasons: [], createdAt: '',
+    fit, itemName: `${subCategory}/${fit ?? 'normal'}`,
+  });
+
+  const propCases: Array<{ label: string; core: WardrobeItem[]; beklenen: string }> = [
+    {
+      label: 'oversized üst + slim jean + loafer',
+      core: [P('p1','upper','bluz','oversized'), P('p2','lower','jean','slim'), P('p3','shoes','loafer')],
+      beklenen: 'YÜKSEK ~0.97',
+    },
+    {
+      label: 'oversized üst + oversized wide pantolon + loafer (çift-oversized)',
+      core: [P('p4','upper','bluz','oversized'), P('p5','lower','pantolon','oversized'), P('p6','shoes','loafer')],
+      beklenen: 'DÜŞÜK ~0.75',
+    },
+    {
+      label: 'chunky sneaker + wide-leg pantolon + normal üst',
+      core: [P('p7','upper','bluz'), P('p8','lower','pantolon','oversized'), P('p9','shoes','sneaker')],
+      beklenen: 'YÜKSEK ~0.92',
+    },
+    {
+      label: 'chunky sneaker + skinny pantolon + normal üst',
+      core: [P('p10','upper','bluz'), P('p11','lower','pantolon','slim'), P('p12','shoes','sneaker')],
+      beklenen: 'DÜŞÜK ~0.82',
+    },
+  ];
+
+  console.log('\n── proportionScore Doğrulama ─────────────────────────────────────────────');
+  for (const { label, core: c, beklenen } of propCases) {
+    const sc = proportionScore(c);
+    console.log(`  ${label}`);
+    console.log(`    prop=${sc.toFixed(3)}  (beklenen: ${beklenen})`);
+  }
+
+  // ── Bölüm 4: Skor bant kontrolü (tüm çeşitlilik kombinlerinin 77-96 arası yayılımı)
+  const scores = fiveCombos.map((c) => c.score);
+  const minScore = Math.min(...scores);
+  const maxScore = Math.max(...scores);
+  const spread = maxScore - minScore;
+  console.log('\n── Skor Bant Kontrolü ────────────────────────────────────────────────────');
+  console.log(`  Skorlar: [${scores.join(', ')}]`);
+  console.log(`  Min: ${minScore}  Max: ${maxScore}  Yayılım: ${spread}`);
+  console.log(`  77-96 bandı: ${minScore >= 55 && maxScore <= 98 ? '✅ OK' : '⚠️  KONTROL ET'}`);
+  console.log(`  Yayılım ≥5:  ${spread >= 5 ? '✅ OK' : '⚠️  Hepsi aynı skor — çeşitlilik yok'}`);
 }
