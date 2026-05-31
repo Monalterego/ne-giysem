@@ -1,7 +1,7 @@
 import type { WardrobeItem, Combo, Season } from '../types';
 import { OCCASIONS } from '../constants/occasions';
 import type { OccasionId } from '../constants/occasions';
-import { itemColorScore } from './colorTheory';
+import { itemColorScore, outfitColorScore } from './colorTheory';
 import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules';
 import { getVisualWeight, isStatement } from './itemTraits';
 import { proportionScore } from './proportionTheory';
@@ -266,8 +266,11 @@ export function generateCombos(
       const prop = proportionScore(core, chosenOuter);
       // Çekirdek içinde okasyon tarafından teşvik edilen subCategory'lerin oranı
       const encCoverage = core.filter((i) => encouraged.includes(i.subCategory ?? '')).length / core.length;
+      // Pass 1 proxy (ikili) + outfit dağılım skoru harmanlama
+      const pairwiseColor = colorHarmony;
+      const colorHarmonyFinal = 0.7 * pairwiseColor + 0.3 * outfitColorScore(outfitItems);
       // Ağırlıklar toplamı = 1.0 → clamp gerekmez
-      const final01 = 0.35 * colorHarmony + 0.20 * occFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage;
+      const final01 = 0.35 * colorHarmonyFinal + 0.20 * occFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage;
       const score   = Math.round(final01 * 100);
       return {
         id: uid(),
