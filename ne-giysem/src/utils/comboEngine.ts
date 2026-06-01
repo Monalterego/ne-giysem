@@ -3,6 +3,7 @@ import { OCCASIONS } from '../constants/occasions';
 import type { OccasionId } from '../constants/occasions';
 import { itemColorScore, outfitColorScore } from './colorTheory';
 import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules';
+import { registerFit, registerCoherence } from './registerTheory';
 import { getVisualWeight, isStatement } from './itemTraits';
 import { proportionScore } from './proportionTheory';
 
@@ -219,7 +220,7 @@ export function generateCombos(
 
   // ─── 1. GEÇİŞ: ucuz proxy (colorHarmony + occFit), composeOutfit çağrısı yok ──────
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
-  type Candidate = { core: WardrobeItem[]; colorHarmony: number; occFit: number; prop: number };
+  type Candidate = { core: WardrobeItem[]; colorHarmony: number; occFit: number; prop: number; regFit: number };
   const candidates: Candidate[] = [];
 
   if (uppers.length && lowers.length && shoes.length) {
@@ -234,7 +235,11 @@ export function generateCombos(
             (getFormalityFit(upper, ruleKey) +
              getFormalityFit(lower, ruleKey) +
              getFormalityFit(shoe, ruleKey)) / 3;
-          candidates.push({ core: [upper, lower, shoe], colorHarmony, occFit, prop: proportionScore([upper, lower, shoe]) });
+          const regFit =
+            (registerFit(upper, ruleKey) +
+             registerFit(lower, ruleKey) +
+             registerFit(shoe, ruleKey)) / 3;
+          candidates.push({ core: [upper, lower, shoe], colorHarmony, occFit, prop: proportionScore([upper, lower, shoe]), regFit });
         }
       }
     }
@@ -245,13 +250,14 @@ export function generateCombos(
       for (const shoe of shoes) {
         const colorHarmony = itemColorScore(dress, shoe);
         const occFit       = (getFormalityFit(dress, ruleKey) + getFormalityFit(shoe, ruleKey)) / 2;
-        candidates.push({ core: [dress, shoe], colorHarmony, occFit, prop: proportionScore([dress, shoe]) });
+        const regFit       = (registerFit(dress, ruleKey) + registerFit(shoe, ruleKey)) / 2;
+        candidates.push({ core: [dress, shoe], colorHarmony, occFit, prop: proportionScore([dress, shoe]), regFit });
       }
     }
   }
 
   // colorHarmony + occFit proxy'ye göre sırala, en iyi CANDIDATE_CAP çekirdeği seç
-  candidates.sort((a, b) => (b.colorHarmony + b.occFit + b.prop) - (a.colorHarmony + a.occFit + a.prop));
+  candidates.sort((a, b) => (b.colorHarmony + b.occFit + b.prop + b.regFit) - (a.colorHarmony + a.occFit + a.prop + a.regFit));
   const top = candidates.slice(0, CANDIDATE_CAP);
 
   // ─── 2. GEÇİŞ: composeOutfit çağır, final skor hesapla ──────────────────────
@@ -261,7 +267,7 @@ export function generateCombos(
   const encouraged = OCCASION_RULES[ruleKey].encouraged;
 
   const results = top
-    .map(({ core, colorHarmony, occFit }) => {
+    .map(({ core, colorHarmony }) => {
       const { items: outfitItems, completeness, chosenOuter } = composeOutfit(core, pools, occasion);
       const prop = proportionScore(core, chosenOuter);
       // Çekirdek içinde okasyon tarafından teşvik edilen subCategory'lerin oranı
@@ -269,8 +275,15 @@ export function generateCombos(
       // Pass 1 proxy (ikili) + outfit dağılım skoru harmanlama
       const pairwiseColor = colorHarmony;
       const colorHarmonyFinal = 0.7 * pairwiseColor + 0.3 * outfitColorScore(outfitItems);
-      // Ağırlıklar toplamı = 1.0 → clamp gerekmez
-      const final01 = 0.35 * colorHarmonyFinal + 0.20 * occFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage;
+      // Formalite + register bağlam skoru ortalaması
+      const contextFit = core.reduce(
+        (s, item) => s + 0.5 * getFormalityFit(item, ruleKey) + 0.5 * registerFit(item, occasion),
+        0,
+      ) / core.length;
+      // Register tutarlılık çarpanı (1.0 = tutarlı, 0.75 = sert çelişki)
+      const coherence = registerCoherence([...core, ...(chosenOuter ? [chosenOuter] : [])]);
+      // Ağırlıklar toplamı = 1.0, coherence dışsal çarpan
+      const final01 = (0.35 * colorHarmonyFinal + 0.20 * contextFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage) * coherence;
       const score   = Math.round(final01 * 100);
       return {
         id: uid(),
@@ -696,4 +709,62 @@ if (require.main === module) {
   console.log(`  Min: ${minScore}  Max: ${maxScore}  Yayılım: ${spread}`);
   console.log(`  77-96 bandı: ${minScore >= 55 && maxScore <= 98 ? '✅ OK' : '⚠️  KONTROL ET'}`);
   console.log(`  Yayılım ≥5:  ${spread >= 5 ? '✅ OK' : '⚠️  Hepsi aynı skor — çeşitlilik yok'}`);
+
+  // ── Bölüm 5: Register bağlam testi ────────────────────────────────────────
+  // Her senaryoda iki ayrı dolap → en iyi kombinlerin skorlarını karşılaştır.
+  const RR = (
+    id: string, name: string, category: string, subCategory: string, colors: string[],
+  ): WardrobeItem => ({
+    id, userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: category as WardrobeItem['category'], subCategory,
+    colors, pattern: 'duz', seasons: [], createdAt: '',
+    itemName: name,
+  });
+
+  // Senaryo 1 — SPOR: atletik vs casual
+  const sporAthWardrobe = [
+    RR('sa1', 'Spor sütyeni',    'upper',  'tisort',  ['#1A1A1A']),
+    RR('sa2', 'Antrenman taytı', 'lower',  'tayt',    ['#1A1A1A']),
+    RR('sa3', 'Koşu sneaker',    'shoes',  'sneaker', ['#FFFFFF']),
+  ];
+  const sporCasWardrobe = [
+    RR('sc1', 'Beyaz bluz',   'upper', 'bluz',   ['#FFFFFF']),
+    RR('sc2', 'Skinny jean',  'lower', 'jean',   ['#5B7EC0']),
+    RR('sc3', 'Süet loafer',  'shoes', 'loafer', ['#1A1A1A']),
+  ];
+
+  // Senaryo 2 — GÜNLÜK: spor sütyenli vs sade üstlü (jean+sneaker aynı)
+  const gunlukSporWardrobe = [
+    RR('gs1', 'Spor sütyeni',  'upper', 'tisort',  ['#1A1A1A']),
+    RR('gs2', 'Jean pantolon', 'lower', 'jean',    ['#5B7EC0']),
+    RR('gs3', 'Sneaker',       'shoes', 'sneaker', ['#FFFFFF']),
+  ];
+  const gunlukNorWardrobe = [
+    RR('gn1', 'Temel bluz',    'upper', 'bluz',    ['#FFFFFF']),
+    RR('gn2', 'Jean pantolon', 'lower', 'jean',    ['#5B7EC0']),
+    RR('gn3', 'Sneaker',       'shoes', 'sneaker', ['#FFFFFF']),
+  ];
+
+  // Senaryo 3 — İŞ: business vs saten gece elbisesi
+  const isBusinessWardrobe = [
+    RR('ib1', 'Beyaz gomlek',   'upper', 'gomlek',    ['#FFFFFF']),
+    RR('ib2', 'Siyah pantolon', 'lower', 'pantolon',  ['#1A1A1A']),
+    RR('ib3', 'Siyah loafer',   'shoes', 'loafer',    ['#1A1A1A']),
+  ];
+  const isSatenWardrobe = [
+    RR('ie1', 'Saten gece elbisesi', 'dress_jumpsuit', 'midi_elbise', ['#CC3344']),
+    RR('ie2', 'Topuklu',             'shoes',          'topuklu',     ['#1A1A1A']),
+  ];
+
+  const sporA = generateCombos(sporAthWardrobe, 1, 'spor')[0]?.score   ?? 0;
+  const sporC = generateCombos(sporCasWardrobe, 1, 'spor')[0]?.score   ?? 0;
+  const gunS  = generateCombos(gunlukSporWardrobe, 1, 'gunluk')[0]?.score ?? 0;
+  const gunN  = generateCombos(gunlukNorWardrobe,  1, 'gunluk')[0]?.score ?? 0;
+  const isB   = generateCombos(isBusinessWardrobe, 1, 'is')[0]?.score  ?? 0;
+  const isE   = generateCombos(isSatenWardrobe,    1, 'is')[0]?.score  ?? 0;
+
+  console.log('\n── Register Bağlam Testi ─────────────────────────────────────────────────');
+  console.log(`  spor:   atletik=${sporA}  casual=${sporC}  ${sporA > sporC ? '✅ atletik > casual' : '❌ beklenen: atletik > casual'}`);
+  console.log(`  gunluk: normal=${gunN}  spor-üst=${gunS}   ${gunN > gunS  ? '✅ normal > spor-üst' : '❌ beklenen: normal > spor-üst'}`);
+  console.log(`  is:     business=${isB}  saten-gece=${isE}  ${isB > isE   ? '✅ business > saten-gece' : '❌ beklenen: business > saten-gece'}`);
 }

@@ -46,13 +46,30 @@ const PATTERN_MOD: Record<string, number> = {
   cicekli: -0.5, cizgili: -0.3, geometrik: -0.3,
 };
 
+// İsimden kumaş çıkarımı: fabric=unknown/eksik iken itemName'e bakılır
+const NAME_FABRIC_MAP: Array<[string, string]> = [
+  ['saten', 'satin'], ['kadife', 'velvet'], ['ipek', 'silk'],
+  ['yün',   'wool'],  ['yun',    'wool'],   ['keten', 'linen'],
+  ['denim', 'denim'], ['kot',    'denim'],
+];
+
+function resolveFabric(item: WardrobeItem): string {
+  const f = item.fabric ?? '';
+  if (f && f !== 'unknown' && f !== 'bilmiyorum') return f;
+  const name = (item.itemName ?? '').toLowerCase();
+  for (const [kw, mapped] of NAME_FABRIC_MAP) {
+    if (name.includes(kw)) return mapped;
+  }
+  return '';
+}
+
 // ─── Fonksiyonlar ─────────────────────────────────────────────────────────────
 
 /** 0-10 arasında formalite skoru döndürür. Yüksek = daha resmi. */
 export function getFormality(item: WardrobeItem): number {
   const categoryTable = FORMALITY[item.category];
   const base = categoryTable?.[item.subCategory ?? ''] ?? CATEGORY_DEFAULT[item.category] ?? 5;
-  const fabricMod  = FABRIC_MOD[item.fabric ?? '']  ?? 0;
+  const fabricMod  = FABRIC_MOD[resolveFabric(item)] ?? 0;
   const patternMod = PATTERN_MOD[item.pattern ?? ''] ?? 0;
   return Math.max(0, Math.min(10, base + fabricMod + patternMod));
 }
@@ -138,4 +155,37 @@ if (require.main === module) {
       `  statement=${stmt}`,
     );
   }
+
+  // ── (b) Kumaş-isim fallback doğrulaması ──────────────────────────────────
+  console.log('\n── Kumaş-İsim Fallback ──────────────────────────────────────────────────');
+
+  const satenFabric: WardrobeItem = {
+    id: 'fb1', userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: 'dress_jumpsuit', subCategory: 'midi_elbise',
+    colors: ['#CC3344'], pattern: 'duz', fabric: 'bilmiyorum',
+    seasons: [], createdAt: '', itemName: 'Saten gece elbisesi',
+    // Beklenen: fabric=bilmiyorum → isim taranır → 'saten'→satin → +1.5 bonus
+    // base(midi_elbise)=7, +1.5 = 8.5
+  };
+  const noFabric: WardrobeItem = {
+    id: 'fb2', userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: 'dress_jumpsuit', subCategory: 'midi_elbise',
+    colors: ['#CC3344'], pattern: 'duz',
+    seasons: [], createdAt: '', itemName: 'Düz gece elbisesi',
+    // Beklenen: fabric yok, isimde kumaş anahtar kelimesi yok → +0
+    // base(midi_elbise)=7
+  };
+  const withFabric: WardrobeItem = {
+    id: 'fb3', userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: 'dress_jumpsuit', subCategory: 'midi_elbise',
+    colors: ['#CC3344'], pattern: 'duz', fabric: 'satin',
+    seasons: [], createdAt: '', itemName: 'Düz elbise',
+    // Beklenen: fabric='satin' geçerli → +1.5 (fallback gerekmez)
+    // base=7 + 1.5 = 8.5
+  };
+
+  console.log(`  saten (fabric=bilmiyorum, isim='Saten gece elbisesi') → ${getFormality(satenFabric).toFixed(1)}  (beklenen: 8.5)`);
+  console.log(`  düz   (fabric=yok, isimsiz kumaş)                     → ${getFormality(noFabric).toFixed(1)}  (beklenen: 7.0)`);
+  console.log(`  satin (fabric='satin', direkt)                         → ${getFormality(withFabric).toFixed(1)}  (beklenen: 8.5)`);
+  console.log(`  Fallback ile direkt eşit: ${getFormality(satenFabric) === getFormality(withFabric) ? '✅ EVET' : '❌ HAYIR'}`);
 }
