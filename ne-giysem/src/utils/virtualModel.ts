@@ -291,7 +291,7 @@ export async function generateVirtualModelImage(
 if (require.main === module) {
   // Stabil public model görseli — tam boy, tek kişi, nötr duruş
   const TEST_MODEL_IMAGE =
-    'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=768&q=80';
+    'https://img.freepik.com/free-photo/pretty-young-woman-posing-sexy-jeans-shorts-isolated-white-full-length_231208-7970.jpg?semt=ais_hybrid&w=740&q=80';
 
   // Buraya Supabase processedImageUrl yapıştır
   // Örn: 'https://xyz.supabase.co/storage/v1/object/public/wardrobe/processed/abc.png'
