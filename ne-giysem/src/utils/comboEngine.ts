@@ -7,6 +7,8 @@ import { registerFit, registerCoherence } from './registerTheory';
 import { getVisualWeight, isStatement } from './itemTraits';
 import { proportionScore } from './proportionTheory';
 import { buildReasoning } from './reasoning';
+import { seasonFit } from './seasonTheory';
+import type { WeatherData } from './weatherService';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
@@ -217,6 +219,7 @@ export function generateCombos(
   items: WardrobeItem[],
   maxCombos = 12,
   occasion: Occasion = 'all',
+  weather?: WeatherData,
 ): Combo[] {
   // Hard-filter: dress-code ihlalleri (terlik+davet, sneaker+davet vb.) elenir
   const allow = (item: WardrobeItem) =>
@@ -233,7 +236,7 @@ export function generateCombos(
 
   // ─── 1. GEÇİŞ: ucuz proxy (colorHarmony + occFit), composeOutfit çağrısı yok ──────
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
-  type Candidate = { core: WardrobeItem[]; colorHarmony: number; occFit: number; prop: number; regFit: number };
+  type Candidate = { core: WardrobeItem[]; colorHarmony: number; occFit: number; prop: number; regFit: number; seasonProxy: number };
   const candidates: Candidate[] = [];
 
   if (uppers.length && lowers.length && shoes.length) {
@@ -252,7 +255,11 @@ export function generateCombos(
             (registerFit(upper, ruleKey) +
              registerFit(lower, ruleKey) +
              registerFit(shoe, ruleKey)) / 3;
-          candidates.push({ core: [upper, lower, shoe], colorHarmony, occFit, prop: proportionScore([upper, lower, shoe]), regFit });
+          const seasonProxy =
+            (seasonFit(upper, weather) +
+             seasonFit(lower, weather) +
+             seasonFit(shoe,  weather)) / 3;
+          candidates.push({ core: [upper, lower, shoe], colorHarmony, occFit, prop: proportionScore([upper, lower, shoe]), regFit, seasonProxy });
         }
       }
     }
@@ -264,13 +271,17 @@ export function generateCombos(
         const colorHarmony = itemColorScore(dress, shoe);
         const occFit       = (getFormalityFit(dress, ruleKey) + getFormalityFit(shoe, ruleKey)) / 2;
         const regFit       = (registerFit(dress, ruleKey) + registerFit(shoe, ruleKey)) / 2;
-        candidates.push({ core: [dress, shoe], colorHarmony, occFit, prop: proportionScore([dress, shoe]), regFit });
+        const seasonProxy  = (seasonFit(dress, weather) + seasonFit(shoe, weather)) / 2;
+        candidates.push({ core: [dress, shoe], colorHarmony, occFit, prop: proportionScore([dress, shoe]), regFit, seasonProxy });
       }
     }
   }
 
-  // colorHarmony + occFit proxy'ye göre sırala, en iyi CANDIDATE_CAP çekirdeği seç
-  candidates.sort((a, b) => (b.colorHarmony + b.occFit + b.prop + b.regFit) - (a.colorHarmony + a.occFit + a.prop + a.regFit));
+  // proxy skoruna göre sırala; seasonProxy çarpan değil toplamsal — kaba eleme için yeterli
+  candidates.sort((a, b) =>
+    (b.colorHarmony + b.occFit + b.prop + b.regFit + b.seasonProxy) -
+    (a.colorHarmony + a.occFit + a.prop + a.regFit + a.seasonProxy),
+  );
   const top = candidates.slice(0, CANDIDATE_CAP);
 
   // ─── 2. GEÇİŞ: composeOutfit çağır, final skor hesapla ──────────────────────
@@ -295,8 +306,15 @@ export function generateCombos(
       ) / core.length;
       // Register tutarlılık çarpanı (1.0 = tutarlı, 0.75 = sert çelişki)
       const coherence = registerCoherence([...core, ...(chosenOuter ? [chosenOuter] : [])]);
-      // Ağırlıklar toplamı = 1.0, coherence dışsal çarpan
-      const final01 = (0.35 * colorHarmonyFinal + 0.20 * contextFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage) * coherence;
+      // Mevsim uyum çarpanı: çanta/aksesuar hariç tüm giyim parçaları üzerinden ortalama
+      const clothingItems = outfitItems.filter(
+        (i) => !['bag', 'accessory'].includes(i.category),
+      );
+      const seasonScore = clothingItems.length
+        ? clothingItems.reduce((s, i) => s + seasonFit(i, weather), 0) / clothingItems.length
+        : 1.0;
+      // Ağırlıklar toplamı = 1.0; coherence ve seasonScore dışsal çarpanlar
+      const final01 = (0.35 * colorHarmonyFinal + 0.20 * contextFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage) * coherence * seasonScore;
       const score   = Math.round(final01 * 100);
       const reasoning = buildReasoning({
         items: outfitItems, occasion,

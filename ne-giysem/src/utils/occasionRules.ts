@@ -67,7 +67,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     pointTarget:            [6, 8],
     maxStatementAccessories: 1,
     minAccessories:          1,
-    hardExcluded:           ['terlik'],
+    hardExcluded:           ['terlik', 'sapka'],
     encouraged:             ['midi_elbise', 'mini_elbise', 'topuklu', 'sandalet', 'etek', 'bluz'],
   },
   gece: {

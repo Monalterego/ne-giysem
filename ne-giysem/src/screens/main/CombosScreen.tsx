@@ -264,6 +264,7 @@ export default function CombosScreen() {
   const wornComboKeys  = useWardrobeStore((s) => s.wornComboKeys);
   const markWorn       = useWardrobeStore((s) => s.markWorn);
   const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
+  const weather        = useWardrobeStore((s) => s.weather);
   const user           = useUserStore((s) => s.user);
   const { cache: comboCache, setCache, clearCache } = useComboStore();
 
@@ -289,21 +290,21 @@ export default function CombosScreen() {
     }
   }, [user?.id]);
 
-  // Yeni parça eklenince veya kullanıcı değişince cache'i sıfırla
+  // Yeni parça eklenince, kullanıcı veya hava durumu değişince cache'i sıfırla
   useEffect(() => {
     clearCache();
-  }, [items, user?.id]);
+  }, [items, user?.id, weather]);
 
-  // Lokal kombin üretimi — senkron, sıfır network
+  // Lokal kombin üretimi — senkron, sıfır network; weather değişince yeniden hesaplanır
   useEffect(() => {
     if (!items.length || !user) { setLocalCombos([]); return; }
     const cached = comboCache[activeOccasion];
     if (cached) { setLocalCombos(cached); setVisibleCount(PAGE_SIZE); return; }
-    const combos = generateCombos(items, 24, activeOccasion);
+    const combos = generateCombos(items, 24, activeOccasion, weather ?? undefined);
     setCache(activeOccasion, combos);
     setLocalCombos(combos);
     setVisibleCount(PAGE_SIZE);
-  }, [items, activeOccasion, user?.id]);
+  }, [items, activeOccasion, user?.id, weather]);
 
   const handleLoadMore = () => {
     setVisibleCount((v) => v + PAGE_SIZE);
