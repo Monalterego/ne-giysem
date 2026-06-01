@@ -15,13 +15,35 @@ import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
 import type { VisionResult } from '../../utils/visionAnalysis';
-import { analyzeStoreCompatibility } from '../../utils/storeAnalysis';
-import type { CompatibilityResult } from '../../utils/storeAnalysis';
+import { analyzeStoreItem } from '../../utils/comboEngine';
+import type { StoreAnalysis } from '../../utils/comboEngine';
 import type { WardrobeItem, ClothingCategory } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
+
+// VisionResult'ı lokal motor için WardrobeItem şekline dönüştürür
+function visionToWardrobeItem(v: VisionResult): WardrobeItem {
+  return {
+    id: 'scanned',
+    userId: '',
+    originalImageUrl: '',
+    processedImageUrl: '',
+    category:    v.category,
+    subCategory: v.subcategory,
+    colors:      v.colors,
+    pattern:     v.pattern,
+    fabric:      v.fabric as WardrobeItem['fabric'],
+    fit:         v.fit,
+    neckline:    v.neckline,
+    sleeveLength: v.sleeveLength,
+    details:     v.details,
+    itemName:    v.itemName,
+    seasons:     v.seasons,
+    createdAt:   new Date().toISOString(),
+  };
+}
 
 const CATEGORY_LABEL: Record<string, string> = {
   upper:          'Üst',
@@ -106,13 +128,14 @@ function WardrobeComboCard({ items }: { items: WardrobeItem[] }) {
 
 export default function StoreResultScreen({ route, navigation }: Props) {
   const { processedBase64, originalUri } = route.params;
-  const items = useWardrobeStore((s) => s.items);
-  const user  = useUserStore((s) => s.user);
+  const items   = useWardrobeStore((s) => s.items);
+  const weather = useWardrobeStore((s) => s.weather);
+  const user    = useUserStore((s) => s.user);
 
   const [analyzing, setAnalyzing]             = useState(true);
   const [visionResult, setVisionResult]       = useState<VisionResult | null>(null);
   const [smartAnalyzing, setSmartAnalyzing]   = useState(false);
-  const [compatibility, setCompatibility]     = useState<CompatibilityResult | null>(null);
+  const [compatibility, setCompatibility]     = useState<StoreAnalysis | null>(null);
 
   // Kullanılmayan detectedCategory/detectedColors state'lerini basit şekilde saklıyoruz
   // — scannedItem artık gereksiz; sadece scannedUri gösterimi yeterli
@@ -132,17 +155,19 @@ export default function StoreResultScreen({ route, navigation }: Props) {
     return () => { cancelled = true; };
   }, [processedBase64]);
 
-  // 2. Dolap uyum analizi — vision hazır olunca başlar
+  // 2. Dolap uyum analizi — senkron lokal motor, sıfır network
   useEffect(() => {
     if (!visionResult || !items.length) return;
-    let cancelled = false;
     setSmartAnalyzing(true);
-    analyzeStoreCompatibility(visionResult, items)
-      .then((result) => { if (!cancelled) setCompatibility(result); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setSmartAnalyzing(false); });
-    return () => { cancelled = true; };
-  }, [visionResult]);
+    const scannedItem = visionToWardrobeItem(visionResult);
+    const result = analyzeStoreItem(
+      scannedItem, items,
+      weather ?? undefined,
+      user?.styleProfile ?? undefined,
+    );
+    setCompatibility(result);
+    setSmartAnalyzing(false);
+  }, [visionResult, items, weather]);
 
   const scannedUri = `data:image/png;base64,${processedBase64}`;
 
@@ -205,6 +230,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
                 {/* Verdict */}
                 <View style={[styles.verdictBadge, { backgroundColor: verdictColor(compatibility.verdict) }]}>
                   <Text style={styles.verdictText}>{compatibility.verdict}</Text>
+                  <Text style={styles.verdictScore}>%{compatibility.avgScore} uyumlu</Text>
                 </View>
 
                 {/* Gerekçeler */}
@@ -452,6 +478,12 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.white,
     textAlign: 'center',
+  },
+  verdictScore: {
+    ...typography.bodySmall,
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
 
   // ── Gerekçeler ──

@@ -579,38 +579,89 @@ export function buildComboFromIds(
 // ─── Mağaza uyum analizi ─────────────────────────────────────────────────────
 
 export interface StoreAnalysis {
-  totalChecked: number;    // dolaptaki toplam parça
-  compatibleCount: number; // uyumlu parça sayısı (skor > 0.6)
-  avgScore: number;        // ortalama uyum skoru (0-100)
-  topCombos: Combo[];      // en iyi 3 kombin önerisi
-  sameCategory: number;    // aynı kategoride mevcut parça sayısı
+  verdict: string;          // 'Dolabına çok uygun' | 'Zaten benzeri var' | 'Eksik parçaları tamamlıyor'
+  reasons: string[];        // 2-3 deterministik Türkçe cümle
+  combos: WardrobeItem[][]; // en iyi 3 kombinin items dizisi (taranan ürünü içeriyor)
+  missing: string[];        // taranan ürünle daha iyi gidecek eksik kategori önerileri
+  avgScore: number;         // 0-100
+  compatibleCount: number;
+  totalChecked: number;
+  sameCategory: number;
 }
 
-// Taranan mağaza ürününü dolaptaki parçalara karşı analiz eder
+// Eşleşme beklentisi yüksek kategori çiftleri
+const PAIRING_CATS: Partial<Record<string, string[]>> = {
+  upper:          ['lower', 'shoes'],
+  lower:          ['upper', 'shoes'],
+  dress_jumpsuit: ['shoes'],
+  shoes:          ['upper', 'lower'],
+  outer:          ['upper', 'lower'],
+};
+
+const CAT_LABEL_TR: Record<string, string> = {
+  upper: 'üst', lower: 'alt', shoes: 'ayakkabı',
+  outer: 'dış giyim', bag: 'çanta', accessory: 'aksesuar', dress_jumpsuit: 'elbise',
+};
+
+/**
+ * Taranan mağaza ürününü lokal motor aracılığıyla dolaptaki parçalara karşı analiz eder.
+ * Senkron, deterministik, sıfır network.
+ */
 export function analyzeStoreItem(
   scannedItem: WardrobeItem,
   wardrobeItems: WardrobeItem[],
+  weather?: WeatherData,
+  styleProfile?: StyleProfile,
 ): StoreAnalysis {
   if (!wardrobeItems.length) {
-    return { totalChecked: 0, compatibleCount: 0, avgScore: 0, topCombos: [], sameCategory: 0 };
+    return {
+      verdict: 'Eksik parçaları tamamlıyor',
+      reasons: ['Dolabında henüz parça yok. Kıyafetler ekleyince uyum analizi başlar.'],
+      combos: [], missing: [], avgScore: 0, compatibleCount: 0, totalChecked: 0, sameCategory: 0,
+    };
   }
 
-  // Her dolap parçasıyla ikili renk uyum skoru
-  const pairScores = wardrobeItems.map((item) => itemColorScore(scannedItem, item));
+  // a) Kombin motoru — taranan ürünü dolaba ekleyerek çalıştır
+  const allCombos  = generateCombos([scannedItem, ...wardrobeItems], 50, 'all', weather, styleProfile);
+  const topCombos  = allCombos.filter((c) => c.items.some((i) => i.id === scannedItem.id)).slice(0, 3);
+  const combos     = topCombos.map((c) => c.items);
+
+  // b) Uyum istatistikleri
+  const pairScores     = wardrobeItems.map((item) => itemColorScore(scannedItem, item));
   const compatibleCount = pairScores.filter((s) => s > 0.6).length;
-  const avgScore = Math.round(
-    (pairScores.reduce((a, b) => a + b, 0) / pairScores.length) * 100,
-  );
-
-  // Taranan ürünü dolaba ekleyerek kombin motoru çalıştır
-  const allCombos = generateCombos([scannedItem, ...wardrobeItems], 50);
-  const topCombos = allCombos
-    .filter((c) => c.items.some((i) => i.id === scannedItem.id))
-    .slice(0, 3);
-
+  const avgScore = topCombos.length
+    ? Math.round(topCombos.reduce((s, c) => s + c.score, 0) / topCombos.length)
+    : Math.round((pairScores.reduce((a, b) => a + b, 0) / pairScores.length) * 100);
   const sameCategory = wardrobeItems.filter((i) => i.category === scannedItem.category).length;
 
-  return { totalChecked: wardrobeItems.length, compatibleCount, avgScore, topCombos, sameCategory };
+  // c) Verdict
+  let verdict: string;
+  if (sameCategory >= 3 && avgScore < 80)             verdict = 'Zaten benzeri var';
+  else if (topCombos.length === 0 || compatibleCount < 3) verdict = 'Eksik parçaları tamamlıyor';
+  else                                                  verdict = 'Dolabına çok uygun';
+
+  // d) Gerekçeler
+  const reasons: string[] = [];
+  if (topCombos[0]?.reasoning) {
+    reasons.push(`Dolapla uyumlu kombinler kuruluyor: ${topCombos[0].reasoning}`);
+  }
+  reasons.push(
+    `${wardrobeItems.length} parçanın ${compatibleCount}'iyle uyumlu, ${topCombos.length} kombin kuruluyor.`,
+  );
+  if (verdict === 'Zaten benzeri var')             reasons.push('Dolabında benzer işleve sahip parçalar zaten var.');
+  else if (verdict === 'Eksik parçaları tamamlıyor') reasons.push('Dolabındaki eksik kombinleri tamamlayabilir.');
+  else                                              reasons.push('Dolabına değer katabilir.');
+
+  // e) Eksik kategori önerileri — ince dolap kategorileri
+  const missing: string[] = [];
+  const pairingCats = PAIRING_CATS[scannedItem.category] ?? [];
+  for (const cat of pairingCats) {
+    if (wardrobeItems.filter((i) => i.category === cat).length < 2 && missing.length < 2) {
+      missing.push(`uyumlu ${CAT_LABEL_TR[cat] ?? cat}`);
+    }
+  }
+
+  return { verdict, reasons, combos, missing, avgScore, compatibleCount, totalChecked: wardrobeItems.length, sameCategory };
 }
 
 // ─── Manuel test bloğu ───────────────────────────────────────────────────────
@@ -948,4 +999,44 @@ if (require.main === module) {
     const swOk = Math.abs(swS - base) <= Math.ceil(base * 0.16);
     console.log(`    [${i}] base=${base}  OM=${omS}${omOk ? '✅' : '❌'}  SW=${swS}${swOk ? '✅' : '❌'}`);
   }
+
+  // ── Bölüm 8: analyzeStoreItem lokal motor entegrasyonu ─────────────────────
+  const SA = (
+    id: string, name: string, category: string, subCategory: string, colors: string[],
+  ): WardrobeItem => ({
+    id, userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: category as WardrobeItem['category'], subCategory,
+    colors, pattern: 'duz', seasons: [], createdAt: '', itemName: name,
+  });
+
+  const scanned8 = SA('scan', 'Kırmızı bluz', 'upper', 'bluz', ['#E94560']);
+  const wardrobe8: WardrobeItem[] = [
+    SA('w1', 'Siyah pantolon',   'lower',  'pantolon',  ['#1A1A1A']),
+    SA('w2', 'Siyah loafer',     'shoes',  'loafer',    ['#1A1A1A']),
+    SA('w3', 'Altın clutch',     'bag',    'clutch',    ['#D4A017']),
+    SA('w4', 'Beyaz bluz',       'upper',  'bluz',      ['#FFFFFF']),
+    SA('w5', 'Krem bluz',        'upper',  'bluz',      ['#FFF5E0']),
+    SA('w6', 'Lacivert bluz',    'upper',  'bluz',      ['#0F3460']),
+  ];
+  const weatherMock8: WeatherData = { temp: 20, description: 'ılık', icon: '⛅', recommendation: 'Hafif kıyafetler' };
+  const swProfile8: StyleProfile  = { styles: [{ name: 'Streetwear', weight: 1 }], colorPalette: [] };
+
+  const baseResult   = analyzeStoreItem(scanned8, wardrobe8);
+  const weatherResult = analyzeStoreItem(scanned8, wardrobe8, weatherMock8);
+  const styleResult  = analyzeStoreItem(scanned8, wardrobe8, weatherMock8, swProfile8);
+
+  console.log('\n── Bölüm 8: analyzeStoreItem ─────────────────────────────────────────────');
+  console.log(`  [BASE]    verdict="${baseResult.verdict}"  avgScore=${baseResult.avgScore}  combos=${baseResult.combos.length}`);
+  console.log(`  [WEATHER] verdict="${weatherResult.verdict}"  avgScore=${weatherResult.avgScore}`);
+  console.log(`  [STYLE]   verdict="${styleResult.verdict}"  avgScore=${styleResult.avgScore}`);
+  console.log(`  Motor entegrasyonu: combos[0] taranan ürünü içeriyor=${baseResult.combos[0]?.some(i=>i.id==='scan') ? '✅' : '❌'}`);
+  console.log(`  sameCategory=3 → "${baseResult.verdict}" ${baseResult.sameCategory >= 3 ? '(sameCategory>=3 aktif)' : ''}`);
+  console.log(`  Reasons:`);
+  for (const r of baseResult.reasons) console.log(`    • ${r}`);
+  console.log(`  Missing: [${baseResult.missing.join(', ')}]`);
+  const weatherChanges = weatherResult.avgScore !== baseResult.avgScore ||
+    JSON.stringify(weatherResult.combos.map(g=>g.map(i=>i.id))) !== JSON.stringify(baseResult.combos.map(g=>g.map(i=>i.id)));
+  const styleChanges  = styleResult.avgScore !== baseResult.avgScore;
+  console.log(`  Weather etkisi: ${weatherChanges ? '✅ combos/skor değişti' : '⚠️  değişmedi (hava etkisi yok)'}`);
+  console.log(`  Style etkisi:   ${styleChanges  ? '✅ skor değişti'         : '⚠️  değişmedi'}`);
 }
