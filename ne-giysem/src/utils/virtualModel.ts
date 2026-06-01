@@ -1,8 +1,6 @@
 import type { WardrobeItem } from '../types';
 
-const OPENAI_API_KEY    = process.env.EXPO_PUBLIC_OPENAI_API_KEY    ?? '';
-const REPLICATE_API_KEY = process.env.EXPO_PUBLIC_REPLICATE_API_KEY ?? '';
-const FASHN_API_KEY     = process.env.EXPO_PUBLIC_FASHN_API_KEY     ?? '';
+const FASHN_API_KEY = process.env.EXPO_PUBLIC_FASHN_API_KEY ?? '';
 
 // ─── Açıklama eşlemeleri ──────────────────────────────────────────────────────
 
@@ -48,16 +46,6 @@ const BODY_TYPE_MAP: Record<string, string> = {
   triangle:  'inverted triangle',
 };
 
-const CATEGORY_DESC: Record<string, string> = {
-  upper:          'top',
-  lower:          'bottoms',
-  dress_jumpsuit: 'dress',
-  outer:          'jacket',
-  shoes:          'shoes',
-  bag:            'bag',
-  accessory:      'accessory',
-};
-
 // ─── Tip ──────────────────────────────────────────────────────────────────────
 
 export interface PhysicalProfile {
@@ -70,121 +58,6 @@ export interface PhysicalProfile {
   hairType:   string | null;
 }
 
-// ─── GPT-4o: manken görseli üret ─────────────────────────────────────────────
-
-async function generateModelImage(profile: PhysicalProfile): Promise<string> {
-  if (!OPENAI_API_KEY) throw new Error('OpenAI API key eksik — .env dosyasında EXPO_PUBLIC_OPENAI_API_KEY ayarla');
-
-  const skin   = SKIN_TONE_MAP[profile.skinTone   ?? ''] ?? 'medium';
-  const hColor = HAIR_COLOR_MAP[profile.hairColor  ?? ''] ?? 'brown';
-  const hLen   = HAIR_LENGTH_MAP[profile.hairLength ?? ''] ?? 'medium-length';
-  const hType  = HAIR_TYPE_MAP[profile.hairType   ?? ''] ?? 'straight';
-  const body   = BODY_TYPE_MAP[profile.bodyType   ?? ''] ?? 'average';
-
-  const prompt =
-    `A full-body photo of a female fashion model, ${profile.height} cm tall, ` +
-    `${profile.age} years old, ${body} body type, ${skin} skin tone, ` +
-    `${hLen} ${hColor} ${hType} hair. ` +
-    `Standing straight, facing forward, neutral pose, wearing plain white underwear. ` +
-    `White studio background, full body shot, professional fashion photography, ` +
-    `natural lighting, high quality, realistic, clean composition.`;
-
-  console.log('API key:', process.env.EXPO_PUBLIC_OPENAI_API_KEY?.substring(0, 10));
-  console.log('Prompt:', prompt);
-
-  let data: any;
-  try {
-    console.log('fetch başlıyor...');
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model:   'gpt-image-1',
-        prompt,
-        n:       1,
-        size:    '1024x1536',
-        quality: 'medium',
-      }),
-    });
-    console.log('fetch bitti, status:', response.status);
-    data = await response.json();
-    console.log('OpenAI response:', JSON.stringify(data));
-
-    if (!response.ok) {
-      throw new Error(data?.error?.message ?? `OpenAI API hatası: ${response.status}`);
-    }
-  } catch (error) {
-    console.log('fetch HATA:', error);
-    throw error;
-  }
-
-  const b64 = data?.data?.[0]?.b64_json as string | undefined;
-  if (!b64) throw new Error('Görsel verisi alınamadı');
-  return `data:image/png;base64,${b64}`;
-}
-
-// ─── Replicate IDM-VTON: sanal deneme ────────────────────────────────────────
-
-async function applyVirtualTryOn(
-  humanImg: string,
-  garmImg: string,
-  garmentDesc: string,
-): Promise<string> {
-  if (!REPLICATE_API_KEY) throw new Error('Replicate API key eksik — .env dosyasında EXPO_PUBLIC_REPLICATE_API_KEY ayarla');
-
-  // Prediction başlat
-  const startRes = await fetch('https://api.replicate.com/v1/predictions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${REPLICATE_API_KEY}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify({
-      version: 'c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4',
-      input: {
-        human_img:       humanImg,
-        garm_img:        garmImg,
-        garment_des:     garmentDesc,
-        is_checked:      true,
-        is_checked_crop: false,
-        denoise_steps:   30,
-        seed:            42,
-      },
-    }),
-  });
-
-  if (!startRes.ok) {
-    const err = await startRes.json().catch(() => ({}));
-    throw new Error((err as any)?.detail ?? `Replicate başlatma hatası: ${startRes.status}`);
-  }
-
-  const prediction = await startRes.json() as any;
-  const predId = prediction.id as string | undefined;
-  if (!predId) throw new Error('Prediction ID alınamadı');
-
-  // Sonucu bekle — max 60 saniye, 2 saniyede bir poll
-  const deadline = Date.now() + 60_000;
-  while (Date.now() < deadline) {
-    await new Promise<void>((r) => setTimeout(r, 2000));
-    const statusRes = await fetch(`https://api.replicate.com/v1/predictions/${predId}`, {
-      headers: { 'Authorization': `Bearer ${REPLICATE_API_KEY}` },
-    });
-    const status = await statusRes.json() as any;
-    if (status.status === 'succeeded') {
-      const output = status.output;
-      return Array.isArray(output) ? (output[0] as string) : (output as string);
-    }
-    if (status.status === 'failed' || status.status === 'canceled') {
-      throw new Error(`Replicate işlemi başarısız: ${status.error ?? status.status}`);
-    }
-  }
-
-  throw new Error('Replicate zaman aşımına uğradı (60 saniye)');
-}
-
 // ─── FASHN istemcisi ──────────────────────────────────────────────────────────
 
 const FASHN_BASE       = 'https://api.fashn.ai/v1';
@@ -193,8 +66,8 @@ const FASHN_TIMEOUT_MS = 90_000;
 
 /**
  * FASHN API'de prediction başlatır, sonuç görsel URL'ini döndürür.
- * @param modelName  Örn. 'tryon-v1.6'
- * @param inputs     model_image, garment_image ve opsiyonel parametreler
+ * @param modelName  Örn. 'tryon-v1.6' | 'model-create'
+ * @param inputs     Model girdileri
  * @returns          CDN URL (72 saat geçerli)
  */
 export async function runFashn(
@@ -205,7 +78,6 @@ export async function runFashn(
     throw new Error('FASHN API key eksik — EXPO_PUBLIC_FASHN_API_KEY .env dosyasını kontrol et.');
   }
 
-  // 1. Prediction başlat
   const runRes = await fetch(`${FASHN_BASE}/run`, {
     method: 'POST',
     headers: {
@@ -227,7 +99,6 @@ export async function runFashn(
 
   console.log(`[fashn] prediction başladı — id: ${id}`);
 
-  // 2. Status polling — 2 sn aralık, 90 sn timeout
   const deadline = Date.now() + FASHN_TIMEOUT_MS;
 
   while (Date.now() < deadline) {
@@ -261,11 +132,104 @@ export async function runFashn(
       const msg = s.error?.message ?? s.error?.name ?? 'bilinmeyen hata';
       throw new Error(`FASHN prediction başarısız: ${msg}`);
     }
-
-    // 'starting' | 'in_queue' | 'processing' → beklemeye devam
   }
 
   throw new Error(`FASHN zaman aşımı (${FASHN_TIMEOUT_MS / 1000}s) — id: ${id}`);
+}
+
+// ─── Manken prompt ───────────────────────────────────────────────────────────
+
+export function profileToPrompt(profile: PhysicalProfile): string {
+  const skin   = SKIN_TONE_MAP[profile.skinTone   ?? ''] ?? 'medium brown';
+  const hColor = HAIR_COLOR_MAP[profile.hairColor  ?? ''] ?? 'brown';
+  const hLen   = HAIR_LENGTH_MAP[profile.hairLength ?? ''] ?? 'medium-length';
+  const hType  = HAIR_TYPE_MAP[profile.hairType   ?? ''] ?? 'straight';
+  const body   = BODY_TYPE_MAP[profile.bodyType   ?? ''] ?? 'average';
+
+  return (
+    `Full-body studio photograph of a woman, ${profile.age} years old, ${profile.height} cm, ` +
+    `${body} body type, ${skin} skin tone, ${hLen} ${hType} ${hColor} hair, ` +
+    `standing in a neutral front-facing pose, arms relaxed at sides, ` +
+    `plain light-gray background, photorealistic, high quality.`
+  );
+}
+
+// ─── Manken görseli kaynağı ───────────────────────────────────────────────────
+
+/**
+ * Öncelik: avatarUrl → savedMannequinUrl → FASHN model-create
+ * Kalıcı kayıt Aşama C'de; burada sadece URL döndürülür.
+ */
+export async function getModelImage(
+  profile: PhysicalProfile,
+  avatarUrl?: string,
+  savedMannequinUrl?: string,
+): Promise<string> {
+  if (avatarUrl)          return avatarUrl;
+  if (savedMannequinUrl)  return savedMannequinUrl;
+
+  console.log('[fashn] manken üretiliyor (model-create)...');
+  const url = await runFashn('model-create', {
+    prompt:       profileToPrompt(profile),
+    aspect_ratio: '2:3',
+  });
+  console.log('[fashn] manken hazır:', url);
+  return url;
+}
+
+// ─── Katmanlama sırası ────────────────────────────────────────────────────────
+
+const LAYER_ORDER: Partial<Record<WardrobeItem['category'], number>> = {
+  lower:          1,
+  dress_jumpsuit: 1,
+  upper:          2,
+  outer:          3,
+  shoes:          4,
+};
+
+/**
+ * Çanta ve aksesuarları eler; kalan parçaları katmanlama sırasına dizer.
+ * Elbise varsa aynı kombindeteki üst ve alt parçalar atlanır.
+ */
+export function selectAndOrderGarments(items: WardrobeItem[]): WardrobeItem[] {
+  const hasDress = items.some((i) => i.category === 'dress_jumpsuit');
+
+  return items
+    .filter((i) => {
+      if (i.category === 'bag' || i.category === 'accessory') return false;
+      if (hasDress && (i.category === 'upper' || i.category === 'lower')) return false;
+      return true;
+    })
+    .sort((a, b) => (LAYER_ORDER[a.category] ?? 99) - (LAYER_ORDER[b.category] ?? 99));
+}
+
+// ─── Katmanlı giydirme ────────────────────────────────────────────────────────
+
+/**
+ * Her parçayı sırayla giydirir; her adımın çıktısı bir sonraki adıma model_image olarak girer.
+ */
+export async function layeredTryOn(
+  modelImage: string,
+  garments: WardrobeItem[],
+): Promise<string> {
+  let current = modelImage;
+
+  for (const g of garments) {
+    const label = g.itemName ?? g.subCategory ?? g.category;
+    console.log(`[fashn] katman: ${g.category} / ${label}`);
+
+    current = await runFashn('tryon-v1.6', {
+      model_image:        current,
+      garment_image:      g.processedImageUrl,
+      garment_photo_type: 'flat-lay',
+      category:           'auto',
+      mode:               'balanced',
+    });
+
+    console.log(`[fashn] katman çıktı (${label}):`, current);
+  }
+
+  return current;
 }
 
 // ─── Ana fonksiyon ────────────────────────────────────────────────────────────
@@ -274,46 +238,68 @@ export async function generateVirtualModelImage(
   profile: PhysicalProfile,
   items: WardrobeItem[],
   avatarUrl?: string,
+  savedMannequinUrl?: string,
 ): Promise<string> {
-  const item = items[0];
-  if (!item) throw new Error('Kıyafet bulunamadı');
-
-  // avatarUrl varsa GPT-4o adımını atla, direkt IDM-VTON'a gönder
-  const humanImg = avatarUrl ?? await generateModelImage(profile);
-
-  const garmentDesc = item.itemName ?? CATEGORY_DESC[item.category] ?? item.category;
-  return applyVirtualTryOn(humanImg, item.processedImageUrl, garmentDesc);
+  const model    = await getModelImage(profile, avatarUrl, savedMannequinUrl);
+  const garments = selectAndOrderGarments(items);
+  if (!garments.length) throw new Error('Giydirilecek parça yok');
+  return layeredTryOn(model, garments);
 }
 
 // ─── Manuel test bloğu ───────────────────────────────────────────────────────
 // Kullanım: npx tsx src/utils/virtualModel.ts
 
 if (require.main === module) {
-  // Stabil public model görseli — tam boy, tek kişi, nötr duruş
-  const TEST_MODEL_IMAGE =
-    'https://img.freepik.com/free-photo/pretty-young-woman-posing-sexy-jeans-shorts-isolated-white-full-length_231208-7970.jpg?semt=ais_hybrid&w=740&q=80';
+  const testProfile: PhysicalProfile = {
+    height:     168,
+    age:        27,
+    bodyType:   'hourglass',
+    skinTone:   'wheat',
+    hairColor:  'dark_brown',
+    hairLength: 'long',
+    hairType:   'wavy',
+  };
 
-  // Buraya Supabase processedImageUrl yapıştır
-  // Örn: 'https://xyz.supabase.co/storage/v1/object/public/wardrobe/processed/abc.png'
-  const TEST_GARMENT_IMAGE = 'https://static.zara.net/assets/public/e00e/0757/6ae141e68a7b/adb4871359f8/01120134330-e1/01120134330-e1.jpg?ts=1779960169370&w=1920';
+  // Gerçek Supabase processedImageUrl'lerini buraya yapıştır
+  const makeItem = (
+    id: string,
+    name: string,
+    category: WardrobeItem['category'],
+    url: string,
+  ): WardrobeItem => ({
+    id, userId: 'test', itemName: name,
+    category, subCategory: undefined,
+    colors: [], pattern: 'duz', seasons: [], fabric: undefined,
+    originalImageUrl: url, processedImageUrl: url,
+    createdAt: '',
+  });
+
+  const testGarments: WardrobeItem[] = [
+    makeItem('g1', 'Siyah wide-leg pantolon', 'lower',
+      'https://static.zara.net/assets/public/e00e/0757/6ae141e68a7b/adb4871359f8/01120134330-e1/01120134330-e1.jpg?ts=1779960169370&w=1920'),
+    makeItem('g2', 'Beyaz oversize bluz',     'upper',
+      'https://static.zara.net/assets/public/b6c9/ab81/13b94748a527/ad66afb36a87/02711172-251-e1/02711172-251-e1.jpg?ts=1779960169370&w=1024'),
+    makeItem('g3', 'Siyah loafer',            'shoes',
+      'https://static.zara.net/assets/public/3c18/6c3f/e6944ba5b965/a93e847fa2c1/12503710-800-e1/12503710-800-e1.jpg?ts=1779960169370&w=1024'),
+  ];
 
   (async () => {
-    console.log('\n── FASHN Virtual Try-On Testi ──────────────────────────────────────────');
-    console.log('Model    :', TEST_MODEL_IMAGE);
-    console.log('Garment  :', TEST_GARMENT_IMAGE);
+    console.log('\n── FASHN Katmanlı Kombin Testi ─────────────────────────────────────────');
+    console.log('Profil:', JSON.stringify(testProfile));
+    console.log('Parçalar:', testGarments.map((g) => `${g.category}/${g.itemName}`).join(', '));
+    console.log('Avatar: YOK → model-create yolu\n');
 
     try {
-      const resultUrl = await runFashn('tryon-v1.6', {
-        model_image:        TEST_MODEL_IMAGE,
-        garment_image:      TEST_GARMENT_IMAGE,
-        garment_photo_type: 'flat-lay',   // Supabase processed görseller düz zemin
-        mode:               'balanced',
-        num_samples:        1,
-        return_base64:      false,
-      });
+      const mannequinUrl = await getModelImage(testProfile);
+      console.log('\n[1] Manken URL:', mannequinUrl);
+      console.log('    → Tarayıcıda aç: tam boy, nötr poz, açık gri zemin var mı?\n');
 
-      console.log('\n✅ Sonuç URL:', resultUrl);
-      console.log('   Tarayıcıda aç → görsel doğru mu kontrol et.');
+      const garments = selectAndOrderGarments(testGarments);
+      console.log('[2] Katmanlama sırası:', garments.map((g) => g.category).join(' → '));
+
+      const finalUrl = await layeredTryOn(mannequinUrl, garments);
+      console.log('\n✅ Final URL:', finalUrl);
+      console.log('   → Tarayıcıda aç: manken üzerinde tüm parçalar katmanlanmış mı?');
     } catch (err) {
       console.error('\n❌ Hata:', err);
     }
