@@ -24,12 +24,13 @@ import { Feather } from '@expo/vector-icons';
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
 
 // VisionResult'ı lokal motor için WardrobeItem şekline dönüştürür
-function visionToWardrobeItem(v: VisionResult): WardrobeItem {
+function visionToWardrobeItem(v: VisionResult, processedBase64: string): WardrobeItem {
+  const uri = `data:image/png;base64,${processedBase64}`;
   return {
     id: 'scanned',
     userId: '',
-    originalImageUrl: '',
-    processedImageUrl: '',
+    originalImageUrl: uri,
+    processedImageUrl: uri,
     category:    v.category,
     subCategory: v.subcategory,
     colors:      v.colors,
@@ -159,7 +160,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (!visionResult || !items.length) return;
     setSmartAnalyzing(true);
-    const scannedItem = visionToWardrobeItem(visionResult);
+    const scannedItem = visionToWardrobeItem(visionResult, processedBase64);
     const result = analyzeStoreItem(
       scannedItem, items,
       weather ?? undefined,
