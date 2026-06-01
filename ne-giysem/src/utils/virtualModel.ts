@@ -295,7 +295,7 @@ if (require.main === module) {
 
   // Buraya Supabase processedImageUrl yapıştır
   // Örn: 'https://xyz.supabase.co/storage/v1/object/public/wardrobe/processed/abc.png'
-  const TEST_GARMENT_IMAGE = 'BURAYA_SUPABASE_PROCESSED_IMAGE_URL';
+  const TEST_GARMENT_IMAGE = 'https://static.zara.net/assets/public/e00e/0757/6ae141e68a7b/adb4871359f8/01120134330-e1/01120134330-e1.jpg?ts=1779960169370&w=1920';
 
   (async () => {
     console.log('\n── FASHN Virtual Try-On Testi ──────────────────────────────────────────');
