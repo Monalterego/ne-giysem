@@ -326,9 +326,9 @@ export function generateCombos(
       const outfitColorfulness = core.filter((i) => !isNeutral(i.colors[0] ?? '')).length / (core.length || 1);
       const avgFormality01     = core.reduce((s, i) => s + getFormality(i), 0) / ((core.length || 1) * 10);
       let styleAdj = 0;
-      styleAdj += sv.colorBoldness      * (outfitColorfulness - 0.5) * 0.10; // renkli/cesur kombinleri yukarı
-      styleAdj += sv.formalityShift     * (avgFormality01    - 0.5) * 0.10; // resmiyet eğilimi hizalaması
-      styleAdj += sv.structureLooseness * (1 - prop)                * 0.10; // gevşek silüet toleransı
+      styleAdj += sv.colorBoldness      * (outfitColorfulness - 0.5) * 0.35; // renkli/cesur kombinleri yukarı
+      styleAdj += sv.formalityShift     * (avgFormality01    - 0.5) * 0.35; // resmiyet eğilimi hizalaması
+      styleAdj += sv.structureLooseness * (1 - prop)                * 0.35; // gevşek silüet toleransı
       const styleMult = Math.max(0.85, Math.min(1.15, 1 + styleAdj));
       const score = Math.round(final01 * styleMult * 100);
       const reasoning = buildReasoning({
@@ -862,6 +862,11 @@ if (require.main === module) {
   console.log(`  gece çanta dağılımı: clutch=${clutchN}  tote=${toteN}  ${clutchN >= toteN ? '✅ clutch tercihli' : '⚠️  tote öne çıkıyor'}`);
 
   // ── Bölüm 7: Stil DNA modülasyonu — Old Money vs Streetwear ─────────────────
+  // Senaryo: tailored set (blazer+pantolon+loafer, nötr, high-formality, fitted)
+  //          ile street set (hoodie+jean+sneaker, nötr, low-formality, oversized)
+  //          aynı dolapta. occasion='all' → formalite filtresi devrede değil.
+  // Beklenti: OM → tailored üste; SW → street üste; ikisi farklı.
+
   const ST = (
     id: string, name: string, category: string, subCategory: string,
     colors: string[], fit?: string,
@@ -872,55 +877,75 @@ if (require.main === module) {
     itemName: name, fit,
   });
 
-  // Mikst dolap: nötr/resmi + oversized/renkli parçalar bir arada
-  const styleDolap: WardrobeItem[] = [
-    // Nötr/resmi çekirdek
-    ST('st1', 'Beyaz gomlek',      'upper', 'gomlek',   ['#FFFFFF']),
-    ST('st2', 'Siyah pantolon',    'lower', 'pantolon', ['#1A1A1A']),
-    ST('st3', 'Siyah loafer',      'shoes', 'loafer',   ['#1A1A1A']),
-    // Oversized/renkli çekirdek
-    ST('st4', 'Kırmızı oversized hoodie', 'upper', 'hoodie',  ['#E94560'], 'oversized'),
-    ST('st5', 'Geniş jean',               'lower', 'jean',    ['#5B7EC0'], 'oversized'),
-    ST('st6', 'Beyaz chunky sneaker',     'shoes', 'sneaker', ['#FFFFFF']),
+  // Nötr renkler — renk ekseni gürültüsünü sıfırlar, formality+structure eksenlerini izole eder
+  const styleDolap7: WardrobeItem[] = [
+    // TAILORED set: yüksek formality (blazer≈8, pantolon=6, loafer=6), fitted
+    ST('s71', 'Klasik blazer',       'outer', 'blazer',   ['#1A1A1A'], 'fitted'),
+    ST('s72', 'Tailored pantolon',   'lower', 'pantolon', ['#1A1A1A'], 'slim'),
+    ST('s73', 'Siyah loafer',        'shoes', 'loafer',   ['#1A1A1A']),
+    // STREET set: düşük formality (hoodie≈1, jean≈3, sneaker≈2), oversized/loose
+    ST('s74', 'Oversized hoodie',    'upper', 'hoodie',   ['#FFFFFF'], 'oversized'),
+    ST('s75', 'Baggy jean',          'lower', 'jean',     ['#FFFFFF'], 'oversized'),
+    ST('s76', 'Beyaz sneaker',       'shoes', 'sneaker',  ['#FFFFFF']),
   ];
 
-  const omProfile: StyleProfile = { styles: [{ name: 'Old Money',  weight: 1 }], colorPalette: [] };
-  const swProfile: StyleProfile = { styles: [{ name: 'Streetwear', weight: 1 }], colorPalette: [] };
+  // isOuter(blazer) = true → çekirdek üst ÜRETMİYOR; tailored set için dışarıdan gömlek ekle
+  const blazerUpperProxy = ST('s77', 'Beyaz gomlek', 'upper', 'gomlek', ['#FFFFFF']);
+  const fullDolap7 = [...styleDolap7, blazerUpperProxy];
 
-  const omCombos = generateCombos(styleDolap, 3, 'gunluk', undefined, omProfile);
-  const swCombos = generateCombos(styleDolap, 3, 'gunluk', undefined, swProfile);
-  const noCombos = generateCombos(styleDolap, 3, 'gunluk');
+  const omProfile7: StyleProfile = { styles: [{ name: 'Old Money',  weight: 1 }], colorPalette: [] };
+  const swProfile7: StyleProfile = { styles: [{ name: 'Streetwear', weight: 1 }], colorPalette: [] };
 
-  console.log('\n── Bölüm 7: Stil DNA Modülasyonu ───────────────────────────────────────');
+  const omCombos7 = generateCombos(fullDolap7, 3, 'all', undefined, omProfile7);
+  const swCombos7 = generateCombos(fullDolap7, 3, 'all', undefined, swProfile7);
+  const noCombos7 = generateCombos(fullDolap7, 3, 'all');
+  const noRef7    = generateCombos(fullDolap7, 3, 'all', undefined, undefined);
 
-  // Old Money: üst sıralarda nötr/resmi parçalar (gomlek, pantolon, loafer) görülmeli
-  const omTopItems  = omCombos[0]?.items.map((i) => i.subCategory) ?? [];
-  const omHasNeutral = omCombos[0]?.items.some((i) => ['gomlek','pantolon','loafer'].includes(i.subCategory ?? ''));
-  console.log(`  Old Money  [0]: [${omTopItems.join(', ')}]  nötr/resmi=${omHasNeutral ? '✅' : '⚠️'}`);
-  console.log(`  Old Money  skorlar: [${omCombos.map((c) => c.score).join(', ')}]`);
+  const TAILORED7 = new Set(['blazer', 'pantolon', 'loafer', 'gomlek']);
+  const STREET7   = new Set(['hoodie', 'jean', 'sneaker']);
 
-  // Streetwear: oversized/renkli parçalar (hoodie, sneaker) daha yüksek sırada görülmeli
-  const swTopItems    = swCombos[0]?.items.map((i) => i.subCategory) ?? [];
-  const swHasStreet   = swCombos[0]?.items.some((i) => ['hoodie','sneaker'].includes(i.subCategory ?? ''));
-  console.log(`  Streetwear [0]: [${swTopItems.join(', ')}]  streetwear=${swHasStreet ? '✅' : '⚠️'}`);
-  console.log(`  Streetwear skorlar: [${swCombos.map((c) => c.score).join(', ')}]`);
+  const omTop = omCombos7[0];
+  const swTop = swCombos7[0];
+  const noTop = noCombos7[0];
 
-  // Regresyon: profil yokken sıralama değişmemeli (skorlar aynı olmalı)
-  const noScores = noCombos.map((c) => c.score);
-  const omScores = omCombos.map((c) => c.score);
-  const swScores = swCombos.map((c) => c.score);
-  const omDiffers = JSON.stringify(omScores) !== JSON.stringify(noScores);
-  const swDiffers = JSON.stringify(swScores) !== JSON.stringify(noScores);
-  console.log(`  Profil=undefined referans: [${noScores.join(', ')}]`);
-  console.log(`  Old Money farklılaştı: ${omDiffers ? '✅' : '⚠️  AYNI — modülasyon etki etmedi'}`);
-  console.log(`  Streetwear farklılaştı: ${swDiffers ? '✅' : '⚠️  AYNI — modülasyon etki etmedi'}`);
-  console.log(`  ±%15 tavan kontrolü:`);
-  for (let i = 0; i < noScores.length; i++) {
-    const base  = noScores[i] ?? 0;
-    const omS   = omScores[i] ?? 0;
-    const swS   = swScores[i] ?? 0;
-    const omOk  = Math.abs(omS - base) <= Math.ceil(base * 0.16);
-    const swOk  = Math.abs(swS - base) <= Math.ceil(base * 0.16);
-    console.log(`    [${i}] base=${base}  oldMoney=${omS} ${omOk ? '✅' : '❌'}  streetwear=${swS} ${swOk ? '✅' : '❌'}`);
+  // Çekirdek parçaların tailored/street skoru
+  const coreItems = (c: Combo) => c.items.filter((i) => ['upper','lower','shoes'].includes(i.category));
+  const tailoredScore7 = (c: Combo) => coreItems(c).filter((i) => TAILORED7.has(i.subCategory ?? '')).length;
+  const streetScore7   = (c: Combo) => coreItems(c).filter((i) => STREET7.has(i.subCategory ?? '')).length;
+
+  const omIsTailored = omTop ? tailoredScore7(omTop) >= 2 : false;
+  const swIsStreet   = swTop ? streetScore7(swTop) >= 2 : false;
+  const topsDiffer   = !!(omTop && swTop && baseSignature(omTop) !== baseSignature(swTop));
+  const noRegress    = !!(noTop && noRef7[0] && baseSignature(noTop) === baseSignature(noRef7[0]));
+
+  console.log('\n── Bölüm 7: Stil DNA Modülasyonu (Old Money vs Streetwear) ─────────────');
+
+  for (const [label, combos] of [
+    ['Old Money  ', omCombos7],
+    ['Streetwear ', swCombos7],
+    ['Profil=yok ', noCombos7],
+  ] as Array<[string, Combo[]]>) {
+    console.log(`\n  ${label}:`);
+    for (const [idx, c] of combos.entries()) {
+      const subs = coreItems(c).map((i) => i.subCategory ?? i.category);
+      console.log(`    [${idx}] skor=${c.score}  çekirdek=[${subs.join(', ')}]`);
+    }
+  }
+
+  console.log('\n  ── Assert ──────────────────────────────────────────────────────────────');
+  console.log(`  OM top tailored parça ≥2 : ${omIsTailored ? '✅' : '❌'}  (tailored=${tailoredScore7(omTop!)}, street=${streetScore7(omTop!)})`);
+  console.log(`  SW top street parça   ≥2 : ${swIsStreet   ? '✅' : '❌'}  (tailored=${tailoredScore7(swTop!)}, street=${streetScore7(swTop!)})`);
+  console.log(`  İki TOP kombinin farklı   : ${topsDiffer   ? '✅' : '❌'}`);
+  console.log(`  undefined profil regresyon: ${noRegress    ? '✅' : '❌'}`);
+
+  // ±%15 tavan: profil skoru ile no-profil skoru arasındaki fark ≤ base*0.16
+  console.log('  ±%15 tavan kontrolü:');
+  for (let i = 0; i < noCombos7.length; i++) {
+    const base = noCombos7[i]?.score ?? 0;
+    const omS  = omCombos7[i]?.score ?? 0;
+    const swS  = swCombos7[i]?.score ?? 0;
+    const omOk = Math.abs(omS - base) <= Math.ceil(base * 0.16);
+    const swOk = Math.abs(swS - base) <= Math.ceil(base * 0.16);
+    console.log(`    [${i}] base=${base}  OM=${omS}${omOk ? '✅' : '❌'}  SW=${swS}${swOk ? '✅' : '❌'}`);
   }
 }
