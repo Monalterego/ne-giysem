@@ -223,6 +223,7 @@ export function generateCombos(
   occasion: Occasion = 'all',
   weather?: WeatherData,
   styleProfile?: StyleProfile,
+  pinItemId?: string,
 ): Combo[] {
   // Stil vektörü — Pass 2 yumuşak modülasyonu için; profil yoksa nötr (tüm eksenler 0)
   const sv = computeStyleVector(styleProfile);
@@ -232,13 +233,26 @@ export function generateCombos(
     occasion === 'all' || isItemAllowed(item, occasion as OccasionId);
 
   // Hırka/yelek dahil tüm dış giyim outers havuzuna — çekirdek üst sayılmaz
-  const uppers      = items.filter((i) => i.category === 'upper' && !isOuter(i) && allow(i));
-  const lowers      = items.filter((i) => i.category === 'lower' && allow(i));
-  const shoes       = items.filter((i) => i.category === 'shoes' && allow(i));
-  const dresses     = items.filter((i) => i.category === 'dress_jumpsuit' && allow(i));
+  let uppers        = items.filter((i) => i.category === 'upper' && !isOuter(i) && allow(i));
+  let lowers        = items.filter((i) => i.category === 'lower' && allow(i));
+  let shoes         = items.filter((i) => i.category === 'shoes' && allow(i));
+  let dresses       = items.filter((i) => i.category === 'dress_jumpsuit' && allow(i));
   const bags        = items.filter((i) => i.category === 'bag'       && allow(i));
   const outers      = items.filter((i) => isOuter(i)                && allow(i));
   const accessories = items.filter((i) => i.category === 'accessory' && allow(i));
+
+  // Pin: taranan/sabitlenen ürünü ilgili çekirdek havuzuna kilitle
+  if (pinItemId) {
+    const pinItem = items.find((i) => i.id === pinItemId);
+    if (pinItem) {
+      const cat = pinItem.category;
+      if      (cat === 'upper' && !isOuter(pinItem)) uppers  = [pinItem];
+      else if (cat === 'lower')                      lowers  = [pinItem];
+      else if (cat === 'shoes')                      shoes   = [pinItem];
+      else if (cat === 'dress_jumpsuit')           { dresses = [pinItem]; uppers = []; lowers = []; }
+      // bag/outer/accessory: composeOutfit pools zaten içeriyor, ayrı müdahale gerekmez
+    }
+  }
 
   // ─── 1. GEÇİŞ: ucuz proxy (colorHarmony + occFit), composeOutfit çağrısı yok ──────
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
@@ -621,9 +635,9 @@ export function analyzeStoreItem(
     };
   }
 
-  // a) Kombin motoru — taranan ürünü dolaba ekleyerek çalıştır
-  const allCombos  = generateCombos([scannedItem, ...wardrobeItems], 50, 'all', weather, styleProfile);
-  const topCombos  = allCombos.filter((c) => c.items.some((i) => i.id === scannedItem.id)).slice(0, 3);
+  // a) Kombin motoru — taranan ürünü ilgili çekirdek havuzuna sabitle (pin)
+  const allCombos  = generateCombos([scannedItem, ...wardrobeItems], 12, 'all', weather, styleProfile, scannedItem.id);
+  const topCombos  = allCombos.slice(0, 3); // hepsi zaten taranan ürünü içeriyor
   const combos     = topCombos.map((c) => c.items);
 
   // b) Uyum istatistikleri
@@ -1029,7 +1043,10 @@ if (require.main === module) {
   console.log(`  [BASE]    verdict="${baseResult.verdict}"  avgScore=${baseResult.avgScore}  combos=${baseResult.combos.length}`);
   console.log(`  [WEATHER] verdict="${weatherResult.verdict}"  avgScore=${weatherResult.avgScore}`);
   console.log(`  [STYLE]   verdict="${styleResult.verdict}"  avgScore=${styleResult.avgScore}`);
-  console.log(`  Motor entegrasyonu: combos[0] taranan ürünü içeriyor=${baseResult.combos[0]?.some(i=>i.id==='scan') ? '✅' : '❌'}`);
+  const pinHasResult = baseResult.combos.length > 0;
+  const allHavePin   = baseResult.combos.every((g) => g.some((i) => i.id === 'scan'));
+  console.log(`  topCombos.length > 0 (pin çalıştı): ${pinHasResult ? '✅ OK (' + baseResult.combos.length + ')' : '❌ 0 kombin — pin başarısız'}`);
+  console.log(`  Tüm kombinler taranan ürünü içeriyor: ${allHavePin ? '✅' : '❌'}`);
   console.log(`  sameCategory=3 → "${baseResult.verdict}" ${baseResult.sameCategory >= 3 ? '(sameCategory>=3 aktif)' : ''}`);
   console.log(`  Reasons:`);
   for (const r of baseResult.reasons) console.log(`    • ${r}`);
