@@ -2,6 +2,7 @@ import type { WardrobeItem } from '../types';
 
 const OPENAI_API_KEY    = process.env.EXPO_PUBLIC_OPENAI_API_KEY    ?? '';
 const REPLICATE_API_KEY = process.env.EXPO_PUBLIC_REPLICATE_API_KEY ?? '';
+const FASHN_API_KEY     = process.env.EXPO_PUBLIC_FASHN_API_KEY     ?? '';
 
 // ─── Açıklama eşlemeleri ──────────────────────────────────────────────────────
 
@@ -184,6 +185,89 @@ async function applyVirtualTryOn(
   throw new Error('Replicate zaman aşımına uğradı (60 saniye)');
 }
 
+// ─── FASHN istemcisi ──────────────────────────────────────────────────────────
+
+const FASHN_BASE       = 'https://api.fashn.ai/v1';
+const FASHN_POLL_MS    = 2_000;
+const FASHN_TIMEOUT_MS = 90_000;
+
+/**
+ * FASHN API'de prediction başlatır, sonuç görsel URL'ini döndürür.
+ * @param modelName  Örn. 'tryon-v1.6'
+ * @param inputs     model_image, garment_image ve opsiyonel parametreler
+ * @returns          CDN URL (72 saat geçerli)
+ */
+export async function runFashn(
+  modelName: string,
+  inputs: Record<string, unknown>,
+): Promise<string> {
+  if (!FASHN_API_KEY) {
+    throw new Error('FASHN API key eksik — EXPO_PUBLIC_FASHN_API_KEY .env dosyasını kontrol et.');
+  }
+
+  // 1. Prediction başlat
+  const runRes = await fetch(`${FASHN_BASE}/run`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${FASHN_API_KEY}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({ model_name: modelName, inputs }),
+  });
+
+  if (!runRes.ok) {
+    const body = await runRes.text();
+    throw new Error(`FASHN /run ${runRes.status}: ${body}`);
+  }
+
+  const runJson = await runRes.json() as { id?: string; error?: unknown };
+  if (runJson.error) throw new Error(`FASHN run hatası: ${JSON.stringify(runJson.error)}`);
+  const id = runJson.id;
+  if (!id) throw new Error('FASHN /run: yanıtta id yok');
+
+  console.log(`[fashn] prediction başladı — id: ${id}`);
+
+  // 2. Status polling — 2 sn aralık, 90 sn timeout
+  const deadline = Date.now() + FASHN_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    await new Promise<void>((r) => setTimeout(r, FASHN_POLL_MS));
+
+    const statusRes = await fetch(`${FASHN_BASE}/status/${id}`, {
+      headers: { 'Authorization': `Bearer ${FASHN_API_KEY}` },
+    });
+
+    if (!statusRes.ok) {
+      const body = await statusRes.text();
+      throw new Error(`FASHN /status ${statusRes.status}: ${body}`);
+    }
+
+    const s = await statusRes.json() as {
+      id: string;
+      status: 'starting' | 'in_queue' | 'processing' | 'completed' | 'failed';
+      output?: string[];
+      error?: { name?: string; message?: string };
+    };
+
+    console.log(`[fashn] ${id} → ${s.status}`);
+
+    if (s.status === 'completed') {
+      const url = s.output?.[0];
+      if (!url) throw new Error('FASHN completed ancak output boş');
+      return url;
+    }
+
+    if (s.status === 'failed') {
+      const msg = s.error?.message ?? s.error?.name ?? 'bilinmeyen hata';
+      throw new Error(`FASHN prediction başarısız: ${msg}`);
+    }
+
+    // 'starting' | 'in_queue' | 'processing' → beklemeye devam
+  }
+
+  throw new Error(`FASHN zaman aşımı (${FASHN_TIMEOUT_MS / 1000}s) — id: ${id}`);
+}
+
 // ─── Ana fonksiyon ────────────────────────────────────────────────────────────
 
 export async function generateVirtualModelImage(
@@ -199,4 +283,39 @@ export async function generateVirtualModelImage(
 
   const garmentDesc = item.itemName ?? CATEGORY_DESC[item.category] ?? item.category;
   return applyVirtualTryOn(humanImg, item.processedImageUrl, garmentDesc);
+}
+
+// ─── Manuel test bloğu ───────────────────────────────────────────────────────
+// Kullanım: npx tsx src/utils/virtualModel.ts
+
+if (require.main === module) {
+  // Stabil public model görseli — tam boy, tek kişi, nötr duruş
+  const TEST_MODEL_IMAGE =
+    'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=768&q=80';
+
+  // Buraya Supabase processedImageUrl yapıştır
+  // Örn: 'https://xyz.supabase.co/storage/v1/object/public/wardrobe/processed/abc.png'
+  const TEST_GARMENT_IMAGE = 'BURAYA_SUPABASE_PROCESSED_IMAGE_URL';
+
+  (async () => {
+    console.log('\n── FASHN Virtual Try-On Testi ──────────────────────────────────────────');
+    console.log('Model    :', TEST_MODEL_IMAGE);
+    console.log('Garment  :', TEST_GARMENT_IMAGE);
+
+    try {
+      const resultUrl = await runFashn('tryon-v1.6', {
+        model_image:        TEST_MODEL_IMAGE,
+        garment_image:      TEST_GARMENT_IMAGE,
+        garment_photo_type: 'flat-lay',   // Supabase processed görseller düz zemin
+        mode:               'balanced',
+        num_samples:        1,
+        return_base64:      false,
+      });
+
+      console.log('\n✅ Sonuç URL:', resultUrl);
+      console.log('   Tarayıcıda aç → görsel doğru mu kontrol et.');
+    } catch (err) {
+      console.error('\n❌ Hata:', err);
+    }
+  })();
 }
