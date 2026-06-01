@@ -6,6 +6,7 @@ import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules'
 import { registerFit, registerCoherence } from './registerTheory';
 import { getVisualWeight, isStatement } from './itemTraits';
 import { proportionScore } from './proportionTheory';
+import { buildReasoning } from './reasoning';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
@@ -297,12 +298,17 @@ export function generateCombos(
       // Ağırlıklar toplamı = 1.0, coherence dışsal çarpan
       const final01 = (0.35 * colorHarmonyFinal + 0.20 * contextFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage) * coherence;
       const score   = Math.round(final01 * 100);
+      const reasoning = buildReasoning({
+        items: outfitItems, occasion,
+        colorHarmony: colorHarmonyFinal, contextFit, prop, encCoverage,
+      });
       return {
         id: uid(),
         items: outfitItems,
         score,
         occasion,
         label: comboLabel(score),
+        reasoning,
         createdAt: now,
       } as Combo;
     })

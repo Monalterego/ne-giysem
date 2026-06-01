@@ -84,5 +84,6 @@ export interface Combo {
   score: number;
   occasion?: string;
   label: string;
+  reasoning?: string;
   createdAt: string;
 }

@@ -82,7 +82,12 @@ function ComboCard({
 
       {/* Footer */}
       <View style={styles.cardFooter}>
-        <Text style={styles.comboLabel}>{combo.label}</Text>
+        <View style={styles.footerLeft}>
+          <Text style={styles.comboLabel}>{combo.label}</Text>
+          {combo.reasoning ? (
+            <Text style={styles.comboReasoning}>{combo.reasoning}</Text>
+          ) : null}
+        </View>
 
         {isGenerating ? (
           <View style={styles.generatingState}>
@@ -689,11 +694,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     gap: spacing.md,
   },
-  comboLabel: {
+  footerLeft: {
     flex: 1,
+    gap: spacing.xs,
+  },
+  comboLabel: {
     ...typography.h3,
     fontFamily: fonts.heading,
     color: colors.text,
+  },
+  comboReasoning: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
   footerActions: {
     flexDirection: 'row',
