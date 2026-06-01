@@ -103,24 +103,36 @@ function composeOutfit(
   const outfitItems = [...core];
   const pts = () => outfitItems.reduce((s, i) => s + getVisualWeight(i), 0);
 
-  // a) ÇANTA: renk uyumlu en iyi çantayı ekle
-  const bag = bestMatches(core, pools.bags, 1)[0];
+  // Çekirdek renk ortalamasını hesapla (core × aday): register-ağırlıklı seçimlerde ortak yardımcı
+  const colorAvg = (aday: WardrobeItem) =>
+    core.reduce((s, ci) => s + itemColorScore(ci, aday), 0) / core.length;
+
+  // a) ÇANTA: argmax( colorMatch × registerFit )
+  const bag = pools.bags
+    .map((b) => ({ item: b, score: colorAvg(b) * registerFit(b, occasion) }))
+    .sort((a, b) => b.score - a.score)[0]?.item;
   if (bag) outfitItems.push(bag);
 
-  // b) DIŞ GİYİM: spor dışı + (formal okasyon veya puan henüz hedefe ulaşmadıysa)
+  // b) DIŞ GİYİM: argmax( colorMatch × registerFit ), spor hariç
   let chosenOuter: WardrobeItem | undefined;
   if (occasion !== 'spor') {
-    const outer = bestMatches(core, pools.outers, 1)[0];
+    const outer = pools.outers
+      .map((o) => ({ item: o, score: colorAvg(o) * registerFit(o, occasion) }))
+      .sort((a, b) => b.score - a.score)[0]?.item;
     if (outer && (FORMAL_OUTER_OCCASIONS.has(occasion) || pts() < rule.pointTarget[0])) {
       outfitItems.push(outer);
       chosenOuter = outer;
     }
   }
 
-  // c) AKSESUARLAR — bölge tekil + tek-odak (yüz/boyun) + puan bütçesi döngüsü
+  // c) AKSESUARLAR — register-ağırlıklı sıralama + registerFit < 0.4 ekleme yasağı
   // minAccessories karşılanana kadar pointTarget[0] tavanı devreye girmez;
   // pointTarget[1] (max) SADECE minAccessories sağlandıktan sonra kapatır.
-  const ranked = bestMatches(core, pools.accessories, pools.accessories.length);
+  const ranked = pools.accessories
+    .map((a) => ({ item: a, colorMatch: colorAvg(a), regF: registerFit(a, occasion) }))
+    .filter((x) => x.colorMatch > 0.65 && x.regF >= 0.4)
+    .sort((a, b) => (b.colorMatch * b.regF) - (a.colorMatch * a.regF))
+    .map((x) => x.item);
   let accStatements = 0;
   let accAdded = 0;
   const usedZones = new Set<string>();
@@ -214,9 +226,9 @@ export function generateCombos(
   const lowers      = items.filter((i) => i.category === 'lower' && allow(i));
   const shoes       = items.filter((i) => i.category === 'shoes' && allow(i));
   const dresses     = items.filter((i) => i.category === 'dress_jumpsuit' && allow(i));
-  const bags        = items.filter((i) => i.category === 'bag');
-  const outers      = items.filter(isOuter);
-  const accessories = items.filter((i) => i.category === 'accessory');
+  const bags        = items.filter((i) => i.category === 'bag'       && allow(i));
+  const outers      = items.filter((i) => isOuter(i)                && allow(i));
+  const accessories = items.filter((i) => i.category === 'accessory' && allow(i));
 
   // ─── 1. GEÇİŞ: ucuz proxy (colorHarmony + occFit), composeOutfit çağrısı yok ──────
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
@@ -767,4 +779,46 @@ if (require.main === module) {
   console.log(`  spor:   atletik=${sporA}  casual=${sporC}  ${sporA > sporC ? '✅ atletik > casual' : '❌ beklenen: atletik > casual'}`);
   console.log(`  gunluk: normal=${gunN}  spor-üst=${gunS}   ${gunN > gunS  ? '✅ normal > spor-üst' : '❌ beklenen: normal > spor-üst'}`);
   console.log(`  is:     business=${isB}  saten-gece=${isE}  ${isB > isE   ? '✅ business > saten-gece' : '❌ beklenen: business > saten-gece'}`);
+
+  // ── Bölüm 6: Register-farkındı çanta/aksesuar seçimi ──────────────────────
+  const RA = (
+    id: string, name: string, category: string, subCategory: string, colors: string[],
+  ): WardrobeItem => ({
+    id, userId: 'u', originalImageUrl: '', processedImageUrl: '',
+    category: category as WardrobeItem['category'], subCategory,
+    colors, pattern: 'duz', seasons: [], createdAt: '',
+    itemName: name,
+  });
+
+  const regAccWardrobe: WardrobeItem[] = [
+    // Çekirdek
+    RA('ra1', 'Siyah mini elbise',  'dress_jumpsuit', 'mini_elbise', ['#1A1A1A']),
+    RA('ra2', 'Siyah topuklu',      'shoes',          'topuklu',     ['#1A1A1A']),
+    RA('ra3', 'Beyaz gomlek',        'upper',          'gomlek',      ['#FFFFFF']),
+    RA('ra4', 'Siyah pantolon',      'lower',          'pantolon',    ['#1A1A1A']),
+    RA('ra5', 'Siyah loafer',        'shoes',          'loafer',      ['#1A1A1A']),
+    // Çantalar
+    RA('ra6', 'Altın clutch',        'bag',        'clutch',          ['#D4A017']),
+    RA('ra7', 'Hasır tote çanta',    'bag',        'tote',            ['#D4B030']),
+    // Aksesuarlar
+    RA('ra8', 'Beyzbol şapkası',     'accessory',  'sapka',           ['#1A1A1A']),
+    RA('ra9', 'Altın kolye',         'accessory',  'kolye',           ['#D4A017']),
+    RA('raA', 'Siyah kemer',         'accessory',  'kemer',           ['#1A1A1A']),
+  ];
+
+  console.log('\n── Register-Farkındı Seçim Testi ────────────────────────────────────────');
+  for (const occ of ['is', 'gece', 'davet'] as Occasion[]) {
+    const cs       = generateCombos(regAccWardrobe, 3, occ);
+    const all      = cs.flatMap((c) => c.items);
+    const hasSapka = all.some((i) => i.subCategory === 'sapka');
+    const bagSubs  = [...new Set(all.filter((i) => i.category === 'bag').map((i) => i.subCategory ?? '-'))];
+    console.log(`  ${occ.padEnd(6)}: şapka=${hasSapka ? '❌ VAR' : '✅ YOK'}  çantalar=[${bagSubs.join(', ')}]`);
+  }
+
+  // gece: clutch tercih kontrolü
+  const geceCombos7 = generateCombos(regAccWardrobe, 5, 'gece');
+  const geceBags7   = geceCombos7.flatMap((c) => c.items).filter((i) => i.category === 'bag');
+  const clutchN = geceBags7.filter((i) => i.subCategory === 'clutch').length;
+  const toteN   = geceBags7.filter((i) => i.subCategory === 'tote').length;
+  console.log(`  gece çanta dağılımı: clutch=${clutchN}  tote=${toteN}  ${clutchN >= toteN ? '✅ clutch tercihli' : '⚠️  tote öne çıkıyor'}`);
 }
