@@ -246,10 +246,10 @@ export function generateCombos(
     const pinItem = items.find((i) => i.id === pinItemId);
     if (pinItem) {
       const cat = pinItem.category;
-      if      (cat === 'upper' && !isOuter(pinItem)) uppers  = [pinItem];
-      else if (cat === 'lower')                      lowers  = [pinItem];
-      else if (cat === 'shoes')                      shoes   = [pinItem];
-      else if (cat === 'dress_jumpsuit')           { dresses = [pinItem]; uppers = []; lowers = []; }
+      if (cat === 'upper' && !isOuter(pinItem)) { uppers = [pinItem]; dresses = []; }
+      else if (cat === 'lower')                 { lowers = [pinItem]; dresses = []; }
+      else if (cat === 'shoes')                   shoes   = [pinItem]; // elbise yolu da ayakkabı kullanabilir
+      else if (cat === 'dress_jumpsuit')        { dresses = [pinItem]; uppers = []; lowers = []; }
       // bag/outer/accessory: composeOutfit pools zaten içeriyor, ayrı müdahale gerekmez
     }
   }
@@ -1043,10 +1043,12 @@ if (require.main === module) {
   console.log(`  [BASE]    verdict="${baseResult.verdict}"  avgScore=${baseResult.avgScore}  combos=${baseResult.combos.length}`);
   console.log(`  [WEATHER] verdict="${weatherResult.verdict}"  avgScore=${weatherResult.avgScore}`);
   console.log(`  [STYLE]   verdict="${styleResult.verdict}"  avgScore=${styleResult.avgScore}`);
-  const pinHasResult = baseResult.combos.length > 0;
-  const allHavePin   = baseResult.combos.every((g) => g.some((i) => i.id === 'scan'));
+  const pinHasResult  = baseResult.combos.length > 0;
+  const allHavePin    = baseResult.combos.every((g) => g.some((i) => i.id === 'scan'));
+  const noDress       = baseResult.combos.every((g) => !g.some((i) => i.category === 'dress_jumpsuit'));
   console.log(`  topCombos.length > 0 (pin çalıştı): ${pinHasResult ? '✅ OK (' + baseResult.combos.length + ')' : '❌ 0 kombin — pin başarısız'}`);
   console.log(`  Tüm kombinler taranan ürünü içeriyor: ${allHavePin ? '✅' : '❌'}`);
+  console.log(`  Hiçbir kombin elbise içermiyor (üst pin iken dresses=[]):  ${noDress ? '✅' : '❌ elbise sızdı'}`);
   console.log(`  sameCategory=3 → "${baseResult.verdict}" ${baseResult.sameCategory >= 3 ? '(sameCategory>=3 aktif)' : ''}`);
   console.log(`  Reasons:`);
   for (const r of baseResult.reasons) console.log(`    • ${r}`);
