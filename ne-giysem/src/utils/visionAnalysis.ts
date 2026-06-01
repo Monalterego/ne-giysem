@@ -52,7 +52,7 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
   "details": öne çıkan max 3 detay — örn. ["dugmeli", "cepli", "firfirli", "bagcikli", "seritli", "fermanuarli", "kapsonlu", "kesiksiz", "asimetrik"],
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
   "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
-  "fabric": kumaş tahmini — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "polyester" | "viskon" | "saten" | "kadife" | "karisim" | "bilmiyorum",
+  "fabric": kumaş tahmini. Görselden EMİN DEĞİLSEN 'bilmiyorum' ver, tahmin uydurma — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "polyester" | "viskon" | "saten" | "kadife" | "karisim" | "bilmiyorum",
   "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
 }`;
 
@@ -73,8 +73,11 @@ function parseVisionResponse(text: string): VisionResult {
     ? (raw.details as unknown[]).filter((d): d is string => typeof d === 'string').slice(0, 3)
     : undefined;
 
+  const mappedCategory = CATEGORY_MAP[raw.category ?? ''];
+  if (!mappedCategory) console.warn('[vision] bilinmeyen kategori:', raw.category);
+
   return {
-    category: CATEGORY_MAP[raw.category ?? ''] ?? 'upper',
+    category: mappedCategory ?? 'upper',
     subcategory:  typeof raw.subcategory === 'string' ? raw.subcategory : undefined,
     colors,
     pattern:      typeof raw.pattern  === 'string' ? raw.pattern  : undefined,
@@ -117,8 +120,8 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
   const jpegData = await toJpegBase64(base64);
 
   const requestBody = {
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 512,
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
     messages: [
       {
         role: 'user',
@@ -130,39 +133,57 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
           { type: 'text', text: PROMPT },
         ],
       },
+      // Prefill: JSON disiplinini garantiler; yanıt '{' ile devam eder
+      { role: 'assistant', content: '{' },
     ],
   };
   console.log('[visionAnalysis] request body:', JSON.stringify({
     ...requestBody,
-    messages: requestBody.messages.map((m) => ({
+    messages: requestBody.messages.map((m: any) => ({
       ...m,
-      content: m.content.map((c: any) =>
-        c.type === 'image' ? { ...c, source: { ...c.source, data: `[jpeg base64 ${jpegData.length} chars]` } } : c,
-      ),
+      content: Array.isArray(m.content)
+        ? m.content.map((c: any) =>
+            c.type === 'image' ? { ...c, source: { ...c.source, data: `[jpeg base64 ${jpegData.length} chars]` } } : c,
+          )
+        : m.content,
     })),
   }, null, 2));
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify(requestBody),
-  });
+  const attemptRequest = async (): Promise<VisionResult> => {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error('API Error status:', res.status);
-    console.error('API Error body:', errorText);
-    throw new Error(`API error: ${res.status} ${errorText}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('[vision] API error status:', res.status);
+      console.error('[vision] API error body:', errorText);
+      throw new Error(`API error: ${res.status} ${errorText}`);
+    }
+
+    const json = await res.json();
+    const text: string = (json as any)?.content?.[0]?.text ?? '';
+    if (!text) throw new Error('Claude API boş yanıt döndürdü.');
+    // Prefill '{' + yanıt continuation = tam JSON
+    return parseVisionResponse('{' + text);
+  };
+
+  try {
+    return await attemptRequest();
+  } catch (firstErr) {
+    console.warn('[vision] ilk deneme başarısız, yeniden deneniyor:', firstErr);
+    try {
+      return await attemptRequest();
+    } catch (secondErr) {
+      console.warn('[vision] retry de başarısız, güvenli varsayılan döndürülüyor:', secondErr);
+      return { category: 'upper', colors: [], seasons: [] };
+    }
   }
-
-  const json = await res.json();
-  const text: string = (json as any)?.content?.[0]?.text ?? '';
-  if (!text) throw new Error('Claude API boş yanıt döndürdü.');
-
-  return parseVisionResponse(text);
 }
