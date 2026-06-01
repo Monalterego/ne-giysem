@@ -18,8 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { useComboStore } from '../../store/useComboStore';
-import { generateCombos, generateCombosAI, missingCategories } from '../../utils/comboEngine';
-import type { Occasion, UserProfileInput } from '../../utils/comboEngine';
+import { generateCombos, missingCategories } from '../../utils/comboEngine';
+import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS } from '../../constants/occasions';
 import { generateVirtualModelImage } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
@@ -259,16 +259,15 @@ export default function CombosScreen() {
   const wornComboKeys  = useWardrobeStore((s) => s.wornComboKeys);
   const markWorn       = useWardrobeStore((s) => s.markWorn);
   const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
-  const weather        = useWardrobeStore((s) => s.weather);
   const user           = useUserStore((s) => s.user);
   const { cache: comboCache, setCache, clearCache } = useComboStore();
 
+  const PAGE_SIZE = 6;
+
   const [savingKey,      setSavingKey]      = useState<string | null>(null);
   const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
-  const [aiCombos,       setAiCombos]       = useState<Combo[]>([]);
-  const [aiLoading,      setAiLoading]      = useState(false);
-  const [page,           setPage]           = useState(0);
-  const [loadingMore,    setLoadingMore]    = useState(false);
+  const [localCombos,    setLocalCombos]    = useState<Combo[]>([]);
+  const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
 
   // Virtual model state
   const [generatingComboId,    setGeneratingComboId]    = useState<string | null>(null);
@@ -290,88 +289,19 @@ export default function CombosScreen() {
     clearCache();
   }, [items, user?.id]);
 
-  // Claude AI kombin üretimi — her items/occasion değişiminde
+  // Lokal kombin üretimi — senkron, sıfır network
   useEffect(() => {
-    if (!items.length || !user) { setAiCombos([]); return; }
-
-    // Cache hit — okasyon değişince AI çağrısı yapmadan cache'den al
+    if (!items.length || !user) { setLocalCombos([]); return; }
     const cached = comboCache[activeOccasion];
-    if (cached) {
-      setAiCombos(cached);
-      setPage(0);
-      return;
-    }
-
-    let cancelled = false;
-    setAiLoading(true);
-
-    const styleProfileMap = user.styleProfile?.styles.reduce<Record<string, number>>(
-      (acc, s) => ({ ...acc, [s.name]: s.weight }),
-      {},
-    );
-    const profile: UserProfileInput = {
-      height:     user.height,
-      age:        user.age,
-      bodyType:   user.bodyType,
-      skinTone:   user.skinTone,
-      hairColor:  user.hairColor,
-      hairLength: user.hairLength,
-      hairType:   user.hairType,
-    };
-
-    console.log('styleProfile raw:', user?.styleProfile);
-    console.log('styleProfileMap:', styleProfileMap);
-    setPage(0);
-    generateCombosAI(items, profile, weather, activeOccasion, 0, [], styleProfileMap)
-      .then((results) => {
-        if (cancelled) return;
-        const finalResults = results.length ? results : generateCombos(items, 5, activeOccasion);
-        setCache(activeOccasion, finalResults);
-        setAiCombos(finalResults);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          const fallback = generateCombos(items, 5, activeOccasion);
-          setCache(activeOccasion, fallback);
-          setAiCombos(fallback);
-        }
-      })
-      .finally(() => { if (!cancelled) setAiLoading(false); });
-
-    return () => { cancelled = true; };
+    if (cached) { setLocalCombos(cached); setVisibleCount(PAGE_SIZE); return; }
+    const combos = generateCombos(items, 24, activeOccasion);
+    setCache(activeOccasion, combos);
+    setLocalCombos(combos);
+    setVisibleCount(PAGE_SIZE);
   }, [items, activeOccasion, user?.id]);
 
-  const handleLoadMore = async () => {
-    if (loadingMore || !items.length || !user) return;
-    setLoadingMore(true);
-    const nextPage = page + 1;
-    const prevIds = [...new Set(aiCombos.flatMap((c) => c.items.map((i) => i.id)))];
-    const styleProfileMap = user.styleProfile?.styles.reduce<Record<string, number>>(
-      (acc, s) => ({ ...acc, [s.name]: s.weight }),
-      {},
-    );
-    const profile: UserProfileInput = {
-      height:     user.height,
-      age:        user.age,
-      bodyType:   user.bodyType,
-      skinTone:   user.skinTone,
-      hairColor:  user.hairColor,
-      hairLength: user.hairLength,
-      hairType:   user.hairType,
-    };
-    try {
-      const results = await generateCombosAI(items, profile, weather, activeOccasion, nextPage, prevIds, styleProfileMap);
-      if (results.length) {
-        const newAll = [...aiCombos, ...results];
-        setCache(activeOccasion, newAll);
-        setAiCombos(newAll);
-        setPage(nextPage);
-      }
-    } catch {
-      // sessiz hata
-    } finally {
-      setLoadingMore(false);
-    }
+  const handleLoadMore = () => {
+    setVisibleCount((v) => v + PAGE_SIZE);
   };
 
   const handleWear = async (combo: Combo) => {
@@ -452,7 +382,7 @@ export default function CombosScreen() {
     }
   };
 
-  const combos  = aiCombos;
+  const combos  = localCombos;
   const missing = useMemo(() => missingCategories(items), [items]);
 
   if (isLoading) {
@@ -515,12 +445,7 @@ export default function CombosScreen() {
       </ScrollView>
 
       {/* İçerik */}
-      {aiLoading ? (
-        <View style={styles.aiLoadingContainer}>
-          <ActivityIndicator color={colors.textSecondary} size="large" />
-          <Text style={styles.aiLoadingText}>Stilistiniz kombinlerinizi hazırlıyor...</Text>
-        </View>
-      ) : combos.length === 0 ? (
+      {combos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Feather name="layers" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
           <Text style={styles.emptyTitle}>Kombin üretilemedi</Text>
@@ -544,7 +469,7 @@ export default function CombosScreen() {
         </View>
       ) : (
         <FlatList
-          data={combos}
+          data={localCombos.slice(0, visibleCount)}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -562,15 +487,13 @@ export default function CombosScreen() {
             );
           }}
           ListFooterComponent={
-            <View style={styles.loadMoreContainer}>
-              {loadingMore ? (
-                <ActivityIndicator color={colors.textSecondary} size="small" />
-              ) : (
+            visibleCount < localCombos.length ? (
+              <View style={styles.loadMoreContainer}>
                 <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore} activeOpacity={0.85}>
                   <Text style={styles.loadMoreText}>Daha fazla kombin</Text>
                 </TouchableOpacity>
-              )}
-            </View>
+              </View>
+            ) : null
           }
         />
       )}

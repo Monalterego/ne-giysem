@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
-import { generateCombos, buildComboFromIds } from '../../utils/comboEngine';
-import type { UserProfileInput } from '../../utils/comboEngine';
-import { generateDailyCombo } from '../../utils/dailyCombo';
-import { supabase } from '../../lib/supabase';
+import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
@@ -123,79 +120,15 @@ export default function HomeScreen({ navigation }: Props) {
   const weatherLoading = useWardrobeStore((s) => s.weatherLoading);
   const fetchWeather   = useWardrobeStore((s) => s.fetchWeather);
 
-  const [aiDailyCombo, setAiDailyCombo] = useState<Combo | null>(null);
-  const [dailyLoading, setDailyLoading]   = useState(false);
-
   useEffect(() => {
     if (user?.id) fetchItems(user.id);
     fetchWeather();
   }, [user?.id]);
 
-  useEffect(() => {
-    if (!user?.id || !items.length) return;
-
-    const today = new Date().toISOString().split('T')[0];
-
-    async function loadDailyCombo() {
-      setDailyLoading(true);
-      try {
-        // Supabase'de bugünün günlük kombini var mı?
-        const { data } = await supabase
-          .from('combos')
-          .select('*')
-          .eq('user_id', user!.id)
-          .eq('occasion', 'daily_ai')
-          .gte('created_at', `${today}T00:00:00`)
-          .lte('created_at', `${today}T23:59:59`)
-          .limit(1)
-          .single();
-
-        if (data) {
-          const itemIds: string[] = Array.isArray(data.items) ? data.items : [];
-          const cached = buildComboFromIds(itemIds, items, data.score ?? 85, 'casual');
-          if (cached) {
-            setAiDailyCombo(cached);
-            return;
-          }
-        }
-      } catch {
-        // Supabase'de kayıt yok ya da hata — AI'dan üret
-      }
-
-      try {
-        const profile: UserProfileInput = {
-          styleProfile: user?.styleProfile?.styles?.join(', '),
-          height:       user?.height,
-          age:          user?.age,
-          bodyType:     user?.bodyType,
-          skinTone:     user?.skinTone,
-          hairColor:    user?.hairColor,
-          hairLength:   user?.hairLength,
-          hairType:     user?.hairType,
-        };
-        const combo = await generateDailyCombo(items, profile, weather ?? undefined);
-        if (combo) {
-          setAiDailyCombo(combo);
-          // Supabase'e kaydet
-          await supabase.from('combos').insert({
-            user_id:  user!.id,
-            items:    combo.items.map((i) => i.id),
-            score:    combo.score,
-            occasion: 'daily_ai',
-          });
-        }
-      } catch {
-        // AI başarısız — rule-based combo kullanılır
-      } finally {
-        setDailyLoading(false);
-      }
-    }
-
-    loadDailyCombo();
-  }, [user?.id, items.length]);
-
-  const fallbackCombos = useMemo(() => generateCombos(items), [items]);
-  const todayCombo     = aiDailyCombo ?? fallbackCombos[0] ?? null;
+  const todayCombo = useMemo(
+    () => (items.length ? generateCombos(items, 1, 'gunluk')[0] ?? null : null),
+    [items],
+  );
   const preview        = items.slice(0, 4);
 
   const displayName = getDisplayName(user?.name ?? '', user?.email ?? '');
@@ -222,14 +155,9 @@ export default function HomeScreen({ navigation }: Props) {
         {/* ── Günün Kombini ── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Günün Kombini</Text>
-          {dailyLoading && <ActivityIndicator size="small" color={colors.textSecondary} />}
         </View>
         {todayCombo ? (
           <TodayComboCard combo={todayCombo} />
-        ) : dailyLoading ? (
-          <View style={styles.comboLoadingCard}>
-            <Text style={styles.comboLoadingText}>Stilistiniz kombininizi hazırlıyor...</Text>
-          </View>
         ) : (
           <EmptyComboCard
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
