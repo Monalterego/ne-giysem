@@ -300,7 +300,7 @@ export default function CombosScreen() {
     if (!items.length || !user) { setLocalCombos([]); return; }
     const cached = comboCache[activeOccasion];
     if (cached) { setLocalCombos(cached); setVisibleCount(PAGE_SIZE); return; }
-    const combos = generateCombos(items, 24, activeOccasion, weather ?? undefined);
+    const combos = generateCombos(items, 24, activeOccasion, weather ?? undefined, user?.styleProfile ?? undefined);
     setCache(activeOccasion, combos);
     setLocalCombos(combos);
     setVisibleCount(PAGE_SIZE);

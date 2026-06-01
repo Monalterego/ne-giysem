@@ -126,8 +126,8 @@ export default function HomeScreen({ navigation }: Props) {
   }, [user?.id]);
 
   const todayCombo = useMemo(
-    () => (items.length ? generateCombos(items, 1, 'gunluk', weather ?? undefined)[0] ?? null : null),
-    [items, weather],
+    () => (items.length ? generateCombos(items, 1, 'gunluk', weather ?? undefined, user?.styleProfile ?? undefined)[0] ?? null : null),
+    [items, weather, user?.styleProfile],
   );
   const preview        = items.slice(0, 4);
 
