@@ -20,31 +20,24 @@ type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
 const REMOVEBG_API_KEY = process.env.EXPO_PUBLIC_REMOVEBG_API_KEY ?? '';
 
-async function removeBackground(imageUri: string): Promise<string> {
-  const formData = new FormData();
-  formData.append('image_file', {
-    uri: imageUri,
-    name: 'photo.jpg',
-    type: 'image/jpeg',
-  } as any);
-  formData.append('size', 'auto');
-
+async function removeBackground(imageBase64: string): Promise<string> {
   const res = await fetch('https://api.remove.bg/v1.0/removebg', {
     method: 'POST',
     headers: {
-      'X-Api-Key': REMOVEBG_API_KEY,
-      Accept: 'application/json',
+      'X-Api-Key':    REMOVEBG_API_KEY,
+      'Content-Type': 'application/json',
+      'Accept':       'application/json',
     },
-    body: formData,
+    body: JSON.stringify({ image_file_b64: imageBase64, size: 'auto' }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.errors?.[0]?.title ?? `Remove.bg hatası: ${res.status}`);
+    throw new Error((err as any)?.errors?.[0]?.title ?? `Remove.bg hatası: ${res.status}`);
   }
 
   const json = await res.json();
-  return json.data.result_b64 as string;
+  return (json as any).data.result_b64 as string;
 }
 
 export default function UploadScreen({ navigation }: Props) {
@@ -61,41 +54,37 @@ export default function UploadScreen({ navigation }: Props) {
         Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin ver.');
         return;
       }
-      result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+      result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true });
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin ver.');
         return;
       }
-      result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+      result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true });
     }
 
     if (result.canceled || !result.assets?.[0]) return;
 
-    const uri = result.assets[0].uri;
+    const asset = result.assets[0];
+    const uri   = asset.uri;
+    const base64Input = asset.base64;
+    if (!base64Input) {
+      Alert.alert('Hata', 'Görsel okunamadı, lütfen tekrar dene.');
+      return;
+    }
+
     setOriginalUri(uri);
     setProcessedBase64(null);
     setLoading(true);
 
     try {
       if (Platform.OS === 'web') {
-        // Web'de Remove.bg'yi atla — orijinal görseli base64'e çevir
-        const res = await fetch(uri);
-        const blob = await res.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const data = reader.result as string;
-            resolve(data.includes(',') ? data.split(',')[1] : data);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        setProcessedBase64(base64);
+        // Web: Remove.bg atla, picker'dan gelen base64'ü direkt kullan
+        setProcessedBase64(base64Input);
       } else {
-        const base64 = await removeBackground(uri);
-        setProcessedBase64(base64);
+        const processed = await removeBackground(base64Input);
+        setProcessedBase64(processed);
       }
     } catch (err: any) {
       Alert.alert('Hata', err.message ?? 'Arkaplan silinemedi. Lütfen tekrar dene.');

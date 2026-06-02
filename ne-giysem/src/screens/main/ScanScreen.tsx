@@ -24,35 +24,17 @@ type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
 
 const REMOVEBG_API_KEY = process.env.EXPO_PUBLIC_REMOVEBG_API_KEY ?? '';
 
-async function removeBackground(imageUri: string): Promise<string> {
-  const formData = new FormData();
-  formData.append('image_file', { uri: imageUri, name: 'photo.jpg', type: 'image/jpeg' } as any);
-  formData.append('size', 'auto');
-
-  const res = await fetch('https://api.remove.bg/v1.0/removebg', {
-    method: 'POST',
-    headers: { 'X-Api-Key': REMOVEBG_API_KEY, Accept: 'application/json' },
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.errors?.[0]?.title ?? `Remove.bg hatası: ${res.status}`);
-  }
-  const json = await res.json();
-  return json.data.result_b64 as string;
-}
-
-async function removeBackgroundFromBase64(base64: string): Promise<string> {
+async function removeBackground(imageBase64: string): Promise<string> {
   const res = await fetch('https://api.remove.bg/v1.0/removebg', {
     method: 'POST',
     headers: {
-      'X-Api-Key': REMOVEBG_API_KEY,
-      'Accept': 'application/json',
+      'X-Api-Key':    REMOVEBG_API_KEY,
       'Content-Type': 'application/json',
+      'Accept':       'application/json',
     },
-    body: JSON.stringify({ image_base64: base64, size: 'auto' }),
+    body: JSON.stringify({ image_file_b64: imageBase64, size: 'auto' }),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as any)?.errors?.[0]?.title ?? `Remove.bg hatası: ${res.status}`);
@@ -63,24 +45,7 @@ async function removeBackgroundFromBase64(base64: string): Promise<string> {
 
 async function processBase64(base64: string): Promise<string> {
   if (Platform.OS === 'web') return base64;
-  return removeBackgroundFromBase64(base64);
-}
-
-async function processImage(uri: string): Promise<string> {
-  if (Platform.OS === 'web') {
-    const res = await fetch(uri);
-    const blob = await res.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const data = reader.result as string;
-        resolve(data.includes(',') ? data.split(',')[1] : data);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-  return removeBackground(uri);
+  return removeBackground(base64);
 }
 
 export default function ScanScreen({ navigation }: Props) {
@@ -98,25 +63,32 @@ export default function ScanScreen({ navigation }: Props) {
         Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin ver.');
         return;
       }
-      result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+      result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true });
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin ver.');
         return;
       }
-      result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+      result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true });
     }
 
     if (result.canceled || !result.assets?.[0]) return;
 
-    const uri = result.assets[0].uri;
+    const asset = result.assets[0];
+    const uri   = asset.uri;
+    const base64Input = asset.base64;
+    if (!base64Input) {
+      Alert.alert('Hata', 'Görsel okunamadı, lütfen tekrar dene.');
+      return;
+    }
+
     setLoadingUri(uri);
     setLoadingStep(Platform.OS === 'web' ? 'Görsel hazırlanıyor…' : 'Arkaplan siliniyor…');
     setLoading(true);
 
     try {
-      const processedBase64 = await processImage(uri);
+      const processedBase64 = await processBase64(base64Input);
       navigation.navigate('StoreResult', { processedBase64, originalUri: uri });
     } catch (err: any) {
       Alert.alert('Hata', err.message ?? 'Görsel işlenemedi. Lütfen tekrar dene.');
