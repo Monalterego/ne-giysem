@@ -128,26 +128,28 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       const uuid = crypto.randomUUID();
       const basePath = `${user.id}/${uuid}`;
 
-      // Orijinal görseli Storage'a yükle
-      const origBlob = await fetch(originalUri).then((r) => r.blob());
+      // base64 → Uint8Array (native-uyumlu, Blob/fetch yok)
+      const b64 = processedBase64;
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+      // Orijinal → processedBase64'ü kullan (MVP: original kaybolmaz, remove.bg PNG yeterli)
       const { error: origError } = await supabase.storage
         .from('wardrobe-items')
-        .upload(`${basePath}_original.jpg`, origBlob, { contentType: 'image/jpeg' });
+        .upload(`${basePath}_original.png`, bytes, { contentType: 'image/png', upsert: true });
       if (origError) throw new Error(origError.message);
 
       // Remove.bg çıktısını Storage'a yükle
-      const procBlob = await fetch(`data:image/png;base64,${processedBase64}`).then((r) =>
-        r.blob(),
-      );
       const { error: procError } = await supabase.storage
         .from('wardrobe-items')
-        .upload(`${basePath}.png`, procBlob, { contentType: 'image/png' });
+        .upload(`${basePath}.png`, bytes, { contentType: 'image/png', upsert: true });
       if (procError) throw new Error(procError.message);
 
       // Public URL'leri al
       const { data: { publicUrl: originalImageUrl } } = supabase.storage
         .from('wardrobe-items')
-        .getPublicUrl(`${basePath}_original.jpg`);
+        .getPublicUrl(`${basePath}_original.png`);
       const { data: { publicUrl: processedImageUrl } } = supabase.storage
         .from('wardrobe-items')
         .getPublicUrl(`${basePath}.png`);

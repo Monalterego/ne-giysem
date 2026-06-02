@@ -60,7 +60,7 @@ function extractMetaImage(html: string): string | null {
   return null;
 }
 
-// Görsel URL'ini indirip base64'e çevirir
+// Görsel URL'ini indirip base64'e çevirir (native-uyumlu — FileReader/Blob yok)
 async function imageUrlToBase64(imageUrl: string): Promise<string> {
   // Web'de direkt fetch CORS hatası verir → codetabs proxy kullan
   const fetchUrl = Platform.OS === 'web'
@@ -71,20 +71,16 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
   const res = await fetch(fetchUrl);
   console.log('[urlScraper] görsel yanıtı — status:', res.status, 'ok:', res.ok);
   if (!res.ok) throw new Error(`Görsel indirilemedi: ${res.status}`);
-  const blob = await res.blob();
-  console.log('[urlScraper] blob alındı — boyut:', blob.size, 'type:', blob.type);
 
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const data = reader.result as string;
-      const b64 = data.includes(',') ? data.split(',')[1] : data;
-      console.log('[urlScraper] base64 hazır — uzunluk:', b64.length, 'karakter');
-      resolve(b64);
-    };
-    reader.onerror = () => reject(new Error('Görsel okunamadı'));
-    reader.readAsDataURL(blob);
-  });
+  const arrayBuffer = await res.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const b64 = btoa(binary);
+  console.log('[urlScraper] base64 hazır — uzunluk:', b64.length, 'karakter');
+  return b64;
 }
 
 // Ürün URL'inden og:image görselini çekip base64 döndürür
