@@ -242,6 +242,20 @@ export async function layeredTryOn(
   return current;
 }
 
+// ─── Cache anahtar yardımcısı ────────────────────────────────────────────────
+
+/**
+ * Kombinin giyilebilir parçalarından (bag/accessory hariç) sıralı, güvenli bir
+ * cache anahtar dizgisi üretir. Supabase storage path'inde kullanılır.
+ */
+export function comboSignatureForCache(items: WardrobeItem[]): string {
+  return items
+    .filter((i) => i.category !== 'bag' && i.category !== 'accessory')
+    .map((i) => i.id)
+    .sort()
+    .join('_');
+}
+
 // ─── Ana fonksiyon ────────────────────────────────────────────────────────────
 
 export async function generateVirtualModelImage(
@@ -253,7 +267,24 @@ export async function generateVirtualModelImage(
   const model    = await getModelImage(profile, avatarUrl, savedMannequinUrl);
   const garments = selectAndOrderGarments(items);
   if (!garments.length) throw new Error('Giydirilecek parça yok');
-  return layeredTryOn(model, garments);
+
+  let result = await layeredTryOn(model, garments);
+
+  // Shoes katmanı: tryon-max (tryon-v1.6'da desteklenmiyor)
+  const shoe = items.find((i) => i.category === 'shoes');
+  if (shoe) {
+    console.log('[fashn] tryon-max: ayakkabı ekleniyor...');
+    result = await runFashn('tryon-max', {
+      model_image:     result,
+      product_image:   shoe.processedImageUrl,
+      prompt:          'shoes worn on feet',
+      resolution:      '1k',
+      generation_mode: 'quality',
+    });
+    console.log('[fashn] tryon-max ayakkabı çıktı:', result);
+  }
+
+  return result;
 }
 
 // ─── Manuel test bloğu ───────────────────────────────────────────────────────

@@ -21,7 +21,7 @@ import { useComboStore } from '../../store/useComboStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS } from '../../constants/occasions';
-import { generateVirtualModelImage } from '../../utils/virtualModel';
+import { generateVirtualModelImage, getModelImage, comboSignatureForCache } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
@@ -337,14 +337,12 @@ export default function CombosScreen() {
   };
 
   const handleVirtualModel = async (combo: Combo, avatarUrl?: string) => {
-    console.log('handleVirtualModel çağrıldı', combo);
-    console.log('user physical profile:', user?.height, user?.bodyType, user?.skinTone);
     if (!user) return;
 
-    // Fiziksel profil + render sayısını çek
+    // Fiziksel profil + render sayısı + kayıtlı manken URL'i
     const { data: profile } = await supabase
       .from('profiles')
-      .select('height, age, body_type, skin_tone, hair_color, hair_length, hair_type, virtual_model_renders')
+      .select('height, age, body_type, skin_tone, hair_color, hair_length, hair_type, virtual_model_renders, mannequin_url')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -359,24 +357,61 @@ export default function CombosScreen() {
 
     try {
       const physProfile: PhysicalProfile = {
-        height:     (profile?.height     ?? 165) as number,
-        age:        (profile?.age        ?? 25)  as number,
-        bodyType:   (profile?.body_type  ?? null) as string | null,
-        skinTone:   (profile?.skin_tone  ?? null) as string | null,
-        hairColor:  (profile?.hair_color ?? null) as string | null,
+        height:     (profile?.height      ?? 165) as number,
+        age:        (profile?.age         ?? 25)  as number,
+        bodyType:   (profile?.body_type   ?? null) as string | null,
+        skinTone:   (profile?.skin_tone   ?? null) as string | null,
+        hairColor:  (profile?.hair_color  ?? null) as string | null,
         hairLength: (profile?.hair_length ?? null) as string | null,
-        hairType:   (profile?.hair_type  ?? null) as string | null,
+        hairType:   (profile?.hair_type   ?? null) as string | null,
       };
 
-      const url = await generateVirtualModelImage(physProfile, combo.items, avatarUrl);
+      // 1. Manken kaynağını çöz: avatarUrl → kayıtlı manken → yeni üretim
+      const savedMannequinUrl = (profile?.mannequin_url ?? null) as string | null;
+      let modelSource = avatarUrl ?? savedMannequinUrl;
 
-      // Render sayısını artır
+      if (!modelSource) {
+        modelSource = await getModelImage(physProfile);
+        await supabase.from('profiles').update({ mannequin_url: modelSource }).eq('id', user.id);
+      }
+
+      // 2. Kombin cache kontrolü
+      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}.png`;
+      const { data: { publicUrl: cachedUrl } } = supabase.storage
+        .from('mannequin-cache')
+        .getPublicUrl(cacheKey);
+
+      try {
+        const headRes = await fetch(cachedUrl, { method: 'HEAD' });
+        if (headRes.ok) {
+          // Cache HIT — FASHN çağrısı yok, render sayacı artmaz
+          setModelImageUrl(cachedUrl);
+          setModelModalVisible(true);
+          return;
+        }
+      } catch {
+        // HEAD hatası → cache miss sayılır, devam et
+      }
+
+      // 3. Cache MISS — üret, bucket'a yükle, render sayacını artır
+      const finalUrl = await generateVirtualModelImage(physProfile, combo.items, modelSource);
+
+      const imgRes  = await fetch(finalUrl);
+      const imgBlob = await imgRes.blob();
+      await supabase.storage
+        .from('mannequin-cache')
+        .upload(cacheKey, imgBlob, { upsert: true, contentType: 'image/png' });
+
+      const { data: { publicUrl: uploadedUrl } } = supabase.storage
+        .from('mannequin-cache')
+        .getPublicUrl(cacheKey);
+
       await supabase
         .from('profiles')
         .update({ virtual_model_renders: renderCount + 1 })
         .eq('id', user.id);
 
-      setModelImageUrl(url);
+      setModelImageUrl(uploadedUrl);
       setModelModalVisible(true);
     } catch (err) {
       Alert.alert(
