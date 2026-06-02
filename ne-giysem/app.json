@@ -32,7 +32,8 @@
           "photosPermission": "Dolabına ürün eklemek için galeri erişimi gerekiyor.",
           "cameraPermission": "Ürün fotoğrafı çekmek ve taramak için kamera erişimi gerekiyor."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
