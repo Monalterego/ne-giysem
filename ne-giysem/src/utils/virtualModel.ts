@@ -179,24 +179,33 @@ export async function getModelImage(
 
 // ─── Katmanlama sırası ────────────────────────────────────────────────────────
 
+// FASHN tryon-v1.6 geçerli kategoriler: tops | bottoms | one-pieces
+// Shoes/footwear FASHN'de desteklenmiyor → selectAndOrderGarments'tan çıkarılır.
+const FASHN_CATEGORY: Partial<Record<WardrobeItem['category'], string>> = {
+  upper:          'tops',
+  lower:          'bottoms',
+  dress_jumpsuit: 'one-pieces',
+  outer:          'tops',
+};
+
 const LAYER_ORDER: Partial<Record<WardrobeItem['category'], number>> = {
   lower:          1,
   dress_jumpsuit: 1,
   upper:          2,
   outer:          3,
-  shoes:          4,
 };
 
 /**
- * Çanta ve aksesuarları eler; kalan parçaları katmanlama sırasına dizer.
- * Elbise varsa aynı kombindeteki üst ve alt parçalar atlanır.
+ * FASHN'in desteklemediği kategorileri (shoes, bag, accessory) eler;
+ * kalan parçaları katmanlama sırasına dizer.
+ * Elbise varsa kombindeteki üst ve alt parçalar atlanır.
  */
 export function selectAndOrderGarments(items: WardrobeItem[]): WardrobeItem[] {
   const hasDress = items.some((i) => i.category === 'dress_jumpsuit');
 
   return items
     .filter((i) => {
-      if (i.category === 'bag' || i.category === 'accessory') return false;
+      if (!(i.category in FASHN_CATEGORY)) return false;   // shoes/bag/accessory elenir
       if (hasDress && (i.category === 'upper' || i.category === 'lower')) return false;
       return true;
     })
@@ -215,15 +224,16 @@ export async function layeredTryOn(
   let current = modelImage;
 
   for (const g of garments) {
-    const label = g.itemName ?? g.subCategory ?? g.category;
-    console.log(`[fashn] katman: ${g.category} / ${label}`);
+    const label    = g.itemName ?? g.subCategory ?? g.category;
+    const category = FASHN_CATEGORY[g.category] ?? 'tops';
+    console.log(`[fashn] katman: ${g.category} → FASHN category="${category}" / ${label}`);
 
     current = await runFashn('tryon-v1.6', {
       model_image:        current,
       garment_image:      g.processedImageUrl,
       garment_photo_type: 'flat-lay',
-      category:           'auto',
-      mode:               'balanced',
+      category,
+      mode:               'quality',
     });
 
     console.log(`[fashn] katman çıktı (${label}):`, current);
@@ -274,14 +284,17 @@ if (require.main === module) {
     createdAt: '',
   });
 
+  // Shoes FASHN tryon-v1.6'da desteklenmiyor — sadece lower + upper test edilir
   const testGarments: WardrobeItem[] = [
     makeItem('g1', 'Siyah wide-leg pantolon', 'lower',
       'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/wardrobe-items/8550494a-bc32-49a2-86cd-ee931117b287/9254cb44-c680-4798-8ce6-fc2ebdbd33ea.png'),
     makeItem('g2', 'Beyaz oversize bluz',     'upper',
       'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/wardrobe-items/8550494a-bc32-49a2-86cd-ee931117b287/aca876d0-f0b6-4815-9c8e-2c94af14aa1b.png'),
-    makeItem('g3', 'Siyah loafer',            'shoes',
-      'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/wardrobe-items/8550494a-bc32-49a2-86cd-ee931117b287/0828f58d-4327-4657-96cc-7c721406699f.png'),
   ];
+
+  // Shoes URL'i — tryon-max testi için ayrı tutulur
+  const TEST_SHOES_URL =
+    'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/wardrobe-items/8550494a-bc32-49a2-86cd-ee931117b287/0828f58d-4327-4657-96cc-7c721406699f.png';
 
   (async () => {
     console.log('\n── FASHN Katmanlı Kombin Testi ─────────────────────────────────────────');
@@ -297,9 +310,30 @@ if (require.main === module) {
       const garments = selectAndOrderGarments(testGarments);
       console.log('[2] Katmanlama sırası:', garments.map((g) => g.category).join(' → '));
 
-      const finalUrl = await layeredTryOn(mannequinUrl, garments);
-      console.log('\n✅ Final URL:', finalUrl);
-      console.log('   → Tarayıcıda aç: manken üzerinde tüm parçalar katmanlanmış mı?');
+      const layeredUrl = await layeredTryOn(mannequinUrl, garments);
+      console.log('\n[3] Katmanlı (üst+alt) URL:', layeredUrl);
+      console.log('    → Tarayıcıda aç: üst+alt düzgün giydirilmiş mi?\n');
+
+      // ── tryon-max ayakkabı denemesi ─────────────────────────────────────────
+      // tryon-max şeması (v1.6'dan farklı):
+      //   model_image   → kişi görseli
+      //   product_image → ürün görseli  (v1.6'daki garment_image değil!)
+      //   prompt        → stil ipucu
+      //   resolution    → '1k' | '2k' | '4k'
+      //   generation_mode → 'balanced' | 'quality'
+      //   category alanı YOK
+      console.log('[4] tryon-max: ayakkabı ekleniyor...');
+      const shoesUrl = await runFashn('tryon-max', {
+        model_image:     layeredUrl,
+        product_image:   TEST_SHOES_URL,
+        prompt:          'shoes worn on feet',
+        resolution:      '1k',
+        generation_mode: 'quality',
+      });
+      console.log('\n✅ tryon-max ayakkabı URL:', shoesUrl);
+      console.log('   → (a) Ayakkabı ayağa düzgün giydirilmiş mi?');
+      console.log('   → (b) Üst+alt kıyafet BOZULMADAN korunmuş mu?');
+      console.log('   Evetse: tryon-max shoes katmanı Ana Akış\'a eklenebilir.');
     } catch (err) {
       console.error('\n❌ Hata:', err);
     }
