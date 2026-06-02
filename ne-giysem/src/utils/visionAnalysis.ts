@@ -113,6 +113,7 @@ function toJpegBase64(input: string): Promise<string> {
 }
 
 export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
+  console.warn('VISION_V3_BASLADI key_uzunluk=' + (API_KEY ? API_KEY.length : 0));
   if (!API_KEY) {
     throw new Error('Anthropic API key eksik. .env dosyasını kontrol et.');
   }
@@ -162,10 +163,8 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error('[vision] API error status:', res.status);
-      console.error('[vision] API error body:', errorText);
-      throw new Error(`API error: ${res.status} ${errorText}`);
+      const body = await res.text();
+      throw new Error('HTTP ' + res.status + ' — ' + body.slice(0, 200));
     }
 
     const json = await res.json();
@@ -182,7 +181,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
     try {
       return await attemptRequest();
     } catch (secondErr) {
-      throw new Error('VISION_FAIL: ' + String(secondErr));   // GEÇİCİ
+      throw new Error('VISION_FAIL [keylen=' + (API_KEY ? API_KEY.length : 0) + ']: ' + String(secondErr));   // GEÇİCİ
     }
   }
 }
