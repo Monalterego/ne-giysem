@@ -37,25 +37,47 @@ const CATEGORY_DEFAULT: Record<string, number> = {
 };
 
 const FABRIC_MOD: Record<string, number> = {
-  silk: 1.5, satin: 1.5, velvet: 1.5,
-  wool: 0.5, linen: 0.5,
-  denim: -1, polyester: -0.5,
+  // Zarif/resmi kumaşlar (+)
+  silk:         1.5,  satin:       1.5,  velvet:      1.5,
+  cashmere:     1.5,  chiffon:     1.0,  leather:     1.0,
+  wool:         0.5,  linen:       0.5,  'faux-leather': 0.5,
+  // Nötr
+  knit:         0,    viscose:     0,    blend:       0,
+  // Rahat/gündelik (-)
+  denim:       -1,    polyester:  -0.5,
 };
 
 const PATTERN_MOD: Record<string, number> = {
   cicekli: -0.5, cizgili: -0.3, geometrik: -0.3,
 };
 
-// İsimden kumaş çıkarımı: fabric=unknown/eksik iken itemName'e bakılır
+// Türkçe fabric değeri → kanonik İngilizce (motor için köprü)
+const TURKISH_TO_CANONICAL: Record<string, string> = {
+  pamuk:    'cotton',      keten:    'linen',       ipek:     'silk',
+  yun:      'wool',        kasmir:   'cashmere',    saten:    'satin',
+  kadife:   'velvet',      deri:     'leather',     suni_deri: 'faux-leather',
+  triko:    'knit',        sifon:    'chiffon',     viskon:   'viscose',
+  denim:    'denim',       polyester: 'polyester',  karisim:  'blend',
+  bilmiyorum: '',          unknown:  '',
+};
+
+// İsimden kumaş çıkarımı: fabric=unknown/bilmiyorum/eksik iken itemName'e bakılır
 const NAME_FABRIC_MAP: Array<[string, string]> = [
-  ['saten', 'satin'], ['kadife', 'velvet'], ['ipek', 'silk'],
-  ['yün',   'wool'],  ['yun',    'wool'],   ['keten', 'linen'],
-  ['denim', 'denim'], ['kot',    'denim'],
+  ['saten',   'satin'],   ['kadife',  'velvet'],  ['ipek',    'silk'],
+  ['yün',     'wool'],    ['yun',     'wool'],     ['keten',   'linen'],
+  ['kaşmir',  'cashmere'],['kasmir',  'cashmere'], ['deri',    'leather'],
+  ['şifon',   'chiffon'], ['sifon',   'chiffon'],  ['viskon',  'viscose'],
+  ['triko',   'knit'],    ['karışım', 'blend'],    ['karisim', 'blend'],
+  ['pamuk',   'cotton'],  ['denim',   'denim'],    ['kot',     'denim'],
+  ['polyester','polyester'],
 ];
 
 function resolveFabric(item: WardrobeItem): string {
   const f = item.fabric ?? '';
-  if (f && f !== 'unknown' && f !== 'bilmiyorum') return f;
+  if (f && f !== 'unknown' && f !== 'bilmiyorum') {
+    // Türkçe fabric değerini kanonik İngilizceye çevir; bilinmeyense olduğu gibi dön
+    return TURKISH_TO_CANONICAL[f] ?? f;
+  }
   const name = (item.itemName ?? '').toLowerCase();
   for (const [kw, mapped] of NAME_FABRIC_MAP) {
     if (name.includes(kw)) return mapped;

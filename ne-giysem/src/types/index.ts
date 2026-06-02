@@ -19,17 +19,13 @@ export type ClothingCategory =
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
 export type Fabric =
-  | 'cotton'
-  | 'linen'
-  | 'denim'
-  | 'silk'
-  | 'wool'
-  | 'polyester'
-  | 'viscose'
-  | 'satin'
-  | 'velvet'
-  | 'blend'
-  | 'unknown';
+  // İngilizce kanonik (eski kayıtlar için backwards compat)
+  | 'cotton' | 'linen' | 'denim' | 'silk' | 'wool' | 'polyester'
+  | 'viscose' | 'satin' | 'velvet' | 'blend' | 'unknown'
+  // Türkçe değerler (yeni kayıtlar + vision AI çıktısı)
+  | 'pamuk' | 'keten' | 'viskon' | 'yun' | 'kasmir' | 'ipek'
+  | 'saten' | 'kadife' | 'deri' | 'suni_deri' | 'triko' | 'sifon'
+  | 'karisim' | 'bilmiyorum';
 
 export interface WardrobeItem {
   id: string;

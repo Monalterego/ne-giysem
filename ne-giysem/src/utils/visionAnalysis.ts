@@ -52,7 +52,7 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
   "details": öne çıkan max 3 detay — örn. ["dugmeli", "cepli", "firfirli", "bagcikli", "seritli", "fermanuarli", "kapsonlu", "kesiksiz", "asimetrik"],
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
   "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
-  "fabric": kumaş tahmini. Görselden EMİN DEĞİLSEN 'bilmiyorum' ver, tahmin uydurma — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "polyester" | "viskon" | "saten" | "kadife" | "karisim" | "bilmiyorum",
+  "fabric": kumaş tahmini. Görselden EMİN DEĞİLSEN 'bilmiyorum' ver, tahmin uydurma — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "kasmir" | "polyester" | "viskon" | "saten" | "kadife" | "deri" | "suni_deri" | "triko" | "sifon" | "karisim" | "bilmiyorum",
   "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
 }`;
 

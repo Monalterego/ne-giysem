@@ -7,11 +7,23 @@ type Season = 'winter' | 'spring' | 'fall' | 'summer';
 
 // ─── Sabitler ─────────────────────────────────────────────────────────────────
 
-// Kışlık/ağır parçalar — 26°C üstünde ceza
+// Kışlık/ağır subCategory'ler — 26°C üstünde ceza
 const HEAVY_SUB = ['kaban', 'mont', 'kazak', 'triko', 'cizme', 'bot'];
 
-// Yazlık/hafif parçalar — 8°C altında ceza
+// Yazlık/hafif subCategory'ler — 8°C altında ceza
 const LIGHT_SUB = ['sandalet', 'terlik', 'sort'];
+
+// Ağır/sıcak kumaşlar — 26°C üstünde ceza (Türkçe + kanonik İngilizce backwards compat)
+const HEAVY_FABRICS = new Set([
+  'yun', 'kasmir', 'kadife', 'triko', 'deri',
+  'wool', 'cashmere', 'velvet', 'knit', 'leather',
+]);
+
+// Hafif/serin kumaşlar — 8°C altında ceza
+const LIGHT_FABRICS = new Set([
+  'keten', 'ipek', 'sifon', 'viskon',
+  'linen', 'silk', 'chiffon', 'viscose',
+]);
 
 // ─── Fonksiyonlar ─────────────────────────────────────────────────────────────
 
@@ -49,15 +61,18 @@ export function seasonFit(item: WardrobeItem, weather?: WeatherData): number {
   // a) Kategorik uyumsuzluk: parça belirli mevsimlere sahip ama aktif mevsim içinde değil
   if (seasons.length && !seasons.includes(active)) fit -= 0.25;
 
-  // b) Sıcaklık uçları — doğrudan subCategory / kumaş / isim sinyali
-  const sub  = item.subCategory ?? '';
-  const name = (item.itemName ?? '').toLowerCase();
+  // b) Sıcaklık uçları — subCategory, kumaş ve isim sinyalleri
+  const sub       = item.subCategory ?? '';
+  const fabricKey = item.fabric ?? '';
+  const name      = (item.itemName ?? '').toLowerCase();
 
-  if (weather.temp > 26 && HEAVY_SUB.includes(sub)) fit -= 0.4;
+  if (weather.temp > 26 && (HEAVY_SUB.includes(sub) || HEAVY_FABRICS.has(fabricKey))) {
+    fit -= 0.4;
+  }
   if (
     weather.temp < 8 &&
     (LIGHT_SUB.includes(sub) ||
-      item.fabric === 'linen' ||
+      LIGHT_FABRICS.has(fabricKey) ||
       /keten|askılı|askili/.test(name))
   ) {
     fit -= 0.4;

@@ -30,12 +30,31 @@ const CATEGORIES = CATEGORY_ORDER.map((cat) => ({
   value: cat,
 }));
 
-const FABRICS: { label: string; value: Fabric }[] = [
-  { label: 'Pamuk', value: 'cotton' },
-  { label: 'Keten', value: 'linen' },
-  { label: 'Denim', value: 'denim' },
-  { label: 'Polyester', value: 'polyester' },
-  { label: 'Bilmiyorum', value: 'unknown' },
+const FABRIC_GROUPS: { groupLabel: string; items: { label: string; value: Fabric }[] }[] = [
+  {
+    groupLabel: 'Doğal',
+    items: [
+      { label: 'Pamuk',  value: 'pamuk'  },
+      { label: 'Keten',  value: 'keten'  },
+      { label: 'Yün',    value: 'yun'    },
+      { label: 'Kaşmir', value: 'kasmir' },
+      { label: 'İpek',   value: 'ipek'   },
+      { label: 'Deri',   value: 'deri'   },
+    ],
+  },
+  {
+    groupLabel: 'Diğer',
+    items: [
+      { label: 'Polyester', value: 'polyester' },
+      { label: 'Viskon',    value: 'viskon'    },
+      { label: 'Saten',     value: 'saten'     },
+      { label: 'Kadife',    value: 'kadife'    },
+      { label: 'Şifon',     value: 'sifon'     },
+      { label: 'Denim',     value: 'denim'     },
+      { label: 'Triko',     value: 'triko'     },
+      { label: 'Karışım',   value: 'karisim'   },
+    ],
+  },
 ];
 
 const SEASONS: { label: string; value: Season }[] = [
@@ -241,6 +260,13 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Zarif mesaj — sadece ekleme modunda */}
+        {!isEditMode && (
+          <Text style={styles.zarifMesaj}>
+            Bilgiler ne kadar doğruysa, kombin önerileri o kadar isabetli olur ✨
+          </Text>
+        )}
+
         {/* İşlenmiş görsel */}
         <View style={styles.imageContainer}>
           <Image
@@ -351,20 +377,34 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
 
         {/* Kumaş */}
         <Text style={styles.sectionTitle}>Kumaş</Text>
-        <View style={styles.chipRow}>
-          {FABRICS.map(({ label, value }) => (
-            <TouchableOpacity
-              key={value}
-              style={[styles.chip, fabric === value && styles.chipSelected]}
-              onPress={() => setFabric(value)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.chipText, fabric === value && styles.chipTextSelected]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {FABRIC_GROUPS.map(({ groupLabel, items }) => (
+          <View key={groupLabel}>
+            <Text style={styles.fabricGroupLabel}>{groupLabel}</Text>
+            <View style={styles.chipRow}>
+              {items.map(({ label, value }) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.chip, fabric === value && styles.chipSelected]}
+                  onPress={() => setFabric(value)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.chipText, fabric === value && styles.chipTextSelected]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
+        <TouchableOpacity
+          style={[styles.chip, fabric === 'bilmiyorum' && styles.chipSelected]}
+          onPress={() => setFabric('bilmiyorum')}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.chipText, fabric === 'bilmiyorum' && styles.chipTextSelected]}>
+            Bilmiyorum
+          </Text>
+        </TouchableOpacity>
 
         {/* Mevsim */}
         <Text style={styles.sectionTitle}>
@@ -462,6 +502,19 @@ const styles = StyleSheet.create({
   optional: {
     ...typography.bodySmall,
     color: colors.textSecondary,
+  },
+  fabricGroupLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  zarifMesaj: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+    fontStyle: 'italic',
   },
   chipRow: {
     flexDirection: 'row',
