@@ -182,8 +182,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
     try {
       return await attemptRequest();
     } catch (secondErr) {
-      console.warn('[vision] retry de başarısız, güvenli varsayılan döndürülüyor:', secondErr);
-      return { category: 'upper', colors: [], seasons: [] };
+      throw new Error('VISION_FAIL: ' + String(secondErr));   // GEÇİCİ
     }
   }
 }
