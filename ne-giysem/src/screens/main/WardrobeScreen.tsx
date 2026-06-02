@@ -43,6 +43,72 @@ const SEASON_LABEL: Record<string, string> = {
   winter: 'Kış',
 };
 
+const SUBCATEGORIES: Partial<Record<ClothingCategory, { value: string; label: string }[]>> = {
+  upper: [
+    { value: 'tisort',     label: 'T-Shirt'  },
+    { value: 'bluz',       label: 'Bluz'     },
+    { value: 'gomlek',     label: 'Gömlek'   },
+    { value: 'kazak',      label: 'Kazak'    },
+    { value: 'triko',      label: 'Triko'    },
+    { value: 'hirka',      label: 'Hırka'    },
+    { value: 'yelek',      label: 'Yelek'    },
+    { value: 'sweatshirt', label: 'Sweatshirt' },
+    { value: 'hoodie',     label: 'Hoodie'   },
+    { value: 'body',       label: 'Body'     },
+  ],
+  lower: [
+    { value: 'pantolon', label: 'Pantolon' },
+    { value: 'jean',     label: 'Jean'     },
+    { value: 'etek',     label: 'Etek'     },
+    { value: 'sort',     label: 'Şort'     },
+    { value: 'tayt',     label: 'Tayt'     },
+  ],
+  dress_jumpsuit: [
+    { value: 'mini_elbise', label: 'Mini Elbise' },
+    { value: 'midi_elbise', label: 'Midi Elbise' },
+    { value: 'maxi_elbise', label: 'Maxi Elbise' },
+    { value: 'tulum',       label: 'Tulum'       },
+  ],
+  outer: [
+    { value: 'ceket',      label: 'Ceket'     },
+    { value: 'blazer',     label: 'Blazer'    },
+    { value: 'mont',       label: 'Mont'      },
+    { value: 'kaban',      label: 'Kaban'     },
+    { value: 'trenchkot',  label: 'Trençkot'  },
+    { value: 'yagmurluk',  label: 'Yağmurluk' },
+  ],
+  shoes: [
+    { value: 'sneaker',  label: 'Sneaker'  },
+    { value: 'loafer',   label: 'Loafer'   },
+    { value: 'bot',      label: 'Bot'      },
+    { value: 'cizme',    label: 'Çizme'    },
+    { value: 'topuklu',  label: 'Topuklu'  },
+    { value: 'sandalet', label: 'Sandalet' },
+    { value: 'terlik',   label: 'Terlik'   },
+    { value: 'babet',    label: 'Babet'    },
+  ],
+  bag: [
+    { value: 'omuz_cantasi', label: 'Omuz Çantası' },
+    { value: 'clutch',       label: 'Clutch'        },
+    { value: 'tote',         label: 'Tote'          },
+    { value: 'bel_cantasi',  label: 'Bel Çantası'  },
+    { value: 'sirt_cantasi', label: 'Sırt Çantası' },
+    { value: 'mini_canta',   label: 'Mini Çanta'   },
+  ],
+  accessory: [
+    { value: 'kolye',    label: 'Kolye'   },
+    { value: 'kupe',     label: 'Küpe'    },
+    { value: 'bileklik', label: 'Bileklik' },
+    { value: 'yuzuk',    label: 'Yüzük'   },
+    { value: 'fular',    label: 'Fular'   },
+    { value: 'kaskol',   label: 'Kaşkol'  },
+    { value: 'bandana',  label: 'Bandana' },
+    { value: 'kemer',    label: 'Kemer'   },
+    { value: 'sapka',    label: 'Şapka'   },
+    { value: 'gozluk',   label: 'Gözlük'  },
+  ],
+};
+
 export default function WardrobeScreen({ navigation }: Props) {
   const items      = useWardrobeStore((s) => s.items);
   const isLoading  = useWardrobeStore((s) => s.isLoading);
@@ -53,12 +119,31 @@ export default function WardrobeScreen({ navigation }: Props) {
   const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set());
   const [deleting,     setDeleting]     = useState(false);
   const [activeFilter, setActiveFilter] = useState<ClothingCategory | 'all'>('all');
+  const [activeSub,    setActiveSub]    = useState<string>('all');
   const [viewMode,     setViewMode]     = useState<ViewMode>('grid');
 
-  const filteredItems = useMemo(
-    () => activeFilter === 'all' ? items : items.filter((i) => i.category === activeFilter),
-    [items, activeFilter],
-  );
+  const filteredItems = useMemo(() => {
+    let result = activeFilter === 'all' ? items : items.filter((i) => i.category === activeFilter);
+    if (activeSub !== 'all') result = result.filter((i) => i.subCategory === activeSub);
+    return result;
+  }, [items, activeFilter, activeSub]);
+
+  // Sadece dolap verisinde mevcut olan subcategory'leri, SUBCATEGORIES sırasına göre döndürür
+  const availableSubcategories = useMemo(() => {
+    if (activeFilter === 'all') return [];
+    const subs = SUBCATEGORIES[activeFilter as ClothingCategory] ?? [];
+    const existing = new Set(
+      items
+        .filter((i) => i.category === activeFilter && i.subCategory)
+        .map((i) => i.subCategory as string),
+    );
+    return subs.filter((s) => existing.has(s.value));
+  }, [items, activeFilter]);
+
+  const handleFilterChange = (value: ClothingCategory | 'all') => {
+    setActiveFilter(value);
+    setActiveSub('all');
+  };
 
   const selectionMode = selectedIds.size > 0;
 
@@ -334,7 +419,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         </View>
       )}
 
-      {/* Filtre bar */}
+      {/* Kategori filtre barı */}
       {!selectionMode && (
         <ScrollView
           horizontal
@@ -348,10 +433,45 @@ export default function WardrobeScreen({ navigation }: Props) {
               <TouchableOpacity
                 key={value}
                 style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => setActiveFilter(value)}
+                onPress={() => handleFilterChange(value)}
                 activeOpacity={0.75}
               >
                 <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* Subcategory filtre barı — sadece kategori seçiliyken ve dolu chip varsa */}
+      {!selectionMode && activeFilter !== 'all' && availableSubcategories.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.subFilterBar}
+          contentContainerStyle={styles.subFilterBarContent}
+        >
+          <TouchableOpacity
+            style={[styles.subChip, activeSub === 'all' && styles.subChipActive]}
+            onPress={() => setActiveSub('all')}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.subChipText, activeSub === 'all' && styles.subChipTextActive]}>
+              Hepsi
+            </Text>
+          </TouchableOpacity>
+          {availableSubcategories.map(({ value, label }) => {
+            const active = activeSub === value;
+            return (
+              <TouchableOpacity
+                key={value}
+                style={[styles.subChip, active && styles.subChipActive]}
+                onPress={() => setActiveSub(value)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.subChipText, active && styles.subChipTextActive]}>
                   {label}
                 </Text>
               </TouchableOpacity>
@@ -507,6 +627,40 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   filterChipTextActive: {
+    color: colors.white,
+  },
+
+  // Subcategory filtre barı (kategori barından biraz daha küçük/soluk)
+  subFilterBar: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexShrink: 0,
+  },
+  subFilterBarContent: {
+    paddingHorizontal: layout.screenPaddingH,
+    paddingVertical: spacing.xs + 2,
+    gap: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subChip: {
+    paddingVertical: spacing.xs - 1,
+    paddingHorizontal: spacing.sm + 2,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  subChipActive: {
+    backgroundColor: colors.textSecondary,
+    borderColor: colors.textSecondary,
+  },
+  subChipText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  subChipTextActive: {
     color: colors.white,
   },
 
