@@ -276,11 +276,11 @@ if (require.main === module) {
 
   const testGarments: WardrobeItem[] = [
     makeItem('g1', 'Siyah wide-leg pantolon', 'lower',
-      'https://static.zara.net/assets/public/e00e/0757/6ae141e68a7b/adb4871359f8/01120134330-e1/01120134330-e1.jpg?ts=1779960169370&w=1920'),
+      'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/wardrobe-items/8550494a-bc32-49a2-86cd-ee931117b287/9254cb44-c680-4798-8ce6-fc2ebdbd33ea.png'),
     makeItem('g2', 'Beyaz oversize bluz',     'upper',
-      'https://static.zara.net/assets/public/b6c9/ab81/13b94748a527/ad66afb36a87/02711172-251-e1/02711172-251-e1.jpg?ts=1779960169370&w=1024'),
+      'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/wardrobe-items/8550494a-bc32-49a2-86cd-ee931117b287/aca876d0-f0b6-4815-9c8e-2c94af14aa1b.png'),
     makeItem('g3', 'Siyah loafer',            'shoes',
-      'https://static.zara.net/assets/public/3c18/6c3f/e6944ba5b965/a93e847fa2c1/12503710-800-e1/12503710-800-e1.jpg?ts=1779960169370&w=1024'),
+      'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/wardrobe-items/8550494a-bc32-49a2-86cd-ee931117b287/0828f58d-4327-4657-96cc-7c721406699f.png'),
   ];
 
   (async () => {
