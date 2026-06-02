@@ -17,6 +17,8 @@ import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
 import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
+import { uuidv4 } from '../../utils/uuid';
+import { base64Decode } from '../../utils/base64';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
@@ -125,14 +127,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
     setSaving(true);
 
     try {
-      const uuid = crypto.randomUUID();
+      const uuid = uuidv4();
       const basePath = `${user.id}/${uuid}`;
 
-      // base64 → Uint8Array (native-uyumlu, Blob/fetch yok)
-      const b64 = processedBase64;
-      const binary = atob(b64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      // base64 → Uint8Array (native-uyumlu, atob/Blob yok)
+      const bytes = base64Decode(processedBase64);
 
       // Orijinal → processedBase64'ü kullan (MVP: original kaybolmaz, remove.bg PNG yeterli)
       const { error: origError } = await supabase.storage

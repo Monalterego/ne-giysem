@@ -144,12 +144,13 @@ export default function ProfileScreen() {
       const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const path = `${user.id}/avatar.${ext}`;
 
-      const fetchRes = await fetch(asset.uri);
-      const blob     = await fetchRes.blob();
+      const fetchRes    = await fetch(asset.uri);
+      const arrayBuffer = await fetchRes.arrayBuffer();
+      const bytes       = new Uint8Array(arrayBuffer);
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
+        .upload(path, bytes, { contentType: `image/${ext}`, upsert: true });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);

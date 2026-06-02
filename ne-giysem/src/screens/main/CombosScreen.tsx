@@ -396,11 +396,12 @@ export default function CombosScreen() {
       // 3. Cache MISS — üret, bucket'a yükle, render sayacını artır
       const finalUrl = await generateVirtualModelImage(physProfile, combo.items, modelSource);
 
-      const imgRes  = await fetch(finalUrl);
-      const imgBlob = await imgRes.blob();
+      const imgRes    = await fetch(finalUrl);
+      const imgBuffer = await imgRes.arrayBuffer();
+      const imgBytes  = new Uint8Array(imgBuffer);
       await supabase.storage
         .from('mannequin-cache')
-        .upload(cacheKey, imgBlob, { upsert: true, contentType: 'image/png' });
+        .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/png' });
 
       const { data: { publicUrl: uploadedUrl } } = supabase.storage
         .from('mannequin-cache')

@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { base64Encode } from './base64';
 
 const PROXY_PRIMARY  = 'https://api.codetabs.com/v1/proxy?quest=';
 const PROXY_FALLBACK = 'https://thingproxy.freeboard.io/fetch/';
@@ -74,11 +75,7 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
 
   const arrayBuffer = await res.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  const b64 = btoa(binary);
+  const b64 = base64Encode(bytes);
   console.log('[urlScraper] base64 hazır — uzunluk:', b64.length, 'karakter');
   return b64;
 }
