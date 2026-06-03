@@ -105,6 +105,7 @@ function ComboCard({
               activeOpacity={0.85}
             >
               <Feather name="user" size={14} color={colors.text} />
+              <Text style={styles.modelBtnText}>Üzerinde Gör</Text>
             </TouchableOpacity>
 
             {/* Giy butonu */}
@@ -764,14 +765,20 @@ const styles = StyleSheet.create({
 
   // Sanal manken butonu
   modelBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.white,
+  },
+  modelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
   },
 
   // Üretim yükleme durumu
