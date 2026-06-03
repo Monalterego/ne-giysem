@@ -360,7 +360,7 @@ export function generateCombos(
       } as Combo;
     })
     .sort((a, b) => b.score - a.score);
-  return selectDiverse(results, maxCombos);
+  return selectDiverse(results, maxCombos).sort((a, b) => b.score - a.score);
 }
 
 // Dolabın kombin üretmek için hangi kategorilerde eksik olduğunu döner
