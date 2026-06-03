@@ -14,6 +14,7 @@ export interface ReasoningParams {
   contextFit: number;
   prop: number;
   encCoverage: number;
+  score?: number;
 }
 
 // ─── Sabitler ─────────────────────────────────────────────────────────────────
@@ -138,4 +139,66 @@ export function buildReasoning(p: ReasoningParams): string {
   }
 
   return capitalizeFirst(parts.slice(0, 2).join('; ')) + '.';
+}
+
+// ─── buildTitle ───────────────────────────────────────────────────────────────
+
+function simpleHash(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 31) + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function pick<T>(arr: T[], seed: string): T {
+  return arr[simpleHash(seed) % arr.length];
+}
+
+/**
+ * Kombine-özel kısa karakter başlığı — buildReasoning ile aynı sinyaller, farklı form.
+ * Başlık = kısa sıfat grubu; reasoning = açıklama cümlesi (çakışmaz).
+ */
+export function buildTitle(p: ReasoningParams): string {
+  const core = p.items.filter((i) =>
+    ['upper', 'lower', 'dress_jumpsuit'].includes(i.category),
+  );
+  const seed = p.items[0]?.id ?? '';
+  const chromaticCount = core.filter((i) => i.colors[0] && !isNeutral(i.colors[0])).length;
+
+  // 1. Tüm renkler nötr
+  if (chromaticCount === 0) {
+    return pick(['Nötr & Temiz', 'Zarif Monokrom', 'Sade Şıklık'], seed);
+  }
+
+  // 2. Nötr zemin + 1 canlı aksan
+  if (chromaticCount === 1 && core.length >= 2) {
+    return pick(['Dengeli Aksan', 'Odak Noktası', 'Ton Vurgusu'], seed);
+  }
+
+  // 3. Oran vurgusu — oversized üst + slim alt
+  const hasOversizedUpper = core.some(
+    (i) => ['upper', 'dress_jumpsuit'].includes(i.category) && i.fit === 'oversized',
+  );
+  const hasSlimLower = core.some(
+    (i) => i.category === 'lower' && (i.fit === 'slim' || i.fit === 'skinny'),
+  );
+  if (p.prop > 0.85 && hasOversizedUpper && hasSlimLower) {
+    return simpleHash(seed) % 2 === 0 ? 'Yapılı Silüet' : 'Oranlı Hat';
+  }
+
+  // 4. Yüksek renk uyumu
+  if (p.colorHarmony > 0.85) {
+    return pick(['Uyumlu Palet', 'Renk Uyumu', 'Harmonik Ton'], seed);
+  }
+
+  // 5. Yüksek contextFit + özel okasyon
+  if (p.contextFit >= 0.75) {
+    if (p.occasion === 'davet') return 'Şık Davet';
+    if (p.occasion === 'gece')  return 'Gece Zarafeti';
+  }
+
+  // 6. Skor tabanlı fallback
+  const score = p.score ?? 0;
+  if (score > 80) return pick(['Güçlü Kombin', 'Kusursuz Uyum', 'Seçkin Stil'], seed);
+  if (score > 65) return pick(['İyi Uyum', 'Tutarlı Stil', 'Dengeli Seçim'], seed);
+  return 'Dengeli';
 }

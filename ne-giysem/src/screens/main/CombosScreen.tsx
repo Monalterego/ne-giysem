@@ -52,6 +52,7 @@ function ComboCard({
   isGenerating,
   onWear,
   onVirtualModel,
+  onItemPress,
 }: {
   combo: Combo;
   isWorn: boolean;
@@ -59,23 +60,29 @@ function ComboCard({
   isGenerating: boolean;
   onWear: () => void;
   onVirtualModel: () => void;
+  onItemPress: (url: string) => void;
 }) {
   const allItems = [...combo.items, ...(combo.suggestedItems ?? [])];
 
   return (
     <View style={styles.card}>
 
-      {/* Tüm parçalar — tek düzende, kategori etiketiyle */}
+      {/* Tüm parçalar — flat-lay grid, dokunulabilir */}
       <View style={styles.imagesGrid}>
         {allItems.map((item) => (
-          <View key={item.id} style={styles.itemImageWrap}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.itemImageWrap}
+            onPress={() => onItemPress(item.processedImageUrl)}
+            activeOpacity={0.82}
+          >
             <Image
               source={{ uri: item.processedImageUrl }}
               style={styles.itemImage}
               resizeMode="contain"
             />
             <Text style={styles.itemLabel}>{CATEGORY_LABEL[item.category] ?? item.category}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
         <View style={styles.scoreBadge}>
           <Text style={styles.scoreText}>{combo.score}%</Text>
@@ -290,6 +297,7 @@ export default function CombosScreen() {
   const [modelImageUrl,        setModelImageUrl]         = useState<string | null>(null);
   const [modelModalVisible,    setModelModalVisible]     = useState(false);
   const [modelHasExtras,       setModelHasExtras]        = useState(false);
+  const [lightboxUrl,          setLightboxUrl]           = useState<string | null>(null);
   const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
@@ -544,6 +552,7 @@ export default function CombosScreen() {
                 isGenerating={generatingComboId === item.id}
                 onWear={() => handleWear(item)}
                 onVirtualModel={() => handleVirtualModelPress(item)}
+                onItemPress={setLightboxUrl}
               />
             );
           }}
@@ -558,6 +567,20 @@ export default function CombosScreen() {
           }
         />
       )}
+
+      {/* Parça lightbox */}
+      <Modal visible={lightboxUrl !== null} transparent animationType="fade" onRequestClose={() => setLightboxUrl(null)}>
+        <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxUrl(null)}>
+          <View style={styles.lightboxContainer}>
+            {lightboxUrl && (
+              <Image source={{ uri: lightboxUrl }} style={styles.lightboxImage} resizeMode="contain" />
+            )}
+            <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxUrl(null)} activeOpacity={0.8}>
+              <Feather name="x" size={20} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Modaller */}
       <ModelModal
@@ -716,20 +739,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: '#F8F8F6',
     position: 'relative',
   },
   itemImageWrap: {
     width: '30%',
     alignItems: 'center',
     gap: spacing.xs,
+    backgroundColor: '#F5F5F5',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+    padding: spacing.xs,
+    // hafif gölge
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
   },
   itemImage: {
     width: '100%',
     aspectRatio: 3 / 4,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
+    borderRadius: radius.sm,
   },
   itemLabel: {
     ...typography.caption,
@@ -925,6 +959,35 @@ const modalStyles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
+  },
+
+  // Parça lightbox
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxContainer: {
+    width: '85%',
+    aspectRatio: 3 / 4,
+    position: 'relative',
+  },
+  lightboxImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: radius.lg,
+  },
+  lightboxClose: {
+    position: 'absolute',
+    top: -14,
+    right: -14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

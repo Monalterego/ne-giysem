@@ -7,7 +7,7 @@ import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules'
 import { registerFit, registerCoherence } from './registerTheory';
 import { getVisualWeight, isStatement, getFormality } from './itemTraits';
 import { proportionScore } from './proportionTheory';
-import { buildReasoning } from './reasoning';
+import { buildReasoning, buildTitle } from './reasoning';
 import { seasonFit } from './seasonTheory';
 import type { WeatherData } from './weatherService';
 import { computeStyleVector } from './styleVector';
@@ -345,16 +345,15 @@ export function generateCombos(
       styleAdj += sv.structureLooseness * (1 - prop)                * 0.35; // gevşek silüet toleransı
       const styleMult = Math.max(0.85, Math.min(1.15, 1 + styleAdj));
       const score = Math.round(final01 * styleMult * 100);
-      const reasoning = buildReasoning({
-        items: outfitItems, occasion,
-        colorHarmony: colorHarmonyFinal, contextFit, prop, encCoverage,
-      });
+      const titleParams = { items: outfitItems, occasion, colorHarmony: colorHarmonyFinal, contextFit, prop, encCoverage, score };
+      const reasoning = buildReasoning(titleParams);
+      const label     = buildTitle(titleParams);
       return {
         id: uid(),
         items: outfitItems,
         score,
         occasion,
-        label: comboLabel(score),
+        label,
         reasoning,
         createdAt: now,
       } as Combo;
