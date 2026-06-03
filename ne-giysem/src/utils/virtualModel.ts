@@ -62,7 +62,7 @@ export interface PhysicalProfile {
 
 const FASHN_BASE       = 'https://api.fashn.ai/v1';
 const FASHN_POLL_MS    = 2_000;
-const FASHN_TIMEOUT_MS = 120_000;
+const FASHN_TIMEOUT_MS = 180_000;
 
 // Geçici ağ kopmalarında üstel backoff ile yeniden dener (1.5s → 3s)
 async function fetchWithRetry(
@@ -255,7 +255,7 @@ export async function layeredTryOn(
       garment_image:      g.processedImageUrl,
       garment_photo_type: 'flat-lay',
       category,
-      mode:               'quality',
+      mode:               'balanced',
     });
 
     console.log(`[fashn] katman çıktı (${label}):`, current);
@@ -301,7 +301,7 @@ export async function generateVirtualModelImage(
       product_image:   shoe.processedImageUrl,
       prompt:          'shoes worn on feet',
       resolution:      '1k',
-      generation_mode: 'quality',
+      generation_mode: 'balanced',
     });
     console.log('[fashn] tryon-max ayakkabı çıktı:', result);
   }
@@ -381,7 +381,7 @@ if (require.main === module) {
         product_image:   TEST_SHOES_URL,
         prompt:          'shoes worn on feet',
         resolution:      '1k',
-        generation_mode: 'quality',
+        generation_mode: 'balanced',
       });
       console.log('\n✅ tryon-max ayakkabı URL:', shoesUrl);
       console.log('   → (a) Ayakkabı ayağa düzgün giydirilmiş mi?');

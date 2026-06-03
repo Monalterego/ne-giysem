@@ -395,6 +395,10 @@ export default function CombosScreen() {
         await supabase.from('profiles').update({ mannequin_url: modelSource }).eq('id', user.id);
       }
 
+      // GEÇİCİ teşhis — manken kaynağı
+      const sourceType = avatarUrl ? 'avatar' : (savedMannequinUrl ? 'KAYITLI manken' : 'YENI uretim');
+      console.warn('[manken] kaynak:', sourceType, modelSource?.slice(0, 50));
+
       // 2. Kombin cache kontrolü
       const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}.png`;
       const { data: { publicUrl: cachedUrl } } = supabase.storage
@@ -405,6 +409,7 @@ export default function CombosScreen() {
         const headRes = await fetch(cachedUrl, { method: 'HEAD' });
         if (headRes.ok) {
           // Cache HIT — FASHN çağrısı yok, render sayacı artmaz
+          console.warn('[manken] CACHE HIT');
           setModelImageUrl(cachedUrl);
           setModelModalVisible(true);
           return;
@@ -414,6 +419,8 @@ export default function CombosScreen() {
       }
 
       // 3. Cache MISS — üret, bucket'a yükle, render sayacını artır
+      console.warn('[manken] CACHE MISS - uretiliyor');
+      Alert.alert('DEBUG', sourceType + ' | cache MISS, uretiliyor');   // GEÇİCİ
       const finalUrl = await generateVirtualModelImage(physProfile, combo.items, modelSource);
       if (!finalUrl) { Alert.alert('DEBUG', 'finalUrl boş'); return; }
 
