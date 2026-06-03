@@ -53,9 +53,9 @@ function WeatherIcon({ description }: { description?: string }) {
 
 // ─── Alt bileşenler ───────────────────────────────────────────────────────────
 
-function TodayComboCard({ combo }: { combo: Combo }) {
+function TodayComboCard({ combo, onPress }: { combo: Combo; onPress: () => void }) {
   return (
-    <View style={styles.comboCard}>
+    <TouchableOpacity style={styles.comboCard} onPress={onPress} activeOpacity={0.88}>
       <View style={styles.comboImages}>
         {combo.items.map((item: WardrobeItem) => (
           <View key={item.id} style={styles.comboImageWrap}>
@@ -74,7 +74,7 @@ function TodayComboCard({ combo }: { combo: Combo }) {
           <Text style={styles.comboAction}>Günün Seçimi →</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -125,10 +125,17 @@ export default function HomeScreen({ navigation }: Props) {
     fetchWeather();
   }, [user?.id]);
 
-  const todayCombo = useMemo(
-    () => (items.length ? generateCombos(items, 1, 'gunluk', weather ?? undefined, user?.styleProfile ?? undefined)[0] ?? null : null),
-    [items, weather, user?.styleProfile],
-  );
+  const daySeed = new Date().toISOString().slice(0, 10); // "2026-06-03" — güne sabit
+
+  const todayCombo = useMemo(() => {
+    if (!items.length) return null;
+    const combos = generateCombos(items, 10, 'gunluk', weather ?? undefined, user?.styleProfile ?? undefined);
+    if (!combos.length) return null;
+    const seedStr = daySeed + combos.length;
+    let h = 0;
+    for (const c of seedStr) h = (Math.imul(h, 31) + c.charCodeAt(0)) | 0;
+    return combos[Math.abs(h) % combos.length] ?? null;
+  }, [items, weather, user?.styleProfile, daySeed]);
   const preview        = items.slice(0, 4);
 
   const displayName = getDisplayName(user?.name ?? '', user?.email ?? '');
@@ -157,7 +164,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.sectionTitle}>Günün Kombini</Text>
         </View>
         {todayCombo ? (
-          <TodayComboCard combo={todayCombo} />
+          <TodayComboCard combo={todayCombo} onPress={() => navigation.navigate('Combos')} />
         ) : (
           <EmptyComboCard
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
