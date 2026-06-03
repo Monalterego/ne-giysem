@@ -1006,14 +1006,20 @@ const modalStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   lightboxContainer: {
-    width: '85%',
-    aspectRatio: 3 / 4,
+    width: '88%',
+    aspectRatio: 0.8,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
   },
   lightboxImage: {
     width: '100%',
     height: '100%',
-    borderRadius: radius.lg,
   },
   lightboxClose: {
     position: 'absolute',
