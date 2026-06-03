@@ -138,10 +138,12 @@ function ComboCard({
 function ModelModal({
   visible,
   imageUrl,
+  hasExtras,
   onClose,
 }: {
   visible: boolean;
   imageUrl: string | null;
+  hasExtras: boolean;
   onClose: () => void;
 }) {
   const handleShare = async () => {
@@ -175,6 +177,11 @@ function ModelModal({
               resizeMode="contain"
             />
           ) : null}
+          {hasExtras && (
+            <Text style={modalStyles.modelNote}>
+              Çanta ve takılar mankene yansıtılamıyor — tam kombini kartta görebilirsin.
+            </Text>
+          )}
         </ScrollView>
 
         {/* Paylaş */}
@@ -282,6 +289,7 @@ export default function CombosScreen() {
   const [generatingComboId,    setGeneratingComboId]    = useState<string | null>(null);
   const [modelImageUrl,        setModelImageUrl]         = useState<string | null>(null);
   const [modelModalVisible,    setModelModalVisible]     = useState(false);
+  const [modelHasExtras,       setModelHasExtras]        = useState(false);
   const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
@@ -341,6 +349,7 @@ export default function CombosScreen() {
 
   const handleVirtualModel = async (combo: Combo, avatarUrl?: string) => {
     if (!user) return;
+    setModelHasExtras(combo.items.some((i) => i.category === 'bag' || i.category === 'accessory'));
 
     // Fiziksel profil + render sayısı + kayıtlı manken URL'i
     const { data: profile } = await supabase
@@ -547,6 +556,7 @@ export default function CombosScreen() {
       <ModelModal
         visible={modelModalVisible}
         imageUrl={modelImageUrl}
+        hasExtras={modelHasExtras}
         onClose={() => setModelModalVisible(false)}
       />
       <PremiumModal
@@ -901,6 +911,13 @@ const modalStyles = StyleSheet.create({
     ...typography.body,
     fontFamily: fonts.bodyBold,
     color: colors.white,
+  },
+  modelNote: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
 });
 
