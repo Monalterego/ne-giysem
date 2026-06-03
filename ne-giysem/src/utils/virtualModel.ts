@@ -62,7 +62,24 @@ export interface PhysicalProfile {
 
 const FASHN_BASE       = 'https://api.fashn.ai/v1';
 const FASHN_POLL_MS    = 2_000;
-const FASHN_TIMEOUT_MS = 90_000;
+const FASHN_TIMEOUT_MS = 120_000;
+
+// Geçici ağ kopmalarında üstel backoff ile yeniden dener (1.5s → 3s)
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fetch(url, options);
+    } catch (err) {
+      if (i === retries) throw err;
+      await new Promise<void>((r) => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  throw new Error('unreachable');
+}
 
 /**
  * FASHN API'de prediction başlatır, sonuç görsel URL'ini döndürür.
@@ -78,7 +95,7 @@ export async function runFashn(
     throw new Error('FASHN API key eksik — EXPO_PUBLIC_FASHN_API_KEY .env dosyasını kontrol et.');
   }
 
-  const runRes = await fetch(`${FASHN_BASE}/run`, {
+  const runRes = await fetchWithRetry(`${FASHN_BASE}/run`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${FASHN_API_KEY}`,
@@ -104,9 +121,14 @@ export async function runFashn(
   while (Date.now() < deadline) {
     await new Promise<void>((r) => setTimeout(r, FASHN_POLL_MS));
 
-    const statusRes = await fetch(`${FASHN_BASE}/status/${id}`, {
-      headers: { 'Authorization': `Bearer ${FASHN_API_KEY}` },
-    });
+    let statusRes: Response;
+    try {
+      statusRes = await fetchWithRetry(`${FASHN_BASE}/status/${id}`, {
+        headers: { 'Authorization': `Bearer ${FASHN_API_KEY}` },
+      });
+    } catch {
+      throw new Error('Manken üretimi sırasında bağlantı koptu, tekrar dene.');
+    }
 
     if (!statusRes.ok) {
       const body = await statusRes.text();
