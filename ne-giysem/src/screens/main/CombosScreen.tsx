@@ -60,7 +60,7 @@ const ComboCard = React.memo(function ComboCard({
   isGenerating: boolean;
   onWear: (c: Combo) => void;
   onVirtualModel: (c: Combo) => void;
-  onItemPress: (url: string) => void;
+  onItemPress: (itemId: string, url: string) => void;
 }) {
   const allItems = [...combo.items, ...(combo.suggestedItems ?? [])];
 
@@ -73,7 +73,7 @@ const ComboCard = React.memo(function ComboCard({
           <TouchableOpacity
             key={item.id}
             style={styles.itemImageWrap}
-            onPress={() => onItemPress(item.processedImageUrl)}
+            onPress={() => onItemPress(item.id, item.processedImageUrl)}
             activeOpacity={0.82}
           >
             <Image
@@ -306,7 +306,7 @@ export default function CombosScreen() {
   const [modelImageUrl,        setModelImageUrl]         = useState<string | null>(null);
   const [modelModalVisible,    setModelModalVisible]     = useState(false);
   const [modelHasExtras,       setModelHasExtras]        = useState(false);
-  const [lightboxUrl,          setLightboxUrl]           = useState<string | null>(null);
+  const [lightboxItemId,       setLightboxItemId]        = useState<string | null>(null);
   const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
@@ -471,7 +471,22 @@ export default function CombosScreen() {
   // değiştiğinde memo kart render tetiklemez; yine de stable ref sağlıyoruz.
   const handleWearCb       = useCallback((c: Combo) => handleWear(c),              [handleWear]);
   const handleVirtualCb    = useCallback((c: Combo) => handleVirtualModelPress(c), [handleVirtualModelPress]);
-  const handleItemPressCb  = useCallback((url: string) => setLightboxUrl(url),     []);
+  const handleItemPressCb  = useCallback((itemId: string, url: string) => {
+    const isData = /^data:image\//i.test(url ?? '');
+    if (isData) {
+      Alert.alert('Görsel açılamadı', `len=${url.length} (data-uri) — bu parça eski formatta.`);   // GEÇİCİ
+      return;
+    }
+    setLightboxItemId(itemId);
+  }, []);
+
+  // Lightbox için seçili item — tüm kartlardan ID ile bulunur; devasa string state'e girmez
+  const selectedLightboxItem = useMemo(() => {
+    if (!lightboxItemId) return null;
+    return localCombos
+      .flatMap((c) => [...c.items, ...(c.suggestedItems ?? [])])
+      .find((i) => i.id === lightboxItemId) ?? null;
+  }, [lightboxItemId, localCombos]);
 
   const combos  = localCombos;
   const missing = useMemo(() => missingCategories(items), [items]);
@@ -594,13 +609,13 @@ export default function CombosScreen() {
       )}
 
       {/* Parça lightbox */}
-      <Modal visible={lightboxUrl !== null} transparent animationType="fade" onRequestClose={() => setLightboxUrl(null)}>
-        <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxUrl(null)}>
-          <View style={styles.lightboxContainer}>
-            {lightboxUrl && (
-              <Image source={{ uri: lightboxUrl }} style={styles.lightboxImage} resizeMode="contain" />
+      <Modal visible={lightboxItemId !== null} transparent animationType="fade" onRequestClose={() => setLightboxItemId(null)}>
+        <TouchableOpacity style={modalStyles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
+          <View style={modalStyles.lightboxContainer}>
+            {selectedLightboxItem?.processedImageUrl && (
+              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={modalStyles.lightboxImage} resizeMode="contain" />
             )}
-            <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxUrl(null)} activeOpacity={0.8}>
+            <TouchableOpacity style={modalStyles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>
@@ -1022,6 +1037,7 @@ const modalStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
 });
 
 // ─── Fotoğraf yok modal stilleri ─────────────────────────────────────────────
