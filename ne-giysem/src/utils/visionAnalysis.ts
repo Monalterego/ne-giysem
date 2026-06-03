@@ -92,7 +92,6 @@ function parseVisionResponse(text: string): VisionResult {
 }
 
 export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
-  console.warn('VISION_V3_BASLADI key_uzunluk=' + (API_KEY ? API_KEY.length : 0));
   if (!API_KEY) {
     throw new Error('Anthropic API key eksik. .env dosyasını kontrol et.');
   }
@@ -158,7 +157,8 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
     try {
       return await attemptRequest();
     } catch (secondErr) {
-      throw new Error('VISION_FAIL [keylen=' + (API_KEY ? API_KEY.length : 0) + ']: ' + String(secondErr));   // GEÇİCİ
+      console.warn('[vision] analiz başarısız, varsayılan dönülüyor', secondErr);
+      return { category: 'upper', colors: [], seasons: [] };
     }
   }
 }

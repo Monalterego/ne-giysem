@@ -117,8 +117,8 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         });
         setAiDetected(true);
       })
-      .catch((err: any) => {
-        Alert.alert('VISION DEBUG', String(err?.message ?? err));   // GEÇİCİ
+      .catch(() => {
+        // Sessizce devam — kullanıcı manuel doldurabilir
       })
       .finally(() => {
         if (!cancelled) setAnalyzing(false);

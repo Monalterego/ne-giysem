@@ -404,10 +404,6 @@ export default function CombosScreen() {
         await supabase.from('profiles').update({ mannequin_url: modelSource }).eq('id', user.id);
       }
 
-      // GEÇİCİ teşhis — manken kaynağı
-      const sourceType = avatarUrl ? 'avatar' : (savedMannequinUrl ? 'KAYITLI manken' : 'YENI uretim');
-      console.warn('[manken] kaynak:', sourceType, modelSource?.slice(0, 50));
-
       // 2. Kombin cache kontrolü
       const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}.png`;
       const { data: { publicUrl: cachedUrl } } = supabase.storage
@@ -418,7 +414,6 @@ export default function CombosScreen() {
         const headRes = await fetch(cachedUrl, { method: 'HEAD' });
         if (headRes.ok) {
           // Cache HIT — FASHN çağrısı yok, render sayacı artmaz
-          console.warn('[manken] CACHE HIT');
           setModelImageUrl(cachedUrl);
           setModelModalVisible(true);
           return;
@@ -428,13 +423,11 @@ export default function CombosScreen() {
       }
 
       // 3. Cache MISS — üret, bucket'a yükle, render sayacını artır
-      console.warn('[manken] CACHE MISS - uretiliyor');
-      Alert.alert('DEBUG', sourceType + ' | cache MISS, uretiliyor');   // GEÇİCİ
       const finalUrl = await generateVirtualModelImage(physProfile, combo.items, modelSource);
-      if (!finalUrl) { Alert.alert('DEBUG', 'finalUrl boş'); return; }
+      if (!finalUrl) return;
 
       const imgRes = await fetch(finalUrl);
-      if (!imgRes.ok) { Alert.alert('DEBUG', 'FASHN fetch HTTP ' + imgRes.status); return; }
+      if (!imgRes.ok) throw new Error('Görsel indirilemedi');
       const imgBuffer = await imgRes.arrayBuffer();
       const imgBytes  = new Uint8Array(imgBuffer);
 
@@ -442,12 +435,7 @@ export default function CombosScreen() {
         .from('mannequin-cache')
         .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/png' });
 
-      if (upErr) {
-        Alert.alert('UPLOAD HATASI', upErr.message + ' | bytes=' + imgBytes.length);
-        setModelImageUrl(finalUrl);
-        setModelModalVisible(true);
-        return;
-      }
+      if (upErr) console.warn('cache upload başarısız:', upErr.message);
 
       const { data: { publicUrl: uploadedUrl } } = supabase.storage
         .from('mannequin-cache')
@@ -455,7 +443,8 @@ export default function CombosScreen() {
 
       await supabase.from('profiles').update({ virtual_model_renders: renderCount + 1 }).eq('id', user.id);
 
-      setModelImageUrl(uploadedUrl);
+      // Upload patlasa bile FASHN URL'iyle manken gösterilir; sadece o sefer cache'lenmez
+      setModelImageUrl(upErr ? finalUrl : uploadedUrl);
       setModelModalVisible(true);
     } catch (err) {
       Alert.alert(
@@ -474,7 +463,7 @@ export default function CombosScreen() {
   const handleItemPressCb  = useCallback((itemId: string, url: string) => {
     const isData = /^data:image\//i.test(url ?? '');
     if (isData) {
-      Alert.alert('Görsel açılamadı', `len=${url.length} (data-uri) — bu parça eski formatta.`);   // GEÇİCİ
+      Alert.alert('Görsel açılamadı', 'Bu parçanın görseli görüntülenemiyor.');
       return;
     }
     setLightboxItemId(itemId);
