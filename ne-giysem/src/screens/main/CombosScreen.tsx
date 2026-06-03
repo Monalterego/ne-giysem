@@ -45,7 +45,7 @@ function comboKey(combo: Combo): string {
 
 // ─── ComboCard bileşeni ───────────────────────────────────────────────────────
 
-function ComboCard({
+const ComboCard = React.memo(function ComboCard({
   combo,
   isWorn,
   isSaving,
@@ -138,7 +138,7 @@ function ComboCard({
       </View>
     </View>
   );
-}
+});
 
 // ─── Model sonuç modalı ───────────────────────────────────────────────────────
 
@@ -542,6 +542,10 @@ export default function CombosScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews={true}
           renderItem={({ item }) => {
             const key = comboKey(item);
             return (
