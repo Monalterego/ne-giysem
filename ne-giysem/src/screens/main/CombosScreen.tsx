@@ -407,22 +407,29 @@ export default function CombosScreen() {
 
       // 3. Cache MISS — üret, bucket'a yükle, render sayacını artır
       const finalUrl = await generateVirtualModelImage(physProfile, combo.items, modelSource);
+      if (!finalUrl) { Alert.alert('DEBUG', 'finalUrl boş'); return; }
 
-      const imgRes    = await fetch(finalUrl);
+      const imgRes = await fetch(finalUrl);
+      if (!imgRes.ok) { Alert.alert('DEBUG', 'FASHN fetch HTTP ' + imgRes.status); return; }
       const imgBuffer = await imgRes.arrayBuffer();
       const imgBytes  = new Uint8Array(imgBuffer);
-      await supabase.storage
+
+      const { error: upErr } = await supabase.storage
         .from('mannequin-cache')
         .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/png' });
+
+      if (upErr) {
+        Alert.alert('UPLOAD HATASI', upErr.message + ' | bytes=' + imgBytes.length);
+        setModelImageUrl(finalUrl);
+        setModelModalVisible(true);
+        return;
+      }
 
       const { data: { publicUrl: uploadedUrl } } = supabase.storage
         .from('mannequin-cache')
         .getPublicUrl(cacheKey);
 
-      await supabase
-        .from('profiles')
-        .update({ virtual_model_renders: renderCount + 1 })
-        .eq('id', user.id);
+      await supabase.from('profiles').update({ virtual_model_renders: renderCount + 1 }).eq('id', user.id);
 
       setModelImageUrl(uploadedUrl);
       setModelModalVisible(true);
