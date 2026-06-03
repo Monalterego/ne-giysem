@@ -172,6 +172,8 @@ export function profileToPrompt(profile: PhysicalProfile): string {
     `Full-body studio photograph of a woman, ${profile.age} years old, ${profile.height} cm, ` +
     `${body} body type, ${skin} skin tone, ${hLen} ${hType} ${hColor} hair, ` +
     `standing in a neutral front-facing pose, arms relaxed at sides, ` +
+    `wearing simple plain seamless nude/beige fitted underwear (sports bra and briefs), ` +
+    `no outerwear, no pants, no skirt, no socks, minimal neutral base layer, ` +
     `plain light-gray background, photorealistic, high quality.`
   );
 }

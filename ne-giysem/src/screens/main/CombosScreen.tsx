@@ -12,7 +12,7 @@ import {
   Share,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
@@ -138,7 +138,13 @@ const ComboCard = React.memo(function ComboCard({
       </View>
     </View>
   );
-});
+// Callback referans değişimi (lightbox vs.) kart render tetiklemesin — sadece görsel veriye bak
+}, (prev, next) =>
+  prev.combo.id      === next.combo.id      &&
+  prev.isWorn        === next.isWorn        &&
+  prev.isSaving      === next.isSaving      &&
+  prev.isGenerating  === next.isGenerating,
+);
 
 // ─── Model sonuç modalı ───────────────────────────────────────────────────────
 
@@ -153,6 +159,8 @@ function ModelModal({
   hasExtras: boolean;
   onClose: () => void;
 }) {
+  const insets = useSafeAreaInsets();
+
   const handleShare = async () => {
     if (!imageUrl) return;
     await Share.share({
@@ -165,8 +173,8 @@ function ModelModal({
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <SafeAreaView style={modalStyles.safe}>
 
-        {/* Kapat butonu */}
-        <View style={modalStyles.header}>
+        {/* Kapat butonu — çentik güvenli alan */}
+        <View style={[modalStyles.header, { paddingTop: insets.top + spacing.sm }]}>
           <TouchableOpacity style={modalStyles.closeBtn} onPress={onClose} activeOpacity={0.7}>
             <Feather name="arrow-left" size={20} color={colors.text} />
             <Text style={modalStyles.closeBtnText}>Geri</Text>
@@ -330,7 +338,7 @@ export default function CombosScreen() {
     setVisibleCount((v) => v + PAGE_SIZE);
   };
 
-  const handleWear = async (combo: Combo) => {
+  const handleWear = useCallback(async (combo: Combo) => {
     if (!user) return;
     const key = comboKey(combo);
     setSavingKey(key);
@@ -344,19 +352,19 @@ export default function CombosScreen() {
     });
     if (!error) markWorn(key);
     setSavingKey(null);
-  };
+  }, [user, markWorn]);
 
   // Avatar kontrolü: varsa direkt IDM-VTON, yoksa seçenek modalı
-  const handleVirtualModelPress = (combo: Combo) => {
+  const handleVirtualModelPress = useCallback((combo: Combo) => {
     if (!user?.avatarUrl) {
       setPendingCombo(combo);
       setNoAvatarModalVisible(true);
       return;
     }
     handleVirtualModel(combo, user.avatarUrl);
-  };
+  }, [user, handleVirtualModel]);
 
-  const handleVirtualModel = async (combo: Combo, avatarUrl?: string) => {
+  const handleVirtualModel = useCallback(async (combo: Combo, avatarUrl?: string) => {
     if (!user) return;
     setModelHasExtras(combo.items.some((i) => i.category === 'bag' || i.category === 'accessory'));
 
@@ -457,10 +465,10 @@ export default function CombosScreen() {
     } finally {
       setGeneratingComboId(null);
     }
-  };
+  }, [user]);
 
-  // Stabil callback referansları — React.memo'nun çalışması için lightbox state değişince
-  // bu fonksiyonlar yeniden üretilmemeli (lightbox bağımlılığı yok).
+  // Stabil callback referansları — custom comparator sayesinde lightbox state
+  // değiştiğinde memo kart render tetiklemez; yine de stable ref sağlıyoruz.
   const handleWearCb       = useCallback((c: Combo) => handleWear(c),              [handleWear]);
   const handleVirtualCb    = useCallback((c: Combo) => handleVirtualModelPress(c), [handleVirtualModelPress]);
   const handleItemPressCb  = useCallback((url: string) => setLightboxUrl(url),     []);
@@ -556,10 +564,9 @@ export default function CombosScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          removeClippedSubviews={true}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
           renderItem={({ item }) => {
             const key = comboKey(item);
             return (
