@@ -294,7 +294,7 @@ export default function ProfileScreen() {
               {uploadingAvatar ? (
                 <ActivityIndicator color={colors.textSecondary} />
               ) : user?.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} />
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} resizeMode="contain" />
               ) : (
                 <Feather name="user" size={48} color={colors.border} />
               )}
@@ -304,6 +304,9 @@ export default function ProfileScreen() {
                 {user?.avatarUrl ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
               </Text>
             </TouchableOpacity>
+            <Text style={styles.avatarPickerHint}>
+              📸 En iyi sonuç için: boydan (tam vücut), tek başına, düz dururken, sade arka planlı bir fotoğraf yükle.
+            </Text>
           </View>
         </View>
 
@@ -630,9 +633,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   avatarPickerCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: radius.full,
+    width: 130,
+    height: 200,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -641,9 +644,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarPickerImage: {
-    width: 120,
-    height: 120,
-    borderRadius: radius.full,
+    width: '100%',
+    height: '100%',
+  },
+  avatarPickerHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: spacing.sm,
   },
   avatarPickerBtn: {
     ...typography.caption,
