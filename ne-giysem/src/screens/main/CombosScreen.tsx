@@ -77,7 +77,9 @@ function ComboCard({
             <Text style={styles.itemLabel}>{CATEGORY_LABEL[item.category] ?? item.category}</Text>
           </View>
         ))}
-        <Text style={styles.scoreText}>{combo.score}%</Text>
+        <View style={styles.scoreBadge}>
+          <Text style={styles.scoreText}>{combo.score}%</Text>
+        </View>
       </View>
 
       {/* Footer */}
@@ -715,12 +717,21 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
   },
-  scoreText: {
+  scoreBadge: {
     position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    ...typography.label,
-    color: colors.textSecondary,
+    top: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    zIndex: 2,
+  },
+  scoreText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
   },
 
   // Kart footer
