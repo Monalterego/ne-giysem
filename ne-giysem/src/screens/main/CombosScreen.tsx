@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -58,8 +58,8 @@ const ComboCard = React.memo(function ComboCard({
   isWorn: boolean;
   isSaving: boolean;
   isGenerating: boolean;
-  onWear: () => void;
-  onVirtualModel: () => void;
+  onWear: (c: Combo) => void;
+  onVirtualModel: (c: Combo) => void;
   onItemPress: (url: string) => void;
 }) {
   const allItems = [...combo.items, ...(combo.suggestedItems ?? [])];
@@ -108,7 +108,7 @@ const ComboCard = React.memo(function ComboCard({
             {/* Sanal Manken butonu */}
             <TouchableOpacity
               style={styles.modelBtn}
-              onPress={onVirtualModel}
+              onPress={() => onVirtualModel(combo)}
               activeOpacity={0.85}
             >
               <Feather name="user" size={14} color={colors.text} />
@@ -123,7 +123,7 @@ const ComboCard = React.memo(function ComboCard({
             ) : (
               <TouchableOpacity
                 style={styles.wearBtn}
-                onPress={onWear}
+                onPress={() => onWear(combo)}
                 activeOpacity={0.85}
                 disabled={isSaving}
               >
@@ -168,7 +168,8 @@ function ModelModal({
         {/* Kapat butonu */}
         <View style={modalStyles.header}>
           <TouchableOpacity style={modalStyles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <Feather name="x" size={22} color={colors.text} />
+            <Feather name="arrow-left" size={20} color={colors.text} />
+            <Text style={modalStyles.closeBtnText}>Geri</Text>
           </TouchableOpacity>
         </View>
 
@@ -458,6 +459,12 @@ export default function CombosScreen() {
     }
   };
 
+  // Stabil callback referansları — React.memo'nun çalışması için lightbox state değişince
+  // bu fonksiyonlar yeniden üretilmemeli (lightbox bağımlılığı yok).
+  const handleWearCb       = useCallback((c: Combo) => handleWear(c),              [handleWear]);
+  const handleVirtualCb    = useCallback((c: Combo) => handleVirtualModelPress(c), [handleVirtualModelPress]);
+  const handleItemPressCb  = useCallback((url: string) => setLightboxUrl(url),     []);
+
   const combos  = localCombos;
   const missing = useMemo(() => missingCategories(items), [items]);
 
@@ -561,9 +568,9 @@ export default function CombosScreen() {
                 isWorn={wornComboKeys.has(key)}
                 isSaving={savingKey === key}
                 isGenerating={generatingComboId === item.id}
-                onWear={() => handleWear(item)}
-                onVirtualModel={() => handleVirtualModelPress(item)}
-                onItemPress={setLightboxUrl}
+                onWear={handleWearCb}
+                onVirtualModel={handleVirtualCb}
+                onItemPress={handleItemPressCb}
               />
             );
           }}
@@ -920,17 +927,25 @@ const modalStyles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     paddingHorizontal: layout.screenPaddingH,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    minWidth: 72,
+    minHeight: 44,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  closeBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
   imageContainer: {
     flexGrow: 1,
