@@ -487,6 +487,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         numColumns={viewMode === 'grid' ? 2 : 1}
         keyExtractor={(item) => item.id}
         contentContainerStyle={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}
+        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
         showsVerticalScrollIndicator={false}
       />
@@ -668,8 +669,12 @@ const styles = StyleSheet.create({
   gridContainer: {
     padding: spacing.sm,
   },
+  gridRow: {
+    justifyContent: 'flex-start',
+    gap: spacing.sm,
+  },
   gridItem: {
-    flex: 1,
+    width: '47%',
     margin: spacing.xs + 2,
     aspectRatio: 3 / 4,
     borderRadius: radius.md,
