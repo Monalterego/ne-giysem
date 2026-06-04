@@ -43,14 +43,25 @@ const SUBCATEGORY_TR: Record<string, string> = {
   cizme: 'çizme', kaban: 'kaban', trenchkot: 'trençkot', clutch: 'clutch',
 };
 
-const DRESS_TEXT: Record<string, string> = {
-  mini_elbise: 'mini elbiseyle dinamik bir görünüm',
-  midi_elbise: 'midi elbiseyle zarif bir hat',
-  maxi_elbise: 'maxi elbiseyle akıcı bir siluet',
-  tulum:       'tek parça tulumla zahmetsiz görünüm',
+// Elbise adı kasıtlı olarak yok — Part1 (OKASYON) zaten elbiseyi andı; tekrar önlenir
+const DRESS_TEXT: Record<string, string[]> = {
+  mini_elbise: ['dinamik ve genç bir görünüm', 'hareketli bir silüet', 'rahat ve modern bir hat'],
+  midi_elbise: ['zarif ve dengeli bir hat', 'klasik bir zarafet', 'ölçülü ve şık bir siluet'],
+  maxi_elbise: ['akıcı ve uzun bir silüet', 'zahmetsiz bir zarafet', 'yumuşak dökümlü bir hat'],
+  tulum:       ['tek parçayla zahmetsiz şıklık', 'pratik ve toparlı bir görünüm'],
 };
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
+
+function simpleHash(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 31) + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function pick<T>(arr: T[], seed: string): T {
+  return arr[simpleHash(seed) % arr.length];
+}
 
 function subCategoryLabel(item: WardrobeItem): string {
   const sub = item.subCategory ?? '';
@@ -113,7 +124,8 @@ export function buildReasoning(p: ReasoningParams): string {
       (i) => i.category === 'dress_jumpsuit' && i.subCategory && DRESS_TEXT[i.subCategory],
     );
     if (dressItem?.subCategory) {
-      parts.push(DRESS_TEXT[dressItem.subCategory]);
+      const variants = DRESS_TEXT[dressItem.subCategory];
+      if (variants) parts.push(pick(variants, p.items.map((i) => i.id).join('-')));
     }
   }
 
@@ -142,16 +154,6 @@ export function buildReasoning(p: ReasoningParams): string {
 }
 
 // ─── buildTitle ───────────────────────────────────────────────────────────────
-
-function simpleHash(str: string): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 31) + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function pick<T>(arr: T[], seed: string): T {
-  return arr[simpleHash(seed) % arr.length];
-}
 
 /**
  * Kombine-özel kısa karakter başlığı — buildReasoning ile aynı sinyaller, farklı form.
