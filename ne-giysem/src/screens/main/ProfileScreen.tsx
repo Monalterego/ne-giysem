@@ -213,38 +213,36 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* ── Avatar + bilgi ── */}
-        <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(user.name)}</Text>
+        {/* 1 ── KOMBİNLERİ KENDİNDE GÖR ── */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>KOMBİNLERİ KENDİNDE GÖR</Text>
+          <View style={styles.avatarPickerSection}>
+            <TouchableOpacity
+              style={styles.avatarPickerCircle}
+              onPress={handlePickAvatar}
+              activeOpacity={0.8}
+              disabled={uploadingAvatar}
+            >
+              {uploadingAvatar ? (
+                <ActivityIndicator color={colors.textSecondary} />
+              ) : user?.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} resizeMode="contain" />
+              ) : (
+                <Feather name="user" size={48} color={colors.border} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7} disabled={uploadingAvatar}>
+              <Text style={styles.avatarPickerBtn}>
+                {user?.avatarUrl ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.avatarPickerHint}>
+              📸 En iyi sonuç için: boydan (tam vücut), tek başına, düz dururken, sade arka planlı bir fotoğraf yükle.
+            </Text>
           </View>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userEmail}>{user.email}</Text>
         </View>
 
-        <View style={styles.separator} />
-
-        {/* ── İstatistikler — kart yok, direkt ekranda ── */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{items.length}</Text>
-            <Text style={styles.statLabel}>Parça</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{combos.length}</Text>
-            <Text style={styles.statLabel}>Kombin</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{avgScore}%</Text>
-            <Text style={styles.statLabel}>Ort. Uyum</Text>
-          </View>
-        </View>
-
-        <View style={styles.separator} />
-
-        {/* ── Stil DNA ── */}
+        {/* 2 ── STİL DNA ── */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>STİL DNA</Text>
           {loadingStyles ? (
@@ -281,39 +279,30 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* ── Fotoğrafım ── */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>KOMBİNLERİ KENDİNDE GÖR</Text>
-          <View style={styles.avatarPickerSection}>
-            <TouchableOpacity
-              style={styles.avatarPickerCircle}
-              onPress={handlePickAvatar}
-              activeOpacity={0.8}
-              disabled={uploadingAvatar}
-            >
-              {uploadingAvatar ? (
-                <ActivityIndicator color={colors.textSecondary} />
-              ) : user?.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} resizeMode="contain" />
-              ) : (
-                <Feather name="user" size={48} color={colors.border} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7} disabled={uploadingAvatar}>
-              <Text style={styles.avatarPickerBtn}>
-                {user?.avatarUrl ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.avatarPickerHint}>
-              📸 En iyi sonuç için: boydan (tam vücut), tek başına, düz dururken, sade arka planlı bir fotoğraf yükle.
-            </Text>
+        {/* 3 ── İstatistikler ── */}
+        <View style={styles.separator} />
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{items.length}</Text>
+            <Text style={styles.statLabel}>Parça</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{combos.length}</Text>
+            <Text style={styles.statLabel}>Kombin</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{avgScore}%</Text>
+            <Text style={styles.statLabel}>Ort. Uyum</Text>
           </View>
         </View>
+        <View style={styles.separator} />
 
-        {/* ── Fiziki Profil ── */}
+        {/* 4 ── FİZİKSEL BİLGİLERİM ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.sectionLabel}>FİZİKİ PROFİL</Text>
+            <Text style={styles.sectionLabel}>FİZİKSEL BİLGİLERİM</Text>
             {hasPhysProfile && (
               <TouchableOpacity
                 onPress={() => {
@@ -339,7 +328,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.emptyDna}>
-              <Text style={styles.emptyMuted}>Fiziki profilin eksik.</Text>
+              <Text style={styles.emptyMuted}>Fiziksel profilin eksik.</Text>
               <TouchableOpacity
                 style={styles.styleBtn}
                 onPress={() => {
@@ -354,7 +343,7 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* ── Hesap ── */}
+        {/* 5 ── HESAP ── */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>HESAP</Text>
 
@@ -367,7 +356,7 @@ export default function ProfileScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.listItemText}>İsmini Güncelle</Text>
+              <Text style={styles.listItemText}>Profilimi Düzenle</Text>
               <Feather name="chevron-right" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           ) : (
@@ -403,16 +392,36 @@ export default function ProfileScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+
+              {/* Fiziksel profil alt-linki — isim düzenleme alanının altında */}
+              <TouchableOpacity
+                onPress={() => {
+                  setEditingName(false);
+                  setTargetOnboardingScreen('PhysicalProfile');
+                  setOnboarded(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.physEditLink}>Fiziksel bilgileri düzenle →</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* Ayırıcı */}
           <View style={styles.listDivider} />
 
-          {/* Çıkış Yap — Hesap kartı içinde */}
           <TouchableOpacity style={styles.listItem} onPress={handleLogout} activeOpacity={0.7}>
             <Text style={[styles.listItemText, styles.logoutText]}>Çıkış Yap</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* 6 ── KİMLİK (en altta) ── */}
+        <View style={styles.separator} />
+        <View style={styles.avatarSection}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials(user.name)}</Text>
+          </View>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userEmail}>{user.email}</Text>
         </View>
 
         <View style={styles.bottomPad} />
@@ -573,6 +582,11 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginVertical: spacing.xs,
+  },
+  physEditLink: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
   listItem: {
     flexDirection: 'row',
