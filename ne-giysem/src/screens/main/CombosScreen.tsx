@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -38,6 +39,13 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 const FREE_RENDER_LIMIT = 3;
+
+const LOADING_MSGS = [
+  'Parçalar seçiliyor…',
+  'Mankenin hazırlanıyor…',
+  'Kombin giydiriliyor…',
+  'Son rötuşlar yapılıyor…',
+] as const;
 
 function comboKey(combo: Combo): string {
   return combo.items.map((i) => i.id).sort().join('|');
@@ -152,14 +160,46 @@ function ModelModal({
   visible,
   imageUrl,
   hasExtras,
+  isLoading,
   onClose,
 }: {
   visible: boolean;
   imageUrl: string | null;
   hasExtras: boolean;
+  isLoading: boolean;
   onClose: () => void;
 }) {
-  const insets = useSafeAreaInsets();
+  const insets    = useSafeAreaInsets();
+  const spinValue = useRef(new Animated.Value(0)).current;
+  const fadeValue = useRef(new Animated.Value(1)).current;
+  const [msgIdx, setMsgIdx] = useState(0);
+
+  useEffect(() => {
+    if (!isLoading) {
+      spinValue.stopAnimation();
+      spinValue.setValue(0);
+      setMsgIdx(0);
+      fadeValue.setValue(1);
+      return;
+    }
+
+    // Dönen halka
+    Animated.loop(
+      Animated.timing(spinValue, { toValue: 1, duration: 1400, useNativeDriver: true }),
+    ).start();
+
+    // Mesaj değişimi — fade + cycle
+    const interval = setInterval(() => {
+      Animated.timing(fadeValue, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setMsgIdx((prev) => (prev + 1) % LOADING_MSGS.length);
+        Animated.timing(fadeValue, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      });
+    }, 2200);
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   const handleShare = async () => {
     if (!imageUrl) return;
@@ -181,32 +221,63 @@ function ModelModal({
           </TouchableOpacity>
         </View>
 
-        {/* Görsel */}
-        <ScrollView
-          contentContainerStyle={modalStyles.imageContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={modalStyles.image}
-              resizeMode="contain"
-            />
-          ) : null}
-          {hasExtras && (
-            <Text style={modalStyles.modelNote}>
-              Çanta ve takılar mankene yansıtılamıyor — tam kombini kartta görebilirsin.
-            </Text>
-          )}
-        </ScrollView>
+        {isLoading || !imageUrl ? (
+          /* ── Bekleme ekranı ── */
+          <View style={modalStyles.loadingScreen}>
+            {/* Dönen halka + ikon */}
+            <View style={modalStyles.spinnerWrap}>
+              <Animated.View style={[modalStyles.spinRing, { transform: [{ rotate: spin }] }]} />
+              <Feather name="shopping-bag" size={36} color={colors.accent} />
+            </View>
 
-        {/* Paylaş */}
-        <View style={modalStyles.footer}>
-          <TouchableOpacity style={modalStyles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
-            <Feather name="share-2" size={16} color={colors.white} />
-            <Text style={modalStyles.shareBtnText}>Paylaş</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={modalStyles.loadingTitle}>Kombinini hazırlıyoruz</Text>
+
+            {/* Değişen mesaj */}
+            <Animated.Text style={[modalStyles.loadingMsg, { opacity: fadeValue }]}>
+              {LOADING_MSGS[msgIdx]}
+            </Animated.Text>
+
+            {/* İlerleme noktaları */}
+            <View style={modalStyles.dotsRow}>
+              {[0, 1, 2].map((i) => (
+                <View
+                  key={i}
+                  style={[modalStyles.dot, i === msgIdx % 3 && modalStyles.dotActive]}
+                />
+              ))}
+            </View>
+
+            <Text style={modalStyles.loadingNote}>
+              Bu işlem birkaç dakika sürebilir, ekranı açık tutman yeterli.
+            </Text>
+          </View>
+        ) : (
+          /* ── Sonuç ekranı ── */
+          <>
+            <ScrollView
+              contentContainerStyle={modalStyles.imageContainer}
+              showsVerticalScrollIndicator={false}
+            >
+              <Image
+                source={{ uri: imageUrl }}
+                style={modalStyles.image}
+                resizeMode="contain"
+              />
+              {hasExtras && (
+                <Text style={modalStyles.modelNote}>
+                  Çanta ve takılar mankene yansıtılamıyor — tam kombini kartta görebilirsin.
+                </Text>
+              )}
+            </ScrollView>
+
+            <View style={modalStyles.footer}>
+              <TouchableOpacity style={modalStyles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
+                <Feather name="share-2" size={16} color={colors.white} />
+                <Text style={modalStyles.shareBtnText}>Paylaş</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
       </SafeAreaView>
     </Modal>
@@ -306,6 +377,7 @@ export default function CombosScreen() {
   const [modelImageUrl,        setModelImageUrl]         = useState<string | null>(null);
   const [modelModalVisible,    setModelModalVisible]     = useState(false);
   const [modelHasExtras,       setModelHasExtras]        = useState(false);
+  const [modelLoading,         setModelLoading]          = useState(false);
   const [lightboxItemId,       setLightboxItemId]        = useState<string | null>(null);
   const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
@@ -382,6 +454,10 @@ export default function CombosScreen() {
       return;
     }
 
+    // Modal hemen aç — bekleme ekranı gösterilsin
+    setModelImageUrl(null);
+    setModelLoading(true);
+    setModelModalVisible(true);
     setGeneratingComboId(combo.id);
 
     try {
@@ -415,8 +491,7 @@ export default function CombosScreen() {
         if (headRes.ok) {
           // Cache HIT — FASHN çağrısı yok, render sayacı artmaz
           setModelImageUrl(cachedUrl);
-          setModelModalVisible(true);
-          return;
+          return;   // finally loading'i kapatır
         }
       } catch {
         // HEAD hatası → cache miss sayılır, devam et
@@ -445,14 +520,15 @@ export default function CombosScreen() {
 
       // Upload patlasa bile FASHN URL'iyle manken gösterilir; sadece o sefer cache'lenmez
       setModelImageUrl(upErr ? finalUrl : uploadedUrl);
-      setModelModalVisible(true);
     } catch (err) {
+      setModelModalVisible(false);
       Alert.alert(
         'Hata',
         err instanceof Error ? err.message : 'Manken görüntüsü oluşturulamadı. Lütfen tekrar dene.',
       );
     } finally {
       setGeneratingComboId(null);
+      setModelLoading(false);
     }
   }, [user]);
 
@@ -616,7 +692,8 @@ export default function CombosScreen() {
         visible={modelModalVisible}
         imageUrl={modelImageUrl}
         hasExtras={modelHasExtras}
-        onClose={() => setModelModalVisible(false)}
+        isLoading={modelLoading}
+        onClose={() => { setModelModalVisible(false); setModelLoading(false); setModelImageUrl(null); }}
       />
       <PremiumModal
         visible={premiumModalVisible}
@@ -996,6 +1073,63 @@ const modalStyles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
+  },
+
+  // Bekleme ekranı
+  loadingScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.lg,
+  },
+  spinnerWrap: {
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinRing: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderTopColor: colors.accent,
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent',
+  },
+  loadingTitle: {
+    fontSize: 22,
+    fontWeight: '500',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  loadingMsg: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.border,
+  },
+  dotActive: {
+    backgroundColor: colors.accent,
+  },
+  loadingNote: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: spacing.md,
   },
 
   // Parça lightbox
