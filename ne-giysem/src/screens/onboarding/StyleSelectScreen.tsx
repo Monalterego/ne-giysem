@@ -120,12 +120,14 @@ function WeightSlider({ value, onChange }: { value: number; onChange: (v: number
 function StyleCard({
   name,
   isSelected,
+  canRemove,
   weight,
   showWeight,
   onPress,
 }: {
   name: string;
   isSelected: boolean;
+  canRemove: boolean;
   weight: number;
   showWeight: boolean;
   onPress: () => void;
@@ -159,11 +161,11 @@ function StyleCard({
         <Text style={styles.cardDesc} numberOfLines={1}>{data.turkishDesc}</Text>
       </View>
 
-      {/* Seçim badge */}
+      {/* Seçim badge — kaldırılabilirse ✕ göster (görsel ipucu) */}
       {isSelected && (
-        <View style={styles.checkBadge}>
+        <View style={[styles.checkBadge, canRemove && styles.checkBadgeRemovable]}>
           <Text style={styles.checkBadgeText}>
-            {showWeight ? `${weight}%` : '✓'}
+            {showWeight ? `${weight}%` : (canRemove ? '✕' : '✓')}
           </Text>
         </View>
       )}
@@ -210,7 +212,14 @@ export default function StyleSelectScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.badge}>YOL A</Text>
-        <Text style={styles.title}>Tarzını Seç</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Tarzını Seç</Text>
+          {entries.length > 0 && (
+            <TouchableOpacity onPress={() => setEntries([])} activeOpacity={0.7}>
+              <Text style={styles.resetLink}>Sıfırla</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.subtitle}>
           Birden fazla seçebilirsin — ağırlıkları ayarlayabilirsin
         </Text>
@@ -228,6 +237,7 @@ export default function StyleSelectScreen({ navigation }: Props) {
                   key={style.name}
                   name={style.name}
                   isSelected={isSelected}
+                  canRemove={isSelected && entries.length > 1}
                   weight={entry?.weight ?? 0}
                   showWeight={showWeightPct && isSelected}
                   onPress={() => toggle(style.name)}
@@ -300,10 +310,20 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginBottom: spacing.xs,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
   title: {
     ...typography.h1,
     color: colors.text,
-    marginBottom: spacing.xs,
+  },
+  resetLink: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
   },
   subtitle: {
     ...typography.bodySmall,
@@ -386,6 +406,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs + 2,
     paddingVertical: spacing.xs - 1,
     alignItems: 'center',
+  },
+  checkBadgeRemovable: {
+    backgroundColor: colors.error,   // kırmızı = kaldırılabilir ipucu
   },
   checkBadgeText: {
     ...typography.caption,

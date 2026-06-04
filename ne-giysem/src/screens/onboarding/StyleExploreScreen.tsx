@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -57,11 +57,8 @@ function MoodboardCard({ card }: { card: StyleCardData }) {
   const data = STYLE_DATA_MAP[card.name];
   const [failed, setFailed] = useState(false);
 
-  const imageUri = useMemo(() => {
-    if (card.images.length === 0) return null;
-    return card.images[Math.floor(Math.random() * card.images.length)];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card.name]);
+  // Sabit ilk görsel — random kullanma (prefetch'i bozar + her render yeni URL seçer)
+  const imageUri = card.images[0] ?? null;
 
   const bg = data?.palette[0] ?? colors.black;
 
@@ -122,6 +119,13 @@ const cardStyles = StyleSheet.create({
 
 export default function StyleExploreScreen({ navigation }: Props) {
   const [cards] = useState<StyleCardData[]>(() => shuffleArray([...STYLE_CARDS]));
+
+  // Tüm kart görsellerini mount'ta prefetch et → swipe öncesi cache'te
+  useEffect(() => {
+    STYLE_CARDS.forEach((c) => {
+      if (c.images[0]) Image.prefetch(c.images[0]).catch(() => {});
+    });
+  }, []);
 
   const cardIndexRef   = useRef(0);
   const swipeCountRef  = useRef(0);
