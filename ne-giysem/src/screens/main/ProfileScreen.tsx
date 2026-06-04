@@ -283,7 +283,7 @@ export default function ProfileScreen() {
 
         {/* ── Fotoğrafım ── */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>FOTOĞRAFIM</Text>
+          <Text style={styles.sectionLabel}>KOMBİNLERİ KENDİNDE GÖR</Text>
           <View style={styles.avatarPickerSection}>
             <TouchableOpacity
               style={styles.avatarPickerCircle}
@@ -405,16 +405,15 @@ export default function ProfileScreen() {
               </View>
             </View>
           )}
-        </View>
 
-        {/* ── Çıkış Yap ── */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.logoutText}>Çıkış Yap</Text>
-        </TouchableOpacity>
+          {/* Ayırıcı */}
+          <View style={styles.listDivider} />
+
+          {/* Çıkış Yap — Hesap kartı içinde */}
+          <TouchableOpacity style={styles.listItem} onPress={handleLogout} activeOpacity={0.7}>
+            <Text style={[styles.listItemText, styles.logoutText]}>Çıkış Yap</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.bottomPad} />
       </ScrollView>
@@ -570,6 +569,11 @@ const styles = StyleSheet.create({
   },
 
   // Hesap — liste item
+  listDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
+  },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
