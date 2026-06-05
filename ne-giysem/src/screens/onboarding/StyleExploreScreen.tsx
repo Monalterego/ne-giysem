@@ -53,7 +53,13 @@ function normalizeScores(scores: Record<string, number>): StyleEntry[] {
 
 // ─── Moodboard kart bileşeni ──────────────────────────────────────────────────
 
-function MoodboardCard({ card }: { card: StyleCardData }) {
+const MoodboardCard = React.memo(function MoodboardCard({
+  card,
+  isBack = false,
+}: {
+  card: StyleCardData;
+  isBack?: boolean;
+}) {
   const data = STYLE_DATA_MAP[card.name];
   const [failed, setFailed] = useState(false);
 
@@ -70,6 +76,7 @@ function MoodboardCard({ card }: { card: StyleCardData }) {
           source={{ uri: imageUri }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
+          fadeDuration={0}
           onError={() => setFailed(true)}
         />
       ) : (
@@ -78,19 +85,21 @@ function MoodboardCard({ card }: { card: StyleCardData }) {
         </View>
       )}
 
-      {/* Alt gradient — şeffaftan siyaha */}
-      <LinearGradient
-        colors={['transparent', 'rgba(10,10,10,0.88)']}
-        style={cardStyles.gradient}
-      >
-        <Text style={cardStyles.cardName} numberOfLines={1}>{card.name}</Text>
-        <Text style={cardStyles.cardDesc} numberOfLines={2}>
-          {data?.turkishDesc ?? card.keywords.join(' · ')}
-        </Text>
-      </LinearGradient>
+      {/* Arka kartta gradient ve metin render etme — compositing maliyetini düşürür */}
+      {!isBack && (
+        <LinearGradient
+          colors={['transparent', 'rgba(10,10,10,0.88)']}
+          style={cardStyles.gradient}
+        >
+          <Text style={cardStyles.cardName} numberOfLines={1}>{card.name}</Text>
+          <Text style={cardStyles.cardDesc} numberOfLines={2}>
+            {data?.turkishDesc ?? card.keywords.join(' · ')}
+          </Text>
+        </LinearGradient>
+      )}
     </View>
   );
-}
+});
 
 const cardStyles = StyleSheet.create({
   gradient: {
@@ -151,12 +160,6 @@ export default function StyleExploreScreen({ navigation }: Props) {
     outputRange: [1, 0, 0],
     extrapolate: 'clamp',
   });
-  const backScale = pan.x.interpolate({
-    inputRange: [-SWIPE_THR, 0, SWIPE_THR],
-    outputRange: [1, 0.94, 1],
-    extrapolate: 'clamp',
-  });
-
   const handleSwipeRef = useRef<(liked: boolean) => void>(() => undefined);
 
   const handleSwipe = useCallback(
@@ -249,14 +252,14 @@ export default function StyleExploreScreen({ navigation }: Props) {
       {/* Kart yığını */}
       <View style={styles.stackArea}>
         {nextCard && (
-          <Animated.View
+          <View
             style={[
               StyleSheet.absoluteFill,
-              { transform: [{ scale: backScale }], opacity: 0.72, zIndex: 0 },
+              { transform: [{ scale: 0.94 }], opacity: 0.6, zIndex: 0 },
             ]}
           >
-            <MoodboardCard card={nextCard} />
-          </Animated.View>
+            <MoodboardCard card={nextCard} isBack />
+          </View>
         )}
 
         <Animated.View
