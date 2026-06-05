@@ -482,6 +482,7 @@ export default function WardrobeScreen({ navigation }: Props) {
 
       {/* İçerik */}
       <FlatList
+        style={{ flex: 1 }}
         key={viewMode}
         data={filteredItems}
         numColumns={viewMode === 'grid' ? 2 : 1}
@@ -603,6 +604,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     flexShrink: 0,
+    flexGrow: 0,
+    maxHeight: 56,
   },
   filterBarContent: {
     paddingHorizontal: layout.screenPaddingH,
@@ -637,6 +640,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     flexShrink: 0,
+    flexGrow: 0,
+    maxHeight: 48,
   },
   subFilterBarContent: {
     paddingHorizontal: layout.screenPaddingH,
