@@ -104,6 +104,7 @@ function composeOutfit(
   pools: { bags: WardrobeItem[]; outers: WardrobeItem[]; accessories: WardrobeItem[] },
   occasion: Occasion,
   usagePenalty?: { bags: Map<string, number>; outers: Map<string, number> },
+  weather?: WeatherData,
 ): ComposedOutfit {
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
   const rule = OCCASION_RULES[ruleKey];
@@ -133,8 +134,12 @@ function composeOutfit(
     ? pools.outers.filter((o) => !LAYER_ONLY.includes(o.subCategory ?? ''))
     : pools.outers;
 
+  const temp     = weather?.temp;
+  const tooHot   = temp != null && temp > 24;   // sıcakta dış giyim zorlama
+  const coolNeed = temp != null && temp < 16;   // serin/soğukta dış giyime istekli
+
   let chosenOuter: WardrobeItem | undefined;
-  if (occasion !== 'spor') {
+  if (occasion !== 'spor' && !tooHot) {
     const outer = outerCandidates
       .map((o) => {
         const used    = usagePenalty?.outers.get(o.id) ?? 0;
@@ -142,7 +147,7 @@ function composeOutfit(
         return { item: o, score: colorAvg(o) * registerFit(o, occasion) * penalty };
       })
       .sort((a, b) => b.score - a.score)[0]?.item;
-    if (outer && (FORMAL_OUTER_OCCASIONS.has(occasion) || pts() < rule.pointTarget[0])) {
+    if (outer && (coolNeed || FORMAL_OUTER_OCCASIONS.has(occasion) || pts() < rule.pointTarget[0])) {
       outfitItems.push(outer);
       chosenOuter = outer;
     }
@@ -334,7 +339,7 @@ export function generateCombos(
   const results = top
     .map(({ core, colorHarmony }) => {
       const { items: outfitItems, completeness, chosenBag, chosenOuter } = composeOutfit(
-        core, pools, occasion, { bags: bagUsage, outers: outerUsage },
+        core, pools, occasion, { bags: bagUsage, outers: outerUsage }, weather,
       );
       // Seçilen çanta/dış giyimin kullanım sayacını artır
       if (chosenBag)   bagUsage.set(chosenBag.id,   (bagUsage.get(chosenBag.id)   ?? 0) + 1);
