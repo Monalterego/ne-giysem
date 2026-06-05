@@ -126,9 +126,16 @@ function composeOutfit(
   if (bag) { outfitItems.push(bag); chosenBag = bag; }
 
   // b) DIŞ GİYİM: colorMatch × registerFit × kullanım cezası, spor hariç
+  // Elbise core'unda yelek/hırka (iç katman) elenir — sadece gerçek üst katman kalır
+  const hasDress = core.some((i) => i.category === 'dress_jumpsuit');
+  const LAYER_ONLY = ['yelek', 'hirka'];
+  const outerCandidates = hasDress
+    ? pools.outers.filter((o) => !LAYER_ONLY.includes(o.subCategory ?? ''))
+    : pools.outers;
+
   let chosenOuter: WardrobeItem | undefined;
   if (occasion !== 'spor') {
-    const outer = pools.outers
+    const outer = outerCandidates
       .map((o) => {
         const used    = usagePenalty?.outers.get(o.id) ?? 0;
         const penalty = 1 - Math.min(used * 0.15, 0.45);
