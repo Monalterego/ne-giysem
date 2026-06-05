@@ -211,7 +211,8 @@ function composeOutfit(
 
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
 
-const CANDIDATE_CAP = 40;
+const PER_UPPER_CAP = 3;   // her core lead parça en az bu kadar adayla temsil edilir
+const GLOBAL_CAP    = 120; // toplam havuz büyüklüğü (40 → 120)
 
 function comboLabel(score: number): string {
   return score >= 80 ? 'Mükemmel Uyum' : score >= 65 ? 'İyi Kombin' : 'Kabul Edilebilir';
@@ -349,12 +350,36 @@ export function generateCombos(
     }
   }
 
-  // proxy skoruna göre sırala; seasonProxy çarpan değil toplamsal — kaba eleme için yeterli
-  candidates.sort((a, b) =>
-    (b.colorHarmony + b.occFit + b.prop + b.regFit + b.seasonProxy) -
-    (a.colorHarmony + a.occFit + a.prop + a.regFit + a.seasonProxy),
-  );
-  const top = candidates.slice(0, CANDIDATE_CAP);
+  // 1. geçiş proxy skoru — renk tek başına domine etmesin; okazyon + register ağırlığı artırıldı
+  const proxyScore = (c: Candidate) =>
+    c.colorHarmony * 0.30 +
+    c.occFit       * 0.25 +
+    c.regFit       * 0.20 +
+    c.prop         * 0.15 +
+    c.seasonProxy  * 0.10;
+
+  candidates.sort((a, b) => proxyScore(b) - proxyScore(a));
+
+  // Kategori dengesi: her core lead parçası (üst veya elbise) en az PER_UPPER_CAP adayla temsil edilir
+  // → basic parça da havuza girer, tek parça tüm slotları kapamaz
+  const perUpperMap = new Map<string, Candidate[]>();
+  for (const cand of candidates) {
+    const leadId = cand.core[0].id;
+    const bucket = perUpperMap.get(leadId) ?? [];
+    if (bucket.length < PER_UPPER_CAP) {
+      bucket.push(cand);
+      perUpperMap.set(leadId, bucket);
+    }
+  }
+  const topSet = new Set<Candidate>();
+  for (const group of perUpperMap.values()) {
+    for (const c of group) topSet.add(c);
+  }
+  for (const c of candidates) {
+    if (topSet.size >= GLOBAL_CAP) break;
+    topSet.add(c); // Set referans eşitliği ile tekilleştirir
+  }
+  const top = [...topSet];
 
   // ─── 2. GEÇİŞ: composeOutfit çağır, final skor hesapla ──────────────────────
   const now = new Date().toISOString();
