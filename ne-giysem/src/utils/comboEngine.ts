@@ -217,35 +217,50 @@ function comboLabel(score: number): string {
   return score >= 80 ? 'Mükemmel Uyum' : score >= 65 ? 'İyi Kombin' : 'Kabul Edilebilir';
 }
 
-// Kombinın taban imzası: üst/alt/elbise ID'lerinin sıralı birleşimi
+// Kombinın taban imzası: üst/alt/elbise/ayakkabı ID'lerinin sıralı birleşimi
 // Aynı imza = aynı çekirdek (çeşitlilik için sert engel)
 function baseSignature(combo: Combo): string {
   return combo.items
-    .filter((i) => ['upper', 'lower', 'dress_jumpsuit'].includes(i.category))
+    .filter((i) => ['upper', 'lower', 'dress_jumpsuit', 'shoes'].includes(i.category))
     .map((i) => i.id)
     .sort()
     .join('|');
 }
 
-const PENALTY = 8;
+const PENALTY = 20;
+const MAX_ITEM_USE = 2;
+const CORE_CATS = new Set(['upper', 'lower', 'dress_jumpsuit', 'shoes']);
 
-// Greedy çeşitlilik seçimi: skor + kullanım cezası + çekirdek tekrar engeli
+// Greedy çeşitlilik seçimi: skor + kullanım cezası + çekirdek tekrar engeli + parça başı kullanım sınırı
 function selectDiverse(candidates: Combo[], maxCombos: number): Combo[] {
   const selected        = [] as Combo[];
   const usage           = new Map<string, number>();
   const usedSignatures  = new Set<string>();
   const pool            = [...candidates];
 
-  while (selected.length < maxCombos && pool.length) {
+  const findBest = (enforceLimit: boolean): number => {
     let bestIdx = -1, bestAdj = -Infinity;
     for (let i = 0; i < pool.length; i++) {
       const c = pool[i];
-      if (usedSignatures.has(baseSignature(c))) continue;      // sert: aynı çekirdek yasak
+      if (usedSignatures.has(baseSignature(c))) continue;
+      if (enforceLimit) {
+        const overused = c.items
+          .filter((it) => CORE_CATS.has(it.category))
+          .some((it) => (usage.get(it.id) ?? 0) >= MAX_ITEM_USE);
+        if (overused) continue;
+      }
       const reuse = c.items.reduce((s, it) => s + (usage.get(it.id) ?? 0), 0);
-      const adj   = c.score - reuse * PENALTY;                 // yumuşak: tekrar cezası
+      const adj   = c.score - reuse * PENALTY;
       if (adj > bestAdj) { bestAdj = adj; bestIdx = i; }
     }
-    if (bestIdx === -1) break;                                  // kalan adayların hepsi çakışıyor
+    return bestIdx;
+  };
+
+  while (selected.length < maxCombos && pool.length) {
+    // Önce sınırlı geçiş; bulunamazsa (küçük dolap) sınırı gevşet
+    let bestIdx = findBest(true);
+    if (bestIdx === -1) bestIdx = findBest(false);
+    if (bestIdx === -1) break;
     const chosen = pool.splice(bestIdx, 1)[0];
     selected.push(chosen);
     usedSignatures.add(baseSignature(chosen));
