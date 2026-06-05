@@ -115,14 +115,16 @@ function composeOutfit(
   const colorAvg = (aday: WardrobeItem) =>
     core.reduce((s, ci) => s + itemColorScore(ci, aday), 0) / core.length;
 
-  // a) ÇANTA: colorMatch × registerFit × kullanım cezası (her kullanımda -%15, max -%45)
+  // a) ÇANTA: colorMatch × registerFit × kullanım cezası; eşiği geçemeyen çanta eklenmez
+  const BAG_FIT_MIN = occasion === 'spor' ? 0.65 : 0.4;
   let chosenBag: WardrobeItem | undefined;
   const bag = pools.bags
     .map((b) => {
       const used    = usagePenalty?.bags.get(b.id) ?? 0;
       const penalty = 1 - Math.min(used * 0.15, 0.45);
-      return { item: b, score: colorAvg(b) * registerFit(b, occasion) * penalty };
+      return { item: b, regF: registerFit(b, occasion), score: colorAvg(b) * registerFit(b, occasion) * penalty };
     })
+    .filter((x) => x.regF >= BAG_FIT_MIN)
     .sort((a, b) => b.score - a.score)[0]?.item;
   if (bag) { outfitItems.push(bag); chosenBag = bag; }
 
