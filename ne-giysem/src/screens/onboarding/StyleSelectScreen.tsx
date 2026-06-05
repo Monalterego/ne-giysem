@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkBadgeRemovable: {
-    backgroundColor: colors.error,   // kırmızı = kaldırılabilir ipucu
+    backgroundColor: colors.textSecondary,   // nötr — ✕ ikonu kaldırılabilirliği gösterir
   },
   checkBadgeText: {
     ...typography.caption,

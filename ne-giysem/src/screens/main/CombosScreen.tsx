@@ -227,7 +227,7 @@ function ModelModal({
             {/* Dönen halka + ikon */}
             <View style={modalStyles.spinnerWrap}>
               <Animated.View style={[modalStyles.spinRing, { transform: [{ rotate: spin }] }]} />
-              <Feather name="shopping-bag" size={36} color={colors.accent} />
+              <Feather name="shopping-bag" size={36} color={colors.text} />
             </View>
 
             <Text style={modalStyles.loadingTitle}>Kombinini hazırlıyoruz</Text>
@@ -1095,7 +1095,7 @@ const modalStyles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 4,
-    borderTopColor: colors.accent,
+    borderTopColor: colors.text,
     borderRightColor: 'transparent',
     borderBottomColor: 'transparent',
     borderLeftColor: 'transparent',
@@ -1122,7 +1122,7 @@ const modalStyles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   dotActive: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.text,
   },
   loadingNote: {
     ...typography.caption,
