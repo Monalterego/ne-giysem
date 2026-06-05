@@ -15,29 +15,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+import { supabase } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
-const REMOVEBG_API_KEY = process.env.EXPO_PUBLIC_REMOVEBG_API_KEY ?? '';
+const BG_PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/bg-removal-proxy';
 
 async function removeBackground(imageBase64: string): Promise<string> {
-  const res = await fetch('https://api.remove.bg/v1.0/removebg', {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(BG_PROXY_URL, {
     method: 'POST',
     headers: {
-      'X-Api-Key':    REMOVEBG_API_KEY,
+      'Authorization': `Bearer ${session?.access_token ?? ''}`,
       'Content-Type': 'application/json',
-      'Accept':       'application/json',
     },
-    body: JSON.stringify({ image_file_b64: imageBase64, size: 'auto' }),
+    body: JSON.stringify({ image_b64: imageBase64 }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any)?.errors?.[0]?.title ?? `Remove.bg hatası: ${res.status}`);
+    throw new Error((err as any)?.error ?? `Arka plan kaldırma hatası: ${res.status}`);
   }
 
   const json = await res.json();
-  return (json as any).data.result_b64 as string;
+  return (json as any).result_b64 as string;
 }
 
 export default function UploadScreen({ navigation }: Props) {
