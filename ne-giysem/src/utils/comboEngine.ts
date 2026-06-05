@@ -138,7 +138,7 @@ function composeOutfit(
     : pools.outers;
 
   const temp     = weather?.temp;
-  const tooHot   = temp != null && temp > 24;   // sıcakta dış giyim zorlama
+  const tooHot   = temp != null && temp >= 20;  // 20°C ve üstü: dış giyim eklenmez
   const coolNeed = temp != null && temp < 16;   // serin/soğukta dış giyime istekli
 
   let chosenOuter: WardrobeItem | undefined;
@@ -159,20 +159,31 @@ function composeOutfit(
   // c) AKSESUARLAR — register-ağırlıklı sıralama + registerFit < 0.4 ekleme yasağı
   // minAccessories karşılanana kadar pointTarget[0] tavanı devreye girmez;
   // pointTarget[1] (max) SADECE minAccessories sağlandıktan sonra kapatır.
+  // minAccessories=0 okazyonlarda (günlük, seyahat): yine de yüksek uyumlu (>0.72) 1 aksesuar
+  // pointTarget[1] aşılmadıkça eklenir — "fırsat varsa değerlendir" mantığı.
   const ranked = pools.accessories
     .map((a) => ({ item: a, colorMatch: colorAvg(a), regF: registerFit(a, occasion) }))
     .filter((x) => x.colorMatch > 0.65 && x.regF >= 0.4)
-    .sort((a, b) => (b.colorMatch * b.regF) - (a.colorMatch * a.regF))
-    .map((x) => x.item);
+    .sort((a, b) => (b.colorMatch * b.regF) - (a.colorMatch * a.regF));
+  const rankedItems = ranked.map((x) => x.item);
   let accStatements = 0;
   let accAdded = 0;
   const usedZones = new Set<string>();
   let faceNeckStatement = false;
 
-  for (const acc of ranked) {
+  for (let ri = 0; ri < rankedItems.length; ri++) {
+    const acc = rankedItems[ri];
+    const { colorMatch, regF } = ranked[ri];
     const reachedMin = pts() >= rule.pointTarget[0];
     const enoughAcc  = accAdded >= rule.minAccessories;
-    if (reachedMin && enoughAcc) break;
+    if (reachedMin && enoughAcc) {
+      // minAccessories=0: pointTarget[1] dolmadıkça yüksek uyumlu 1 aksesuar daha dene
+      if (rule.minAccessories === 0 && accAdded < 1 && colorMatch > 0.72 && regF >= 0.5 && pts() < rule.pointTarget[1]) {
+        // yüksek eşik geçildi — bu iterasyonu devam ettir
+      } else {
+        break;
+      }
+    }
     if (enoughAcc && pts() >= rule.pointTarget[1]) break;
     const zone = ACCESSORY_ZONES[acc.subCategory ?? ''];
     if (!zone) continue;
