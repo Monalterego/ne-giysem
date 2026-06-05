@@ -18,6 +18,14 @@ Kullanıcıların gardrobunu dijitalleştiren, yapay zeka ile kombin önerileri 
 - **Push Notification:** Expo Notifications / OneSignal (V2 — V1'de ertelendi)
 - **Hava Durumu:** OpenWeatherMap API (V2 — V1'de ertelendi)
 
+## Dizin Yapısı
+
+- Git deposu kökü: `ne-giysem/` — dokümanlar burada (CLAUDE.md, PRD, wireframes vb.)
+- Uygulama kodu: `ne-giysem/ne-giysem/` — Expo/EAS projesi (package.json, src/, app.json burada)
+- EAS komutları (`eas build`, `eas update` vb.) `ne-giysem/ne-giysem/` içinden çalıştırılır
+- `git` komutları depo kökünden (`ne-giysem/`) çalıştırılır
+- NOT: İç içe yapı bilinçli (doküman + kod ayrımı); düzleştirme launch sonrasına ertelendi
+
 ## Geliştirme Kuralları
 
 - TypeScript kullan (strict mode)
