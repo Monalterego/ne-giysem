@@ -94,6 +94,7 @@ async function fetchDnaFromClaude(
 export default function StyleResultScreen({ route, navigation }: Props) {
   const { selectedStyles } = route.params;
   const setStyleProfile = useUserStore((s: UserState) => s.setStyleProfile);
+  const setOnboarded    = useUserStore((s: UserState) => s.setOnboarded);
   const user            = useUserStore((s: UserState) => s.user);
 
   const primary = selectedStyles[0];
@@ -138,7 +139,7 @@ export default function StyleResultScreen({ route, navigation }: Props) {
       return;
     }
     setStyleProfile({ styles: selectedStyles, colorPalette: palette });
-    navigation.navigate('PhysicalProfile');
+    setOnboarded(true);
   };
 
   const handleShare = async () => {
