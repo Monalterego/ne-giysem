@@ -44,10 +44,27 @@ const REGISTER_FIT: Record<OccasionId, Record<Register, number>> = {
   davet:   { athletic: 0.15, casual: 0.4, business: 0.7, evening: 1.0 },
 };
 
+/**
+ * Athletic anahtar kelime içermeyen sneaker = smart-casual.
+ * Koşu/spor sneaker değil → iş/brunch/seyahatte yükseltilir.
+ */
+function isSmartSneaker(item: WardrobeItem): boolean {
+  if ((item.subCategory ?? '') !== 'sneaker') return false;
+  const name = (item.itemName ?? '').toLowerCase();
+  return !ATHLETIC_KW.some((k) => name.includes(k));
+}
+
 /** 0–1 register-okasyon uyum skoru. 'all' → gunluk olarak çözülür. */
 export function registerFit(item: WardrobeItem, occasion: OccasionId | 'all'): number {
   const occ: OccasionId = occasion === 'all' ? 'gunluk' : occasion;
-  return REGISTER_FIT[occ][getRegister(item)];
+  let base = REGISTER_FIT[occ][getRegister(item)];
+  // Smart-casual sneaker yükseltmesi: loafer öncelikli kalır (0.82 < 1.0), ama seçenek açılır
+  if (isSmartSneaker(item)) {
+    if (occ === 'is')      base = Math.max(base, 0.82);
+    if (occ === 'brunch')  base = Math.max(base, 0.9);
+    if (occ === 'seyahat') base = Math.max(base, 0.9);
+  }
+  return base;
 }
 
 /**
