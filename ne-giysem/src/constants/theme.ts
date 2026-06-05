@@ -18,9 +18,9 @@ export const colors = {
   textSecondary: '#6B6B6B',
   textTertiary:  '#A8A8A8',
 
-  // Accent — sıcak gold
-  accent:      '#B8965A',
-  accentLight: '#F0E8D8',
+  // Accent — siyah minimal (vurgu = siyah)
+  accent:      '#0A0A0A',
+  accentLight: '#F5F4F2',
 
   // Semantic
   error:   '#C0392B',

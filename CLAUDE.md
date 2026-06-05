@@ -24,9 +24,13 @@ Kullanıcıların gardrobunu dijitalleştiren, yapay zeka ile kombin önerileri 
 - Kod yorumları Türkçe
 - Commit mesajları İngilizce (conventional commits: feat:, fix:, chore:, docs:)
 - Mobile-first tasarım
-- Elegant moda estetiği: siyah-beyaz baskın, soft rose/champagne accent (#E94560), bol whitespace
 - Font: DM Sans (body) + Playfair Display (başlıklar)
-- Renk paleti: primary #1A1A2E, accent #E94560, secondary #0F3460
+
+## Tasarım Dili
+- Siyah-minimal estetik (Zara/sade): vurgu rengi = SİYAH (#0A0A0A), bol whitespace
+- Renk paleti: text/accent #0A0A0A, background #FAFAFA, surface #F5F4F2, border #E8E6E1
+- Renkli accent KULLANMA (altın/pembe/mavi yok). Semantic istisna: error #C0392B, success #2D6A4F
+- Tüm renkler src/constants/theme.ts'teki colors token'ından gelir; hardcode hex YASAK
 - Component-based mimari, her ekran kendi klasöründe
 - React Navigation kullan (Stack + Bottom Tabs)
 
