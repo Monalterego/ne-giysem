@@ -20,7 +20,7 @@ import { STYLE_DATA_MAP } from '../../constants/styles';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleResult'>;
 
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -44,8 +44,6 @@ function buildPalette(entries: StyleEntry[]): string[] {
 async function fetchDnaFromClaude(
   entries: StyleEntry[],
 ): Promise<{ dnaName: string; traits: string[] }> {
-  if (!API_KEY) throw new Error('API key eksik');
-
   const profileLine = entries
     .map((e) => `${e.name} (%${e.weight})`)
     .join(' · ');
@@ -58,13 +56,12 @@ async function fetchDnaFromClaude(
   "traits": ["4 adet kısa Türkçe stil özelliği"]
 }`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(PROXY_URL, {
     method: 'POST',
     headers: {
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5-20250929',

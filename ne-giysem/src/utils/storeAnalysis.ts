@@ -1,7 +1,8 @@
 import type { WardrobeItem } from '../types';
 import type { VisionResult } from './visionAnalysis';
+import { supabase } from '../lib/supabase';
 
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
 
 export interface CompatibilityResult {
   verdict: string;
@@ -24,8 +25,6 @@ export async function analyzeStoreCompatibility(
   vision: VisionResult,
   wardrobeItems: WardrobeItem[],
 ): Promise<CompatibilityResult> {
-  if (!API_KEY) throw new Error('Anthropic API key eksik.');
-
   const displayItems = wardrobeItems.slice(0, 25);
 
   const itemList = displayItems
@@ -67,13 +66,12 @@ YALNIZCA geçerli JSON döndür, başka hiçbir metin yazma:
 
 comboIds: dolaptaki mevcut parçalardan (yukarıdaki köşeli parantez içindeki ID'leri kullan) en fazla 2 kombin önerisi, her kombinde 2-3 parça. Taranan ürünü dahil etme — yalnızca dolaptaki parçaları referans et.`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(PROXY_URL, {
     method: 'POST',
     headers: {
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5-20250929',

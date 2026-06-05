@@ -1,6 +1,7 @@
 import type { ClothingCategory, Season } from '../types';
+import { supabase } from '../lib/supabase';
 
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
 
 export interface VisionResult {
   category: ClothingCategory;
@@ -92,10 +93,6 @@ function parseVisionResponse(text: string): VisionResult {
 }
 
 export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
-  if (!API_KEY) {
-    throw new Error('Anthropic API key eksik. .env dosyasını kontrol et.');
-  }
-
   const requestBody = {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
@@ -127,13 +124,12 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
   }, null, 2));
 
   const attemptRequest = async (): Promise<VisionResult> => {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(PROXY_URL, {
       method: 'POST',
       headers: {
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
     });

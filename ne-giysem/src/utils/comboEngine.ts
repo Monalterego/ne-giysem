@@ -11,8 +11,9 @@ import { buildReasoning, buildTitle } from './reasoning';
 import { seasonFit } from './seasonTheory';
 import type { WeatherData } from './weatherService';
 import { computeStyleVector } from './styleVector';
+import { supabase } from '../lib/supabase';
 
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
 
 export interface UserProfileInput {
   styleProfile?: string;   // "Minimalist %60, Old Money %40"
@@ -431,7 +432,6 @@ export async function generateCombosAI(
   previousItemIds: string[] = [],
   styleProfile?: Record<string, number>,
 ): Promise<Combo[]> {
-  if (!API_KEY) throw new Error('Anthropic API key eksik');
   if (!items.length) return [];
 
   // Mevsim ön filtresi
@@ -551,13 +551,12 @@ Tüm parçaları (üst, alt, ayakkabı, çanta, aksesuar, dış giyim) tek "item
   console.log('Outer pool count:', outerPool.length);
   console.log('Optional pool count:', optionalPool.length);
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(PROXY_URL, {
     method: 'POST',
     headers: {
-      'x-api-key':        API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type':     'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model:      'claude-sonnet-4-5-20250929',
