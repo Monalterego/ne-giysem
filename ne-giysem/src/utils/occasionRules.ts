@@ -46,6 +46,14 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     hardExcluded:           ['topuklu', 'maxi_elbise', 'clutch'],
     encouraged:             ['pantolon', 'sneaker', 'loafer', 'bluz', 'tisort', 'bot'],
   },
+  tatil: {
+    targetFormality:        [1, 5],
+    pointTarget:            [4, 6],
+    maxStatementAccessories: 2,
+    minAccessories:          0,
+    hardExcluded:           ['blazer', 'topuklu', 'bot', 'mont', 'kaban', 'sweatshirt', 'hoodie', 'tayt', 'cizme', 'trenchkot'],
+    encouraged:             ['sort', 'sandalet', 'sapka', 'gomlek', 'bluz', 'mini_elbise', 'tote'],
+  },
   brunch: {
     targetFormality:        [4, 7],
     pointTarget:            [5, 7],
@@ -118,7 +126,7 @@ export function getFormalityFit(item: WardrobeItem, occasion: OccasionId): numbe
 
 if (require.main === module) {
   const OCCASIONS_ORDER: OccasionId[] = [
-    'spor', 'gunluk', 'seyahat', 'brunch', 'is', 'date', 'gece', 'davet',
+    'spor', 'gunluk', 'seyahat', 'tatil', 'brunch', 'is', 'date', 'gece', 'davet',
   ];
 
   type TestItem = WardrobeItem & { label: string };

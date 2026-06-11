@@ -55,6 +55,13 @@ export const OCCASIONS = [
     icon: 'map-pin',
     styleGuide: 'Rahat ama şık, pratik. Geniş paça pantolon, sneaker veya loafer, katmanlı giyim. Çok resmi veya çok dar parça kullanma.',
   },
+  {
+    id: 'tatil',
+    label: 'Tatil & Plaj',
+    description: 'Sahil, tatil, yazlık gezinti. Ferah ve rahat.',
+    icon: 'umbrella',
+    styleGuide: 'Ferah, hafif, yazlık. Keten gömlek, hafif elbise, şort, sandalet, hasır şapka ve çanta. Blazer, topuklu, bot, kalın kumaş kullanma.',
+  },
 ] as const;
 
 export type OccasionId = typeof OCCASIONS[number]['id'];
