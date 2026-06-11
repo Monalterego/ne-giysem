@@ -425,10 +425,10 @@ export function generateCombos(
       const outfitColorfulness = core.filter((i) => !isNeutral(i.colors[0] ?? '')).length / (core.length || 1);
       const avgFormality01     = core.reduce((s, i) => s + getFormality(i), 0) / ((core.length || 1) * 10);
       let styleAdj = 0;
-      styleAdj += sv.colorBoldness      * (outfitColorfulness - 0.5) * 0.35; // renkli/cesur kombinleri yukarı
-      styleAdj += sv.formalityShift     * (avgFormality01    - 0.5) * 0.35; // resmiyet eğilimi hizalaması
-      styleAdj += sv.structureLooseness * (1 - prop)                * 0.35; // gevşek silüet toleransı
-      const styleMult = Math.max(0.85, Math.min(1.15, 1 + styleAdj));
+      styleAdj += sv.colorBoldness      * (outfitColorfulness - 0.5) * 0.55; // renkli/cesur kombinleri yukarı
+      styleAdj += sv.formalityShift     * (avgFormality01    - 0.5) * 0.55; // resmiyet eğilimi hizalaması
+      styleAdj += sv.structureLooseness * (1 - prop)                * 0.55; // gevşek silüet toleransı
+      const styleMult = Math.max(0.70, Math.min(1.30, 1 + styleAdj));
       const score = Math.round(final01 * styleMult * 100);
       const titleParams = { items: outfitItems, occasion, colorHarmony: colorHarmonyFinal, contextFit, prop, encCoverage, score };
       const reasoning = buildReasoning(titleParams);
