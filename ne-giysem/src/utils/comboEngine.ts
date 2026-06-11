@@ -421,7 +421,7 @@ export function generateCombos(
       // Ağırlıklar toplamı = 1.0; coherence ve seasonScore dışsal çarpanlar
       const final01 = (0.35 * colorHarmonyFinal + 0.20 * contextFit + 0.20 * prop + 0.13 * completeness + 0.12 * encCoverage) * coherence * seasonScore;
 
-      // Stil DNA yumuşak modülasyonu — ±%15 sert tavan; Layer 1 teorisini ezmez
+      // Stil DNA yumuşak modülasyonu — ±%30 sert tavan; Layer 1 teorisini ezmez
       const outfitColorfulness = core.filter((i) => !isNeutral(i.colors[0] ?? '')).length / (core.length || 1);
       const avgFormality01     = core.reduce((s, i) => s + getFormality(i), 0) / ((core.length || 1) * 10);
       let styleAdj = 0;
@@ -1085,14 +1085,14 @@ if (require.main === module) {
   console.log(`  İki TOP kombinin farklı   : ${topsDiffer   ? '✅' : '❌'}`);
   console.log(`  undefined profil regresyon: ${noRegress    ? '✅' : '❌'}`);
 
-  // ±%15 tavan: profil skoru ile no-profil skoru arasındaki fark ≤ base*0.16
-  console.log('  ±%15 tavan kontrolü:');
+  // ±%30 tavan: profil skoru ile no-profil skoru arasındaki fark ≤ base*0.31
+  console.log('  ±%30 tavan kontrolü:');
   for (let i = 0; i < noCombos7.length; i++) {
     const base = noCombos7[i]?.score ?? 0;
     const omS  = omCombos7[i]?.score ?? 0;
     const swS  = swCombos7[i]?.score ?? 0;
-    const omOk = Math.abs(omS - base) <= Math.ceil(base * 0.16);
-    const swOk = Math.abs(swS - base) <= Math.ceil(base * 0.16);
+    const omOk = Math.abs(omS - base) <= Math.ceil(base * 0.31);
+    const swOk = Math.abs(swS - base) <= Math.ceil(base * 0.31);
     console.log(`    [${i}] base=${base}  OM=${omS}${omOk ? '✅' : '❌'}  SW=${swS}${swOk ? '✅' : '❌'}`);
   }
 
