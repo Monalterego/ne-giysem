@@ -42,6 +42,7 @@ const REGISTER_FIT: Record<OccasionId, Record<Register, number>> = {
   date:    { athletic: 0.3,  casual: 0.8, business: 0.8, evening: 1.0 },
   gece:    { athletic: 0.25, casual: 0.6, business: 0.75, evening: 1.0 },
   davet:   { athletic: 0.15, casual: 0.4, business: 0.7, evening: 1.0 },
+  tatil:   { athletic: 0.55, casual: 1.0, business: 0.4, evening: 0.5 },
 };
 
 /**
