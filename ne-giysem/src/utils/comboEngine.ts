@@ -444,7 +444,14 @@ export function generateCombos(
       } as Combo;
     })
     .sort((a, b) => b.score - a.score);
-  return selectDiverse(results, maxCombos).sort((a, b) => b.score - a.score);
+  const selected = selectDiverse(results, maxCombos).sort((a, b) => b.score - a.score);
+  if (selected.length === 0) return selected;
+  // Göreceli kalite eşiği: en iyi skorun %78'i, ama mutlak taban 60
+  const best = selected[0].score;
+  const threshold = Math.max(best * 0.78, 60);
+  const quality = selected.filter((c) => c.score >= threshold);
+  // Hiç kaliteli kalmadıysa (uç durum) en iyi 2'yi yine döndür (boş ekran olmasın)
+  return quality.length > 0 ? quality : selected.slice(0, 2);
 }
 
 // Dolabın kombin üretmek için hangi kategorilerde eksik olduğunu döner
