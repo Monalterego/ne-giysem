@@ -39,6 +39,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 const FREE_RENDER_LIMIT = 3;
+const FEW_COMBOS = 4;
 
 const LOADING_MSGS = [
   'Parçalar seçiliyor…',
@@ -647,6 +648,17 @@ export default function CombosScreen() {
           initialNumToRender={4}
           maxToRenderPerBatch={4}
           windowSize={5}
+          ListHeaderComponent={
+            combos.length > 0 && combos.length < FEW_COMBOS ? (
+              <View style={styles.infoBanner}>
+                <Feather name="info" size={14} color={colors.textSecondary} />
+                <Text style={styles.infoBannerText}>
+                  Bu okazyon için {combos.length} uyumlu kombin bulundu. Dolabına bu tarza uygun
+                  birkaç parça eklersen daha fazla öneri çıkar.
+                </Text>
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => {
             const key = comboKey(item);
             return (
@@ -989,6 +1001,24 @@ const styles = StyleSheet.create({
   loadMoreText: {
     ...typography.label,
     color: colors.text,
+  },
+
+  // Az kombin bilgi şeridi
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 10,
+    marginBottom: spacing.sm,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
   },
 
   // AI yükleme durumu
