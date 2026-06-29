@@ -21,6 +21,19 @@ interface WardrobeState {
   fetchWeather: () => Promise<void>;
 }
 
+function parseJsonArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v as string[];
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function mapRow(row: any): WardrobeItem {
   return {
     id: row.id,
@@ -29,10 +42,10 @@ function mapRow(row: any): WardrobeItem {
     processedImageUrl: row.processed_image_url ?? '',
     category: row.category,
     subCategory:  row.subcategory    ?? undefined,
-    colors:       row.colors         ?? [],
+    colors:       parseJsonArray(row.colors),
     pattern:      row.pattern        ?? undefined,
     fabric:       row.fabric         ?? undefined,
-    seasons:      row.season         ?? [],
+    seasons:      parseJsonArray(row.season),
     brand:        row.brand          ?? undefined,
     price:        row.price          ?? undefined,
     itemName:     row.item_name      ?? undefined,
