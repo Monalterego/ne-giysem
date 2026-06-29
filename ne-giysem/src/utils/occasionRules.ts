@@ -98,6 +98,11 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
 
 // ─── Fonksiyonlar ─────────────────────────────────────────────────────────────
 
+// Gece/akşam sinyali taşıyan anahtar kelimeler (isim bazlı — formalite yakalayamıyor)
+const EVENING_KEYWORDS = ['payet', 'saten', 'pul', 'drape', 'parlak', 'simli', 'taşlı', 'kadife'];
+// Bu okazyonlar "gündüz/rahat" — gece parçaları buralara girmemeli
+const DAYTIME_OCCASIONS: OccasionId[] = ['tatil', 'spor', 'gunluk', 'seyahat', 'brunch'];
+
 /**
  * Sadece dress-code / fonksiyonel çelişkileri filtreler (hardExcluded).
  * Geri kalan her şey getFormalityFit ile yumuşak cezalanır, elenmez.
@@ -105,7 +110,13 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
 export function isItemAllowed(item: WardrobeItem, occasion: OccasionId): boolean {
   const sub = item.subCategory;
   if (!sub) return true;
-  return !OCCASION_RULES[occasion].hardExcluded.includes(sub);
+  if (OCCASION_RULES[occasion].hardExcluded.includes(sub)) return false;
+  // Gündüz okazyonlarında, gece-sinyali taşıyan elbiseleri ele
+  if (DAYTIME_OCCASIONS.includes(occasion) && item.category === 'dress_jumpsuit') {
+    const name = (item.itemName ?? '').toLowerCase();
+    if (EVENING_KEYWORDS.some((kw) => name.includes(kw))) return false;
+  }
+  return true;
 }
 
 /**
