@@ -164,7 +164,12 @@ function composeOutfit(
   const ranked = pools.accessories
     .map((a) => ({ item: a, colorMatch: colorAvg(a), regF: registerFit(a, occasion) }))
     .filter((x) => x.colorMatch > 0.65 && x.regF >= 0.4)
-    .sort((a, b) => (b.colorMatch * b.regF) - (a.colorMatch * a.regF));
+    .sort((a, b) => {
+      // Tatilde hasır şapka tematik öncelik — sıralamada yukarı çek (skoru şişirmez)
+      const bonusA = (ruleKey === 'tatil' && a.item.subCategory === 'sapka') ? 0.30 : 0;
+      const bonusB = (ruleKey === 'tatil' && b.item.subCategory === 'sapka') ? 0.30 : 0;
+      return (b.colorMatch * b.regF + bonusB) - (a.colorMatch * a.regF + bonusA);
+    });
   const rankedItems = ranked.map((x) => x.item);
   let accStatements = 0;
   let accAdded = 0;
