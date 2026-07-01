@@ -11,6 +11,8 @@ export interface OccasionRule {
   pointTarget: [number, number];
   /** Kombinasyonda izin verilen maksimum statement aksesuar sayısı */
   maxStatementAccessories: number;
+  /** Kombinde toplam maksimum aksesuar sayısı (Rule of Three) */
+  maxAccessories?: number;
   /** Kombine eklenmesi garanti edilen minimum aksesuar sayısı */
   minAccessories: number;
   /** ASLA doğru olmayan subCategory'ler — dress-code veya fonksiyonel çelişki */
@@ -26,6 +28,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [0, 3],
     pointTarget:            [3, 4],
     maxStatementAccessories: 0,
+    maxAccessories:          0,
     minAccessories:          0,
     hardExcluded:           ['topuklu', 'clutch', 'maxi_elbise', 'midi_elbise', 'mini_elbise', 'gomlek', 'blazer'],
     encouraged:             ['tayt', 'sort', 'tisort', 'hoodie', 'sweatshirt', 'sneaker'],
@@ -34,6 +37,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [2, 6],
     pointTarget:            [4, 6],
     maxStatementAccessories: 1,
+    maxAccessories:          2,
     minAccessories:          0,
     hardExcluded:           [],
     encouraged:             ['jean', 'tisort', 'bluz', 'sneaker', 'loafer'],
@@ -42,6 +46,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [2, 6],
     pointTarget:            [4, 6],
     maxStatementAccessories: 1,
+    maxAccessories:          2,
     minAccessories:          0,
     hardExcluded:           ['topuklu', 'maxi_elbise', 'clutch'],
     encouraged:             ['pantolon', 'sneaker', 'loafer', 'bluz', 'tisort', 'bot'],
@@ -50,6 +55,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [1, 5],
     pointTarget:            [4, 6],
     maxStatementAccessories: 2,
+    maxAccessories:          3,
     minAccessories:          0,
     hardExcluded:           ['blazer', 'topuklu', 'bot', 'mont', 'kaban', 'sweatshirt', 'hoodie', 'tayt', 'cizme', 'trenchkot'],
     encouraged:             ['sort', 'sandalet', 'sapka', 'gomlek', 'bluz', 'mini_elbise', 'tote'],
@@ -58,6 +64,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [4, 7],
     pointTarget:            [5, 7],
     maxStatementAccessories: 1,
+    maxAccessories:          2,
     minAccessories:          1,
     hardExcluded:           [],
     encouraged:             ['midi_elbise', 'etek', 'bluz', 'loafer', 'sandalet'],
@@ -66,6 +73,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [5, 9],
     pointTarget:            [5, 7],
     maxStatementAccessories: 1,
+    maxAccessories:          2,
     minAccessories:          1,
     hardExcluded:           ['maxi_elbise', 'mini_elbise', 'sort', 'tayt', 'terlik', 'sapka', 'sweatshirt', 'hoodie'],
     encouraged:             ['blazer', 'gomlek', 'pantolon', 'topuklu', 'loafer'],
@@ -74,6 +82,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [5, 8],
     pointTarget:            [6, 8],
     maxStatementAccessories: 1,
+    maxAccessories:          3,
     minAccessories:          1,
     hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka'],
     encouraged:             ['midi_elbise', 'mini_elbise', 'topuklu', 'sandalet', 'etek', 'bluz'],
@@ -82,6 +91,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [5, 9],
     pointTarget:            [6, 8],
     maxStatementAccessories: 1,
+    maxAccessories:          3,
     minAccessories:          1,
     hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka', 'sneaker'],
     encouraged:             ['mini_elbise', 'midi_elbise', 'topuklu', 'bot', 'clutch', 'etek'],
@@ -90,6 +100,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     targetFormality:        [7, 10],
     pointTarget:            [7, 9],
     maxStatementAccessories: 2,
+    maxAccessories:          3,
     minAccessories:          2,
     hardExcluded:           ['sneaker', 'hoodie', 'sweatshirt', 'tayt', 'sort', 'jean', 'terlik', 'sapka', 'bandana', 'gozluk', 'tisort'],
     encouraged:             ['maxi_elbise', 'midi_elbise', 'topuklu', 'clutch'],

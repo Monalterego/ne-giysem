@@ -177,25 +177,11 @@ function composeOutfit(
   const usedZones = new Set<string>();
   let faceNeckStatement = false;
 
+  // maxAccessories: okazyona göre kaç aksesuar (Rule of Three). pointTarget yerine açık sayı.
+  const maxAcc = rule.maxAccessories ?? 2;
   for (let ri = 0; ri < rankedItems.length; ri++) {
     const acc = rankedItems[ri];
-    const { colorMatch, regF } = ranked[ri];
-    const reachedMin = pts() >= rule.pointTarget[0];
-    const enoughAcc  = accAdded >= rule.minAccessories;
-    const encThis = rule.encouraged.includes(acc.subCategory ?? '');
-    if (reachedMin && enoughAcc) {
-      const encNotYetAdded = encThis && !outfitItems.some((it) => rule.encouraged.includes(it.subCategory ?? '') && ACCESSORY_ZONES[it.subCategory ?? ''] === ACCESSORY_ZONES[acc.subCategory ?? '']);
-      if (encNotYetAdded) {
-        // encouraged aksesuar bu zone'dan henüz eklenmedi — devam et
-      } else if (rule.minAccessories === 0 && accAdded < 1 && colorMatch > 0.72 && regF >= 0.5 && pts() < rule.pointTarget[1]) {
-        // minAccessories=0: pointTarget[1] dolmadıkça yüksek uyumlu 1 aksesuar daha dene
-      } else {
-        break;
-      }
-    }
-    // encouraged aksesuar bu zone'dan henüz eklenmediyse, üst puan sınırı dolsa bile devam et
-    const encNotYet2 = encThis && !outfitItems.some((it) => rule.encouraged.includes(it.subCategory ?? '') && ACCESSORY_ZONES[it.subCategory ?? ''] === ACCESSORY_ZONES[acc.subCategory ?? '']);
-    if (enoughAcc && pts() >= rule.pointTarget[1] && !encNotYet2) break;
+    if (accAdded >= maxAcc) break;
     const zone = ACCESSORY_ZONES[acc.subCategory ?? ''];
     if (!zone) continue;
     if (usedZones.has(zone)) continue;
