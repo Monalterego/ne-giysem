@@ -394,6 +394,24 @@ export function generateCombos(
   const now = new Date().toISOString();
   const pools = { bags, outers, accessories };
 
+  // ═══ GEÇİCİ TEŞHİS — tatilde şapka sayımı (sonra silinecek) ═══
+  if (occasion === 'tatil') {
+    const allAccessories = items.filter((i) => i.category === 'accessory');
+    const hats = items.filter((i) => i.subCategory === 'sapka');
+    const hatsInPool = accessories.filter((i) => i.subCategory === 'sapka');
+    const diag = `TESHIS tatil:
+  Toplam parca: ${items.length}
+  category=accessory: ${allAccessories.length}
+  subCategory=sapka (tum): ${hats.length}
+  sapka havuzda (accessories+allow): ${hatsInPool.length}
+  ilk sapka: ${hats[0] ? JSON.stringify({cat: hats[0].category, sub: hats[0].subCategory, colors: hats[0].colors, seasons: hats[0].seasons}) : 'YOK'}`;
+    console.log(diag);
+    if (typeof globalThis !== 'undefined' && (globalThis as any).alert) {
+      (globalThis as any).alert(diag);
+    }
+  }
+  // ═══ TEŞHİS SONU ═══
+
   const encouraged   = OCCASION_RULES[ruleKey].encouraged;
   // Çanta/dış giyim çeşitliliği için kullanım sayaçları — ceza sinyali olarak composeOutfit'e iletilir
   const bagUsage   = new Map<string, number>();
