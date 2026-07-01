@@ -81,7 +81,7 @@ function isOuter(item: WardrobeItem): boolean {
 
 // Aksesuar bölge haritası — her bölgeden kombinde en fazla 1 parça
 const ACCESSORY_ZONES: Record<string, string> = {
-  kupe: 'yuz', gozluk: 'yuz', sapka: 'yuz',
+  sapka: 'bas', gozluk: 'yuz', kupe: 'kulak',
   kolye: 'boyun', fular: 'boyun', kaskol: 'boyun', bandana: 'boyun',
   bileklik: 'bilek', yuzuk: 'bilek',
   kemer: 'bel',
@@ -161,14 +161,15 @@ function composeOutfit(
   // pointTarget[1] (max) SADECE minAccessories sağlandıktan sonra kapatır.
   // minAccessories=0 okazyonlarda (günlük, seyahat): yine de yüksek uyumlu (>0.72) 1 aksesuar
   // pointTarget[1] aşılmadıkça eklenir — "fırsat varsa değerlendir" mantığı.
+  const isEnc = (it: WardrobeItem) => rule.encouraged.includes(it.subCategory ?? '');
   const ranked = pools.accessories
     .map((a) => ({ item: a, colorMatch: colorAvg(a), regF: registerFit(a, occasion) }))
-    .filter((x) => x.colorMatch > 0.65 && x.regF >= 0.4)
+    .filter((x) => isEnc(x.item) || (x.colorMatch > 0.65 && x.regF >= 0.4))
     .sort((a, b) => {
-      // Tatilde hasır şapka tematik öncelik — sıralamada yukarı çek (skoru şişirmez)
-      const bonusA = (ruleKey === 'tatil' && a.item.subCategory === 'sapka') ? 0.30 : 0;
-      const bonusB = (ruleKey === 'tatil' && b.item.subCategory === 'sapka') ? 0.30 : 0;
-      return (b.colorMatch * b.regF + bonusB) - (a.colorMatch * a.regF + bonusA);
+      const encA = isEnc(a.item) ? 1 : 0;
+      const encB = isEnc(b.item) ? 1 : 0;
+      if (encA !== encB) return encB - encA;
+      return (b.colorMatch * b.regF) - (a.colorMatch * a.regF);
     });
   const rankedItems = ranked.map((x) => x.item);
   let accStatements = 0;
@@ -181,10 +182,13 @@ function composeOutfit(
     const { colorMatch, regF } = ranked[ri];
     const reachedMin = pts() >= rule.pointTarget[0];
     const enoughAcc  = accAdded >= rule.minAccessories;
+    const encThis = rule.encouraged.includes(acc.subCategory ?? '');
     if (reachedMin && enoughAcc) {
-      // minAccessories=0: pointTarget[1] dolmadıkça yüksek uyumlu 1 aksesuar daha dene
-      if (rule.minAccessories === 0 && accAdded < 1 && colorMatch > 0.72 && regF >= 0.5 && pts() < rule.pointTarget[1]) {
-        // yüksek eşik geçildi — bu iterasyonu devam ettir
+      const encNotYetAdded = encThis && !outfitItems.some((it) => rule.encouraged.includes(it.subCategory ?? '') && ACCESSORY_ZONES[it.subCategory ?? ''] === ACCESSORY_ZONES[acc.subCategory ?? '']);
+      if (encNotYetAdded) {
+        // encouraged aksesuar bu zone'dan henüz eklenmedi — devam et
+      } else if (rule.minAccessories === 0 && accAdded < 1 && colorMatch > 0.72 && regF >= 0.5 && pts() < rule.pointTarget[1]) {
+        // minAccessories=0: pointTarget[1] dolmadıkça yüksek uyumlu 1 aksesuar daha dene
       } else {
         break;
       }
