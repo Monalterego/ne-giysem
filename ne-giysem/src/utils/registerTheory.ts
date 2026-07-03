@@ -59,6 +59,12 @@ function isSmartSneaker(item: WardrobeItem): boolean {
 export function registerFit(item: WardrobeItem, occasion: OccasionId | 'all'): number {
   const occ: OccasionId = occasion === 'all' ? 'gunluk' : occasion;
   let base = REGISTER_FIT[occ][getRegister(item)];
+  // Güneş gözlüğü: iç mekan / akşam okazyonlarına uymaz (ofiste, gecede takılmaz)
+  if (item.subCategory === 'gozluk') {
+    if (occ === 'is')   base = Math.min(base, 0.3);
+    if (occ === 'gece') base = Math.min(base, 0.25);
+    if (occ === 'date') base = Math.min(base, 0.35);
+  }
   // Smart-casual sneaker yükseltmesi: loafer öncelikli kalır (0.82 < 1.0), ama seçenek açılır
   if (isSmartSneaker(item)) {
     if (occ === 'is')      base = Math.max(base, 0.82);

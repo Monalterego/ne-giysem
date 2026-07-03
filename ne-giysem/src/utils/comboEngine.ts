@@ -96,6 +96,7 @@ interface ComposedOutfit {
   completeness: number;
   chosenBag?: WardrobeItem;
   chosenOuter?: WardrobeItem;
+  chosenAccessories?: WardrobeItem[];
 }
 
 // 7-puan outfit kompozisyon motoru
@@ -104,7 +105,7 @@ function composeOutfit(
   core: WardrobeItem[],
   pools: { bags: WardrobeItem[]; outers: WardrobeItem[]; accessories: WardrobeItem[] },
   occasion: Occasion,
-  usagePenalty?: { bags: Map<string, number>; outers: Map<string, number> },
+  usagePenalty?: { bags: Map<string, number>; outers: Map<string, number>; accessories?: Map<string, number> },
   weather?: WeatherData,
 ): ComposedOutfit {
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
@@ -163,13 +164,17 @@ function composeOutfit(
   // pointTarget[1] aşılmadıkça eklenir — "fırsat varsa değerlendir" mantığı.
   const isEnc = (it: WardrobeItem) => rule.encouraged.includes(it.subCategory ?? '');
   const ranked = pools.accessories
-    .map((a) => ({ item: a, colorMatch: colorAvg(a), regF: registerFit(a, occasion) }))
+    .map((a) => {
+      const used = usagePenalty?.accessories?.get(a.id) ?? 0;
+      const penalty = 1 - Math.min(used * 0.15, 0.45);
+      return { item: a, colorMatch: colorAvg(a), regF: registerFit(a, occasion), penalty };
+    })
     .filter((x) => isEnc(x.item) || (x.colorMatch > 0.65 && x.regF >= 0.4))
     .sort((a, b) => {
       const encA = isEnc(a.item) ? 1 : 0;
       const encB = isEnc(b.item) ? 1 : 0;
       if (encA !== encB) return encB - encA;
-      return (b.colorMatch * b.regF) - (a.colorMatch * a.regF);
+      return (b.colorMatch * b.regF * b.penalty) - (a.colorMatch * a.regF * a.penalty);
     });
   const rankedItems = ranked.map((x) => x.item);
   let accStatements = 0;
@@ -203,7 +208,7 @@ function composeOutfit(
     ? 1
     : Math.max(0, 1 - (p < min ? min - p : p - max) * 0.15);
 
-  return { items: outfitItems, points: p, completeness, chosenBag, chosenOuter };
+  return { items: outfitItems, points: p, completeness, chosenBag, chosenOuter, chosenAccessories: outfitItems.filter((i) => i.category === 'accessory') };
 }
 
 // ─── Ana fonksiyon ───────────────────────────────────────────────────────────
@@ -387,15 +392,17 @@ export function generateCombos(
   // Çanta/dış giyim çeşitliliği için kullanım sayaçları — ceza sinyali olarak composeOutfit'e iletilir
   const bagUsage   = new Map<string, number>();
   const outerUsage = new Map<string, number>();
+  const accUsage   = new Map<string, number>();
 
   const results = top
     .map(({ core, colorHarmony }) => {
-      const { items: outfitItems, completeness, chosenBag, chosenOuter } = composeOutfit(
-        core, pools, occasion, { bags: bagUsage, outers: outerUsage }, weather,
+      const { items: outfitItems, completeness, chosenBag, chosenOuter, chosenAccessories } = composeOutfit(
+        core, pools, occasion, { bags: bagUsage, outers: outerUsage, accessories: accUsage }, weather,
       );
       // Seçilen çanta/dış giyimin kullanım sayacını artır
       if (chosenBag)   bagUsage.set(chosenBag.id,   (bagUsage.get(chosenBag.id)   ?? 0) + 1);
       if (chosenOuter) outerUsage.set(chosenOuter.id, (outerUsage.get(chosenOuter.id) ?? 0) + 1);
+      if (chosenAccessories) for (const a of chosenAccessories) accUsage.set(a.id, (accUsage.get(a.id) ?? 0) + 1);
       const prop = proportionScore(core, chosenOuter);
       // Çekirdek içinde okasyon tarafından teşvik edilen subCategory'lerin oranı
       const encCoverage = core.filter((i) => encouraged.includes(i.subCategory ?? '')).length / core.length;
