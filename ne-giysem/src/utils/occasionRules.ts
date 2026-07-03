@@ -113,6 +113,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
 const EVENING_KEYWORDS = ['payet', 'saten', 'pul', 'drape', 'parlak', 'simli', 'taşlı', 'kadife'];
 // Bu okazyonlar "gündüz/rahat" — gece parçaları buralara girmemeli
 const DAYTIME_OCCASIONS: OccasionId[] = ['tatil', 'spor', 'gunluk', 'seyahat', 'brunch'];
+// Gece karakterli ayakkabı sinyalleri (ofise uymaz)
+const SHOE_EVENING_KEYWORDS = ['rugan', 'stiletto', 'saten', 'payet', 'simli', 'taşlı', 'parlak'];
 
 /**
  * Sadece dress-code / fonksiyonel çelişkileri filtreler (hardExcluded).
@@ -126,6 +128,12 @@ export function isItemAllowed(item: WardrobeItem, occasion: OccasionId): boolean
   if (DAYTIME_OCCASIONS.includes(occasion) && item.category === 'dress_jumpsuit') {
     const name = (item.itemName ?? '').toLowerCase();
     if (EVENING_KEYWORDS.some((kw) => name.includes(kw))) return false;
+  }
+  // İş: gece karakterli ayakkabıları ele (rugan/stiletto formalitesi yüksek olduğu için
+  // formalite filtresine takılmıyor — isim sinyali gerekli, payetli elbise çözümünün aynısı)
+  if (occasion === 'is' && item.category === 'shoes') {
+    const name = (item.itemName ?? '').toLowerCase();
+    if (SHOE_EVENING_KEYWORDS.some((kw) => name.includes(kw))) return false;
   }
   return true;
 }
