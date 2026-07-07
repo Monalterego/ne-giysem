@@ -429,6 +429,7 @@ export function generateCombos(
       if (chosenAccessories) for (const a of chosenAccessories) accUsage.set(a.id, (accUsage.get(a.id) ?? 0) + 1);
       const prop = proportionScore(core, chosenOuter);
       // Çekirdek içinde okasyon tarafından teşvik edilen subCategory'lerin oranı
+      // Bilinçli core-odaklı: aksesuar/çanta kapsama dahil edilmez (aksesuar önceliği ayrı mekanizmayla yönetilir).
       const encCoverage = core.filter((i) => encouraged.includes(i.subCategory ?? '')).length / core.length;
       // Pass 1 proxy (ikili) + outfit dağılım skoru harmanlama
       const pairwiseColor = colorHarmony;

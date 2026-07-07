@@ -83,7 +83,7 @@ export function proportionScore(core: WardrobeItem[], outer?: WardrobeItem): num
     const vert: number =
       (isCrop(upper) || longlineOuter(outer)) ? 1.00 :
       (tv === 2 && bv <= 1)                   ? 0.90 :
-      (tv === 1 && bv === 1)                  ? 0.70 :
+      (tv === 1 && bv === 1)                  ? 0.80 :
       0.85;
 
     // c) Ayakkabı dengesi — ağır ayakkabı hacimsiz altla çakışır
