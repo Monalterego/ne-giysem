@@ -36,24 +36,30 @@ const SEASON_MAP: Record<string, Season> = {
 
 const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndür, başka hiçbir metin yazma.
 
+⚠️ EN KRİTİK 3 ALAN (bunları mutlaka doğru yap — kombinlerin doğruluğu bunlara bağlı):
+1. category + subcategory TUTARLI olmalı (tek parça belden aşağı devam eden giysi = elbise_tulum, üst değil)
+2. Elbise BOYU: eteğin nerede bittiğine bak → diz ÜSTÜ = mini, baldır/diz-altı = midi, ayak bileği/yere kadar = maxi
+3. Parlak/özel KUMAŞ: yüzey parlıyorsa ASLA "pamuk" deme
+
 {
   "category": "ust" | "alt" | "elbise_tulum" | "dis" | "ayakkabi" | "canta" | "aksesuar",
-  "subcategory": aşağıdaki değerlerden biri:
+  "subcategory": aşağıdaki değerlerden biri (category ile TUTARLI olmalı):
     ust için → "tisort" | "bluz" | "gomlek" | "kazak" | "triko" | "hirka" | "yelek" | "sweatshirt" | "hoodie" | "body"
     alt için → "pantolon" | "jean" | "etek" | "sort" | "tayt"
     elbise_tulum için → "mini_elbise" | "midi_elbise" | "maxi_elbise" | "tulum"
+      (mini=diz üstü, midi=baldır/diz-altı, maxi=ayak bileği/yere kadar)
     dis için → "ceket" | "blazer" | "mont" | "kaban" | "trenchkot" | "yagmurluk"
     ayakkabi için → "sneaker" | "loafer" | "bot" | "cizme" | "topuklu" | "sandalet" | "terlik" | "babet"
     canta için → "omuz_cantasi" | "clutch" | "tote" | "bel_cantasi" | "sirt_cantasi" | "mini_canta"
     aksesuar için → "kolye" | "kupe" | "bileklik" | "yuzuk" | "fular" | "kaskol" | "bandana" | "kemer" | "sapka" | "gozluk",
-  "name": Zara/HM tarzı kısa ürün adı — örn. "Düşük bel geniş paça jean", "Balon kollu çizgili gömlek", "Kruvaze blazer ceket",
+  "name": Zara/HM tarzı kısa ürün adı. ÖZEL kumaş/kesim varsa isme YAZ — örn. "Saten straplez maxi elbise", "Payetli mini elbise", "Düşük bel geniş paça jean",
   "fit": kesim — "slim" | "regular" | "oversized" | "crop" | "midi" | "maxi" | "mini",
   "neckline": yaka tipi, SADECE ust ve elbise_tulum için — "yuvarlak" | "v yaka" | "polo" | "balikci" | "kayik" | "halter" | "dik yaka" | null,
   "sleeve": kol boyu, SADECE ust için — "kolsuz" | "kisa kol" | "3/4 kol" | "uzun kol" | "balon kol" | null,
-  "details": öne çıkan max 3 detay — örn. ["dugmeli", "cepli", "firfirli", "bagcikli", "seritli", "fermanuarli", "kapsonlu", "kesiksiz", "asimetrik"],
+  "details": öne çıkan max 3 detay. ÖZEL/GECE sinyali gördüysen MUTLAKA ekle — "payetli" | "parlak" | "straplez" | "tek_omuz" | "derin_dekolte" | "transparan" | "drapeli" | "dugmeli" | "cepli" | "firfirli" | "bagcikli" | "asimetrik",
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
   "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
-  "fabric": kumaş tahmini. Görselden EMİN DEĞİLSEN 'bilmiyorum' ver, tahmin uydurma — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "kasmir" | "polyester" | "viskon" | "saten" | "kadife" | "deri" | "suni_deri" | "triko" | "sifon" | "karisim" | "bilmiyorum",
+  "fabric": kumaş — GÖRÜNÜR DOKUYA bak: parlak/yansımalı yüzey → "saten" veya "ipek" (asla pamuk); örgü dokusu → "triko"; tüylü mat → "kadife"; mat dokusuz günlük → "pamuk". EMİN DEĞİLSEN "bilmiyorum" — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "kasmir" | "polyester" | "viskon" | "saten" | "kadife" | "deri" | "suni_deri" | "triko" | "sifon" | "karisim" | "bilmiyorum",
   "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
 }`;
 
