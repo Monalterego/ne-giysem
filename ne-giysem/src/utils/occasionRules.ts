@@ -7,7 +7,7 @@ import { getFormality } from './itemTraits';
 export interface OccasionRule {
   /** Hedef formalite aralığı [min, max] — dışındakiler yumuşak cezalanır */
   targetFormality: [number, number];
-  /** Kombinin toplam formality puan hedefi [min, max] (gelecekte kombin skoru için) */
+  /** Kombinin görsel puan hedefi [min, max] — completeness skoru ve dış giyim kararında kullanılır */
   pointTarget: [number, number];
   /** Kombinasyonda izin verilen maksimum statement aksesuar sayısı */
   maxStatementAccessories: number;
@@ -17,7 +17,7 @@ export interface OccasionRule {
   minAccessories: number;
   /** ASLA doğru olmayan subCategory'ler — dress-code veya fonksiyonel çelişki */
   hardExcluded: string[];
-  /** İdeal subCategory'ler — gelecekte küçük skor bonusu için */
+  /** İdeal subCategory'ler — encCoverage skoru + aksesuar önceliği/filtre muafiyetinde aktif kullanılır */
   encouraged: string[];
 }
 

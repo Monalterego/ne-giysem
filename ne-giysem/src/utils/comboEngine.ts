@@ -157,11 +157,10 @@ function composeOutfit(
     }
   }
 
-  // c) AKSESUARLAR — register-ağırlıklı sıralama + registerFit < 0.4 ekleme yasağı
-  // minAccessories karşılanana kadar pointTarget[0] tavanı devreye girmez;
-  // pointTarget[1] (max) SADECE minAccessories sağlandıktan sonra kapatır.
-  // minAccessories=0 okazyonlarda (günlük, seyahat): yine de yüksek uyumlu (>0.72) 1 aksesuar
-  // pointTarget[1] aşılmadıkça eklenir — "fırsat varsa değerlendir" mantığı.
+  // c) AKSESUARLAR — encouraged öncelikli sıralama + maxAccessories sayacı (Rule of Three)
+  // encouraged aksesuar filtre muafiyetli ve havuz başında; diğerleri colorMatch>0.65 & regF>=0.4.
+  // Zone başına 1 parça, tek-statement kuralı, kullanım cezası çeşitlilik sağlar.
+  // minAccessories, döngü sonrası garanti bloğuyla sağlanır.
   const isEnc = (it: WardrobeItem) => rule.encouraged.includes(it.subCategory ?? '');
   const ranked = pools.accessories
     .map((a) => {
@@ -199,6 +198,31 @@ function composeOutfit(
     outfitItems.push(acc);
     usedZones.add(zone);
     accAdded++;
+  }
+
+  // minAccessories GARANTİSİ: hedefin altında kaldıysa (filtre yüzünden) eşikleri gevşeterek
+  // tamamla — davet/iş gibi okazyonlarda kombin aksesuarsız kalmasın. Zone + statement kuralları korunur.
+  if (accAdded < rule.minAccessories) {
+    const already = new Set(outfitItems.map((i) => i.id));
+    const fallback = pools.accessories
+      .filter((a) => !already.has(a.id))
+      .map((a) => ({ item: a, colorMatch: colorAvg(a), regF: registerFit(a, occasion) }))
+      .filter((x) => x.regF >= 0.3)
+      .sort((a, b) => (b.colorMatch * b.regF) - (a.colorMatch * a.regF));
+    for (const { item: acc } of fallback) {
+      if (accAdded >= rule.minAccessories) break;
+      const zone = ACCESSORY_ZONES[acc.subCategory ?? ''];
+      if (!zone || usedZones.has(zone)) continue;
+      if (isStatement(acc)) {
+        if (accStatements >= rule.maxStatementAccessories) continue;
+        if ((zone === 'yuz' || zone === 'boyun') && faceNeckStatement) continue;
+        accStatements++;
+        if (zone === 'yuz' || zone === 'boyun') faceNeckStatement = true;
+      }
+      outfitItems.push(acc);
+      usedZones.add(zone);
+      accAdded++;
+    }
   }
 
   // d) Tamamlama skoru: hedefteyse 1, dışındaysa mesafeye göre lineer düşer

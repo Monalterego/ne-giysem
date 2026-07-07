@@ -26,7 +26,9 @@ export function getRegister(item: WardrobeItem): Register {
   const name = (item.itemName ?? '').toLowerCase();
   const sub  = item.subCategory ?? '';
   if (ATHLETIC_KW.some((k) => name.includes(k)) || sub === 'tayt') return 'athletic';
-  if (EVENING_KW.some((k) => name.includes(k)) || item.neckline === 'halter' || sub === 'clutch') return 'evening';
+  if (EVENING_KW.some((k) => name.includes(k)) || sub === 'clutch') return 'evening';
+  // halter tek başına gece sinyali değil (yazlık plaj elbiselerinin klasiği) — sadece maxi ile birlikteyse gece
+  if (item.neckline === 'halter' && sub === 'maxi_elbise') return 'evening';
   if (['blazer', 'gomlek', 'loafer'].includes(sub) || BUSINESS_KW.some((k) => name.includes(k))) return 'business';
   return 'casual';
 }
