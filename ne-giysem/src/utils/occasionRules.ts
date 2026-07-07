@@ -126,14 +126,14 @@ export function isItemAllowed(item: WardrobeItem, occasion: OccasionId): boolean
   if (OCCASION_RULES[occasion].hardExcluded.includes(sub)) return false;
   // Gündüz okazyonlarında, gece-sinyali taşıyan elbiseleri ele
   if (DAYTIME_OCCASIONS.includes(occasion) && item.category === 'dress_jumpsuit') {
-    const name = (item.itemName ?? '').toLowerCase();
-    if (EVENING_KEYWORDS.some((kw) => name.includes(kw))) return false;
+    const signal = [(item.itemName ?? ''), ...(item.details ?? [])].join(' ').toLowerCase();
+    if (EVENING_KEYWORDS.some((kw) => signal.includes(kw))) return false;
   }
   // İş: gece karakterli ayakkabıları ele (rugan/stiletto formalitesi yüksek olduğu için
   // formalite filtresine takılmıyor — isim sinyali gerekli, payetli elbise çözümünün aynısı)
   if (occasion === 'is' && item.category === 'shoes') {
-    const name = (item.itemName ?? '').toLowerCase();
-    if (SHOE_EVENING_KEYWORDS.some((kw) => name.includes(kw))) return false;
+    const signal = [(item.itemName ?? ''), ...(item.details ?? [])].join(' ').toLowerCase();
+    if (SHOE_EVENING_KEYWORDS.some((kw) => signal.includes(kw))) return false;
   }
   return true;
 }
