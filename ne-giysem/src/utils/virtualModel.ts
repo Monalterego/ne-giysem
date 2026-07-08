@@ -1,6 +1,5 @@
 import type { WardrobeItem } from '../types';
-
-const FASHN_API_KEY = process.env.EXPO_PUBLIC_FASHN_API_KEY ?? '';
+import { supabase } from '../lib/supabase';
 
 // ─── Açıklama eşlemeleri ──────────────────────────────────────────────────────
 
@@ -60,7 +59,7 @@ export interface PhysicalProfile {
 
 // ─── FASHN istemcisi ──────────────────────────────────────────────────────────
 
-const FASHN_BASE       = 'https://api.fashn.ai/v1';
+const FASHN_PROXY_URL  = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/fashn-proxy';
 const FASHN_POLL_MS    = 2_000;
 const FASHN_TIMEOUT_MS = 240_000;
 
@@ -91,17 +90,15 @@ export async function runFashn(
   modelName: string,
   inputs: Record<string, unknown>,
 ): Promise<string> {
-  if (!FASHN_API_KEY) {
-    throw new Error('FASHN API key eksik — EXPO_PUBLIC_FASHN_API_KEY .env dosyasını kontrol et.');
-  }
+  const { data: { session } } = await supabase.auth.getSession();
 
-  const runRes = await fetchWithRetry(`${FASHN_BASE}/run`, {
+  const runRes = await fetchWithRetry(FASHN_PROXY_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${FASHN_API_KEY}`,
+      'Authorization': `Bearer ${session?.access_token ?? ''}`,
       'Content-Type':  'application/json',
     },
-    body: JSON.stringify({ model_name: modelName, inputs }),
+    body: JSON.stringify({ action: 'run', payload: { model_name: modelName, inputs } }),
   });
 
   if (!runRes.ok) {
@@ -123,8 +120,13 @@ export async function runFashn(
 
     let statusRes: Response;
     try {
-      statusRes = await fetchWithRetry(`${FASHN_BASE}/status/${id}`, {
-        headers: { 'Authorization': `Bearer ${FASHN_API_KEY}` },
+      statusRes = await fetchWithRetry(FASHN_PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({ action: 'status', id }),
       });
     } catch {
       throw new Error('Manken üretimi sırasında bağlantı koptu, tekrar dene.');
