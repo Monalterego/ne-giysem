@@ -1,4 +1,18 @@
+import * as Location from 'expo-location';
+
 const API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY ?? '';
+
+/** Konum izni ister ve koordinat döner. İzin yoksa/hata olursa null (İstanbul'a düşülür). */
+export async function getCoords(): Promise<{ lat: number; lon: number } | null> {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+    return { lat: pos.coords.latitude, lon: pos.coords.longitude };
+  } catch {
+    return null;
+  }
+}
 
 export interface WeatherData {
   temp: number;
@@ -31,10 +45,14 @@ function iconToEmoji(iconCode: string): string {
   }
 }
 
-export async function fetchWeather(): Promise<WeatherData> {
+export async function fetchWeather(lat?: number, lon?: number): Promise<WeatherData> {
   if (!API_KEY) throw new Error('OpenWeatherMap API key eksik. .env dosyasını kontrol et.');
+  // Koordinat verildiyse konuma göre, yoksa İstanbul'a düş (izin reddi/hata fallback'i)
+  const query = (lat != null && lon != null)
+    ? `lat=${lat}&lon=${lon}`
+    : `q=Istanbul`;
   const res = await fetch(
-    `https://api.openweathermap.org/data/2.5/weather?q=Istanbul&appid=${API_KEY}&units=metric&lang=tr`,
+    `https://api.openweathermap.org/data/2.5/weather?${query}&appid=${API_KEY}&units=metric&lang=tr`,
   );
   if (!res.ok) throw new Error(`Hava durumu API hatası: ${res.status}`);
   const json = await res.json();

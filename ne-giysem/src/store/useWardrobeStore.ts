@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { WardrobeItem } from '../types';
-import { fetchWeather as fetchWeatherApi } from '../utils/weatherService';
+import { fetchWeather as fetchWeatherApi, getCoords } from '../utils/weatherService';
 import type { WeatherData } from '../utils/weatherService';
 
 interface WardrobeState {
@@ -92,7 +92,8 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
   fetchWeather: async () => {
     set({ weatherLoading: true });
     try {
-      const data = await fetchWeatherApi();
+      const coords = await getCoords();
+      const data = await fetchWeatherApi(coords?.lat, coords?.lon);
       set({ weather: data });
     } catch {
       // hava durumu başarısız olursa sessizce geç
