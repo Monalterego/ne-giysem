@@ -474,11 +474,39 @@ export default function CombosScreen() {
 
       // 1. Manken kaynağını çöz: avatarUrl → kayıtlı manken → yeni üretim
       const savedMannequinUrl = (profile?.mannequin_url ?? null) as string | null;
-      let modelSource = avatarUrl ?? savedMannequinUrl;
+      let modelSource: string | null = avatarUrl ?? null;
+
+      // Kayıtlı manken varsa canlı mı doğrula (FASHN CDN çıktıları 72 saatte silinir — ölü URL 403 verir)
+      if (!modelSource && savedMannequinUrl) {
+        try {
+          const head = await fetch(savedMannequinUrl, { method: 'HEAD' });
+          if (head.ok) modelSource = savedMannequinUrl;
+        } catch {
+          // ölü/erişilemez — aşağıda yeniden üretilecek
+        }
+      }
 
       if (!modelSource) {
-        modelSource = await getModelImage(physProfile);
-        await supabase.from('profiles').update({ mannequin_url: modelSource }).eq('id', user.id);
+        const fashnUrl = await getModelImage(physProfile);
+        // FASHN URL'i geçici — kendi storage'ımıza taşı, kalıcı URL'i kaydet
+        let persistedUrl = fashnUrl;
+        try {
+          const res = await fetch(fashnUrl);
+          if (res.ok) {
+            const bytes = new Uint8Array(await res.arrayBuffer());
+            const baseKey = `${user.id}/base_mannequin.png`;
+            const { error: mErr } = await supabase.storage
+              .from('mannequin-cache')
+              .upload(baseKey, bytes, { upsert: true, contentType: 'image/png' });
+            if (!mErr) {
+              persistedUrl = supabase.storage.from('mannequin-cache').getPublicUrl(baseKey).data.publicUrl;
+            }
+          }
+        } catch {
+          // taşıma başarısızsa FASHN URL ile devam — bu seans çalışır, sonraki seans yeniden üretir
+        }
+        modelSource = persistedUrl;
+        await supabase.from('profiles').update({ mannequin_url: persistedUrl }).eq('id', user.id);
       }
 
       // 2. Kombin cache kontrolü
