@@ -31,7 +31,14 @@ export default function OnboardingNavigator() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        gestureEnabled: false,          // kaydırarak geri dönmeyi kapat (kart swipe'ı ile çakışıyor)
+        fullScreenGestureEnabled: false, // tam ekran geri jesti (varsa) kapalı
+      }}
+      initialRouteName={initialRoute}
+    >
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Signup" component={SignupScreen} />

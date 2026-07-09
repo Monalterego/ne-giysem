@@ -270,7 +270,7 @@ export default function StyleExploreScreen({ navigation }: Props) {
               { transform: [{ scale: 0.94 }], opacity: 0.6, zIndex: 0 },
             ]}
           >
-            <MoodboardCard card={nextCard} isBack />
+            <MoodboardCard key={nextCard.name} card={nextCard} isBack />
           </View>
         )}
 
@@ -296,7 +296,7 @@ export default function StyleExploreScreen({ navigation }: Props) {
             <Feather name="x" size={22} color={colors.error} />
           </Animated.View>
 
-          <MoodboardCard card={currentCard} />
+          <MoodboardCard key={currentCard.name} card={currentCard} />
         </Animated.View>
       </View>
 
