@@ -280,8 +280,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* 3 ── İstatistikler ── */}
-        <View style={styles.separator} />
-        <View style={styles.statsRow}>
+        <View style={styles.statsCard}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{items.length}</Text>
             <Text style={styles.statLabel}>Parça</Text>
@@ -297,7 +296,6 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Ort. Uyum</Text>
           </View>
         </View>
-        <View style={styles.separator} />
 
         {/* 4 ── FİZİKSEL BİLGİLERİM ── */}
         <View style={styles.card}>
@@ -481,10 +479,17 @@ const styles = StyleSheet.create({
   },
 
   // İstatistikler
-  statsRow: {
+  statsCard: {
     flexDirection: 'row',
-    paddingVertical: spacing.xl,
-    backgroundColor: colors.background,
+    alignItems: 'center',
+    marginHorizontal: layout.screenPaddingH,
+    marginTop: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.lg,
+    ...shadows.subtle,
   },
   statBox: {
     flex: 1,
@@ -493,6 +498,8 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
+    alignSelf: 'stretch',
+    marginVertical: spacing.xs,
     backgroundColor: colors.border,
   },
   statValue: {

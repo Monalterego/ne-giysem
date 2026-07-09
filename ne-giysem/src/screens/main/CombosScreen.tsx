@@ -827,6 +827,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    flexGrow: 0,
     flexShrink: 0,
   },
   filterBarContent: {
