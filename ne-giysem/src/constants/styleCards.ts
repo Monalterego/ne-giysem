@@ -2,7 +2,7 @@ const BASE = 'https://bdvrgbylirftuxmrpbea.supabase.co/storage/v1/object/public/
 
 function urls(prefix: string, count: number, sep = ''): string[] {
   return Array.from({ length: count }, (_, i) =>
-    `${BASE}/${encodeURIComponent(prefix)}${sep}${i + 1}.png`,
+    `${BASE}/${encodeURIComponent(prefix)}${sep}${i + 1}.webp`,
   );
 }
 
@@ -17,7 +17,7 @@ export const STYLE_CARDS: StyleCardData[] = [
   { name: 'Old Money',           keywords: ['Zarif', 'Mütevazı', 'Rafine'],           images: urls('Old Money', 4) },
   { name: 'Quiet Luxury',        keywords: ['Sessiz', 'Kaliteli', 'Şık'],             images: urls('Quiet Luxury', 4) },
   { name: 'Smart Casual',        keywords: ['Dengeli', 'Profesyonel', 'Rahat'],       images: urls('Smart Casual', 4) },
-  { name: 'Clean Girl',          keywords: ['Taze', 'Bakımlı', 'Doğal'],             images: urls('Clean Girl', 8) },
+  { name: 'Clean Girl',          keywords: ['Taze', 'Bakımlı', 'Doğal'],             images: urls('Clean Girl', 5) },
   { name: 'Streetwear',          keywords: ['Kentsel', 'Cesur', 'Edgy'],              images: urls('Streetwear', 4) },
   { name: 'Athleisure',          keywords: ['Sporlu', 'Dinamik', 'Modern'],           images: urls('Athleisure', 4) },
   { name: 'Downtown Girl',       keywords: ['Şehirli', 'Cool', 'Karanlık'],           images: urls('Downtown Girl', 4) },

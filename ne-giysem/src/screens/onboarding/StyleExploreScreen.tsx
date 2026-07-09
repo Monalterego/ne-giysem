@@ -76,7 +76,7 @@ const MoodboardCard = React.memo(function MoodboardCard({
           source={{ uri: imageUri }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
-          fadeDuration={0}
+          fadeDuration={150}
           onError={() => setFailed(true)}
         />
       ) : (
@@ -129,12 +129,22 @@ const cardStyles = StyleSheet.create({
 export default function StyleExploreScreen({ navigation }: Props) {
   const [cards] = useState<StyleCardData[]>(() => shuffleArray([...STYLE_CARDS]));
 
-  // Tüm kart görsellerini mount'ta prefetch et → swipe öncesi cache'te
+  // Kademeli prefetch: mount'ta ilk 3 kart, sonra swipe ilerledikçe önden 2 kart
+  const prefetchedRef = useRef(new Set<string>());
+  const prefetchCard = useCallback((idx: number) => {
+    const c = cards[idx];
+    if (!c?.images[0]) return;
+    const url = c.images[0];
+    if (prefetchedRef.current.has(url)) return;
+    prefetchedRef.current.add(url);
+    Image.prefetch(url).catch(() => {});
+  }, [cards]);
+
   useEffect(() => {
-    STYLE_CARDS.forEach((c) => {
-      if (c.images[0]) Image.prefetch(c.images[0]).catch(() => {});
-    });
-  }, []);
+    prefetchCard(0);
+    prefetchCard(1);
+    prefetchCard(2);
+  }, [prefetchCard]);
 
   const cardIndexRef   = useRef(0);
   const swipeCountRef  = useRef(0);
@@ -195,10 +205,12 @@ export default function StyleExploreScreen({ navigation }: Props) {
         } else {
           setDisplayIndex(newIdx);
           setSwipeCount(newCount);
+          // Önden prefetch: bir sonraki gelecek kartı hazırla
+          prefetchCard(cardIndexRef.current + 2);
         }
       });
     },
-    [cards, navigation, pan],
+    [cards, navigation, pan, prefetchCard],
   );
 
   handleSwipeRef.current = handleSwipe;
