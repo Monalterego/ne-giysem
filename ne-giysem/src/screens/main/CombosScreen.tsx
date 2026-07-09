@@ -647,24 +647,52 @@ export default function CombosScreen() {
       {/* İçerik */}
       {combos.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Feather name="layers" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
-          <Text style={styles.emptyTitle}>Kombin üretilemedi</Text>
-          {missing.length > 0 ? (
+          {items.length === 0 ? (
+            // YENİ KULLANICI — dolap tamamen boş
             <>
+              <Feather name="camera" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
+              <Text style={styles.emptyTitle}>Dolabın henüz boş</Text>
               <Text style={styles.emptySubtitle}>
-                Kombin için dolabında şunlar gerekiyor:
+                Birkaç parça ekle, senin tarzına ve hava durumuna göre kombinler hazırlayalım.
               </Text>
-              {missing.map((cat) => (
-                <View key={cat} style={styles.missingRow}>
-                  <Text style={styles.missingBullet}>–</Text>
-                  <Text style={styles.missingText}>{cat}</Text>
-                </View>
-              ))}
+              <TouchableOpacity
+                style={styles.emptyCta}
+                onPress={() => navigation.navigate('Scan')}
+                activeOpacity={0.85}
+              >
+                <Feather name="plus" size={16} color={colors.background} />
+                <Text style={styles.emptyCtaText}>İlk Parçanı Ekle</Text>
+              </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.emptySubtitle}>
-              Dolabına parça ekleyerek başla
-            </Text>
+            // DOLAP DOLU ama bu okazyona kombin çıkmadı
+            <>
+              <Feather name="layers" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
+              <Text style={styles.emptyTitle}>Bu okazyon için kombin çıkmadı</Text>
+              {missing.length > 0 ? (
+                <>
+                  <Text style={styles.emptySubtitle}>Kombin için dolabında şunlar gerekiyor:</Text>
+                  {missing.map((cat) => (
+                    <View key={cat} style={styles.missingRow}>
+                      <Text style={styles.missingBullet}>–</Text>
+                      <Text style={styles.missingText}>{cat}</Text>
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <Text style={styles.emptySubtitle}>
+                  Bu okazyona uygun parçaların yok. Başka bir okazyon dene ya da dolabına parça ekle.
+                </Text>
+              )}
+              <TouchableOpacity
+                style={styles.emptyCtaSecondary}
+                onPress={() => navigation.navigate('Scan')}
+                activeOpacity={0.85}
+              >
+                <Feather name="plus" size={16} color={colors.text} />
+                <Text style={styles.emptyCtaSecondaryText}>Parça Ekle</Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
       ) : (
@@ -864,6 +892,37 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontFamily: fonts.bodyMedium,
     color: colors.text,
+  },
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.text,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 999,
+    marginTop: spacing.lg,
+  },
+  emptyCtaText: {
+    color: colors.background,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyCtaSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 999,
+    marginTop: spacing.lg,
+  },
+  emptyCtaSecondaryText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
   },
 
   // Kombin listesi
