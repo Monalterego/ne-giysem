@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -184,8 +184,6 @@ export default function StyleExploreScreen({ navigation }: Props) {
         duration: 290,
         useNativeDriver: true,
       }).start(() => {
-        pan.setValue({ x: 0, y: 0 });
-
         const newCount = swipeCountRef.current + 1;
         const newIdx   = cardIndexRef.current + 1;
         swipeCountRef.current  = newCount;
@@ -243,6 +241,12 @@ export default function StyleExploreScreen({ navigation }: Props) {
       },
     }),
   ).current;
+
+  // displayIndex commit edildikten sonra, boyamadan ÖNCE kartı merkeze al.
+  // (Ters sırada yapılırsa eski kart bir kare boyunca merkezde görünür → titreme)
+  useLayoutEffect(() => {
+    pan.setValue({ x: 0, y: 0 });
+  }, [displayIndex, pan]);
 
   const currentCard = cards[displayIndex];
   const nextCard    = cards[displayIndex + 1];
