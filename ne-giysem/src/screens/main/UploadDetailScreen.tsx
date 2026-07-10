@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -97,12 +97,18 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const [analyzing,   setAnalyzing]   = useState(!isEditMode);
   const [aiDetected,  setAiDetected]  = useState(false);
 
+  // AI'nın seçtiği kategori — "AI seçti" rozeti ve riskli-sınır onayı için
+  const aiCategoryRef     = useRef<string | null>(null);
+  // Onay Alert'i onaylanınca ikinci handleSave girişinde tekrar sormasın diye
+  const skipCategoryConfirm = useRef(false);
+
   useEffect(() => {
     if (isEditMode || !processedBase64) return;
     let cancelled = false;
     analyzeClothingImage(processedBase64)
       .then((result) => {
         if (cancelled) return;
+        aiCategoryRef.current = result.category;
         setCategory(result.category);
         if (result.subcategory) setSubCategory(result.subcategory);
         if (result.seasons.length > 0) setSeasons(result.seasons);
@@ -145,6 +151,26 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       return;
     }
     if (!user) return;
+
+    // Üst↔elbise en sık karışan ve en yıkıcı vision hatası. AI bu ikisinden birini seçtiyse
+    // ve kullanıcı değiştirmediyse, kaydetmeden önce tek bir onay iste.
+    const riskyType = category === 'upper' || category === 'dress_jumpsuit';
+    const stillAiChoice = aiCategoryRef.current === category;
+    if (riskyType && stillAiChoice && !skipCategoryConfirm.current) {
+      const isDress = category === 'dress_jumpsuit';
+      Alert.alert(
+        isDress ? 'Bu bir elbise mi?' : 'Bu bir üst mü?',
+        isDress
+          ? 'Tek parça, altına ayrı giysi gerekmeyen bir elbise/tulum ise doğru. Eğer bu bir üst (bluz, gömlek) ise, yukarıdan "Üst" seç — yoksa kombinlerde alt eksik kalır.'
+          : 'Bel üstünde biten, altına pantolon/etek gereken bir üst ise doğru. Eğer bu tek parça bir elbise ise, yukarıdan "Elbise" seç.',
+        [
+          { text: 'Düzelteceğim', style: 'cancel' },
+          { text: 'Doğru, kaydet', onPress: () => { skipCategoryConfirm.current = true; handleSave(); } },
+        ],
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -430,6 +456,27 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
           ))}
         </View>
 
+        {/* Kategori doğrulama özeti — kaydetmeden önce mutlaka görünür */}
+        {category && (
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmRow}>
+              <Text style={styles.confirmLabel}>Kategori</Text>
+              <View style={styles.confirmValueWrap}>
+                <Text style={styles.confirmValue}>
+                  {CATEGORIES.find((c) => c.value === category)?.label ?? category}
+                  {subCategory ? ` · ${CATEGORY_META[category].subcategories.find((s) => s.value === subCategory)?.label ?? ''}` : ''}
+                </Text>
+                {aiCategoryRef.current === category && (
+                  <Text style={styles.aiTag}>AI seçti</Text>
+                )}
+              </View>
+            </View>
+            <Text style={styles.confirmHint}>
+              Yanlışsa yukarıdan düzelt — doğru kategori, doğru kombinler demek.
+            </Text>
+          </View>
+        )}
+
         {/* Kaydet / Güncelle butonu */}
         <TouchableOpacity
           style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
@@ -452,6 +499,47 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  confirmCard: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  confirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  confirmLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  confirmValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  confirmValue: {
+    ...typography.body,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
+  },
+  aiTag: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    backgroundColor: colors.background,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  confirmHint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
   },
   header: {
     flexDirection: 'row',
