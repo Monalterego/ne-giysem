@@ -1,0 +1,18 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "loading": "Loading..."
+  },
+  "settings": {
+    "language": "Language",
+    "turkish": "Turkish",
+    "english": "English"
+  }
+}

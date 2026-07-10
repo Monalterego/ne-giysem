@@ -1,0 +1,18 @@
+{
+  "common": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "add": "Ekle",
+    "back": "Geri",
+    "next": "İleri",
+    "done": "Tamam",
+    "loading": "Yükleniyor..."
+  },
+  "settings": {
+    "language": "Dil",
+    "turkish": "Türkçe",
+    "english": "İngilizce"
+  }
+}
