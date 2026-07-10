@@ -18,6 +18,13 @@ export interface VisionResult {
   signals?: string[];
 }
 
+/** Motorun tanıdığı kanonik sinyaller. Vision bunun dışında bir şey dönerse yok sayılır. */
+export const KNOWN_SIGNALS = [
+  'sequin', 'satin', 'velvet', 'shiny', 'metallic_thread', 'beaded', 'draped',
+  'patent', 'stiletto', 'strapless', 'one_shoulder', 'deep_neckline',
+  'athletic', 'tailored', 'evening_wear', 'structured',
+] as const;
+
 const CATEGORY_MAP: Record<string, ClothingCategory> = {
   ust:           'upper',
   alt:           'lower',
@@ -94,7 +101,11 @@ function parseVisionResponse(text: string): VisionResult {
     : undefined;
 
   const signals: string[] = Array.isArray(raw.signals)
-    ? (raw.signals as unknown[]).filter((s): s is string => typeof s === 'string').slice(0, 6)
+    ? (raw.signals as unknown[])
+        .filter((s): s is string => typeof s === 'string')
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => (KNOWN_SIGNALS as readonly string[]).includes(s))
+        .slice(0, 6)
     : [];
 
   const mappedCategory = CATEGORY_MAP[raw.category ?? ''];

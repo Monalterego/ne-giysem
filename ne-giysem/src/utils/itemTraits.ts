@@ -90,13 +90,7 @@ const LEGACY_NAME_FABRIC: Array<[string, string]> = [
   ['kot','denim'], ['polyester','polyester'],
 ];
 
-/** Kanonik sinyaller. Yoksa (eski kayıt) Türkçe metinden türetilir. */
-export function resolveSignals(item: WardrobeItem): string[] {
-  if (item.signals && item.signals.length > 0) return item.signals;
-  const blob = [(item.itemName ?? ''), ...(item.details ?? [])].join(' ').toLowerCase();
-  return LEGACY_SIGNAL_RULES.filter(([, kws]) => kws.some((k) => blob.includes(k))).map(([s]) => s);
-}
-
+// resolveSignals'tan ÖNCE tanımlı — resolveSignals kumaş güvenlik ağı için bunu çağırır.
 function resolveFabric(item: WardrobeItem): string {
   const f = item.fabric ?? '';
   if (f && f !== 'unknown' && f !== 'bilmiyorum') {
@@ -113,6 +107,32 @@ function resolveFabric(item: WardrobeItem): string {
     }
   }
   return '';
+}
+
+/**
+ * Kanonik sinyaller. Üç kaynağın birleşimi:
+ *  1. Vision'ın ürettiği `signals` (dilden bağımsız, birincil)
+ *  2. Yapısal alanlardan türetilen güvenlik ağı (fabric — dilden bağımsız)
+ *  3. LEGACY: vision hiç sinyal vermediyse Türkçe metinden türetme (backfill öncesi kayıtlar)
+ */
+export function resolveSignals(item: WardrobeItem): string[] {
+  const out = new Set<string>(item.signals ?? []);
+
+  // Güvenlik ağı: kumaş alanı zaten kanonik (satin/velvet) — dil fark etmez.
+  // Vision `signals`'ı atlasa bile gece kumaşı yakalanır.
+  const fab = resolveFabric(item);
+  if (fab === 'satin')  out.add('satin');
+  if (fab === 'velvet') out.add('velvet');
+
+  // LEGACY: hiç sinyal yoksa (eski kayıt) Türkçe metinden türet.
+  if (out.size === 0) {
+    const blob = [(item.itemName ?? ''), ...(item.details ?? [])].join(' ').toLowerCase();
+    for (const [sig, kws] of LEGACY_SIGNAL_RULES) {
+      if (kws.some((k) => blob.includes(k))) out.add(sig);
+    }
+  }
+
+  return [...out];
 }
 
 // ─── Fonksiyonlar ─────────────────────────────────────────────────────────────
