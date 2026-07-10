@@ -84,13 +84,14 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const [itemColors,  setItemColors]  = useState<string[]>(existingItem?.colors ?? []);
   const [aiDetails, setAiDetails] = useState<{
     itemName?: string; fit?: string; neckline?: string;
-    sleeveLength?: string; details?: string[];
+    sleeveLength?: string; details?: string[]; signals?: string[];
   } | null>(existingItem?.itemName ? {
     itemName: existingItem.itemName,
     fit: existingItem.fit,
     neckline: existingItem.neckline,
     sleeveLength: existingItem.sleeveLength,
     details: existingItem.details,
+    signals: existingItem.signals,
   } : null);
   const [saving,      setSaving]      = useState(false);
   const [analyzing,   setAnalyzing]   = useState(!isEditMode);
@@ -114,6 +115,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
           neckline:     result.neckline,
           sleeveLength: result.sleeveLength,
           details:      result.details,
+          signals:      result.signals,
         });
         setAiDetected(true);
       })
@@ -188,6 +190,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         neckline:            aiDetails?.neckline   ?? null,
         sleeve_length:       aiDetails?.sleeveLength ?? null,
         details:             aiDetails?.details    ?? null,
+        signals:             aiDetails?.signals    ?? [],
         image_url:           originalImageUrl,
         processed_image_url: processedImageUrl,
         created_at:          now,
@@ -209,6 +212,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         neckline:     aiDetails?.neckline,
         sleeveLength: aiDetails?.sleeveLength,
         details:      aiDetails?.details,
+        signals:      aiDetails?.signals ?? [],
         originalImageUrl,
         processedImageUrl,
         createdAt: now,

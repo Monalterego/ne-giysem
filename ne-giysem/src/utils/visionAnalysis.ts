@@ -15,6 +15,7 @@ export interface VisionResult {
   neckline?: string;
   sleeveLength?: string;
   details?: string[];
+  signals?: string[];
 }
 
 const CATEGORY_MAP: Record<string, ClothingCategory> = {
@@ -40,6 +41,7 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
 1. category + subcategory TUTARLI olmalı (tek parça belden aşağı devam eden giysi = elbise_tulum, üst değil)
 2. Elbise BOYU: eteğin nerede bittiğine bak → diz ÜSTÜ = mini, baldır/diz-altı = midi, ayak bileği/yere kadar = maxi
 3. Parlak/özel KUMAŞ: yüzey parlıyorsa ASLA "pamuk" deme
+4. "signals" — motorun okuduğu tek alan. Eksik sinyal = yanlış kombin.
 
 {
   "category": "ust" | "alt" | "elbise_tulum" | "dis" | "ayakkabi" | "canta" | "aksesuar",
@@ -57,6 +59,17 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
   "neckline": yaka tipi, SADECE ust ve elbise_tulum için — "yuvarlak" | "v yaka" | "polo" | "balikci" | "kayik" | "halter" | "dik yaka" | null,
   "sleeve": kol boyu, SADECE ust için — "kolsuz" | "kisa kol" | "3/4 kol" | "uzun kol" | "balon kol" | null,
   "details": öne çıkan max 3 detay. ÖZEL/GECE sinyali gördüysen MUTLAKA ekle — "payetli" | "parlak" | "straplez" | "tek_omuz" | "derin_dekolte" | "transparan" | "drapeli" | "dugmeli" | "cepli" | "firfirli" | "bagcikli" | "asimetrik",
+  "signals": motorun kullandığı KANONİK etiketler. Gördüğün her sinyali ekle, YOKSA boş dizi.
+    Bu değerler SABİTTİR, asla çevirme, asla yeni değer uydurma:
+    Yüzey/kumaş: "sequin" (payet/pul), "satin" (saten/parlak-kaygan), "velvet" (kadife),
+                 "shiny" (parlak yüzey), "metallic_thread" (simli/lameli), "beaded" (taşlı),
+                 "draped" (drapeli/dökümlü)
+    Ayakkabı:    "patent" (rugan/lake), "stiletto" (ince yüksek topuk)
+    Kesim:       "strapless" (straplez), "one_shoulder" (tek omuz), "deep_neckline" (derin dekolte)
+    Bağlam:      "athletic" (spor/koşu/antrenman parçası), "tailored" (klasik/ofis kesimi),
+                 "evening_wear" (abiye/gece kıyafeti)
+    Örnek: payetli mini elbise → ["sequin"] ; rugan stiletto → ["patent","stiletto"]
+           spor tayt → ["athletic"] ; hasır şapka → [],
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
   "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
   "fabric": kumaş — GÖRÜNÜR DOKUYA bak: parlak/yansımalı yüzey → "saten" veya "ipek" (asla pamuk); örgü dokusu → "triko"; tüylü mat → "kadife"; mat dokusuz günlük → "pamuk". EMİN DEĞİLSEN "bilmiyorum" — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "kasmir" | "polyester" | "viskon" | "saten" | "kadife" | "deri" | "suni_deri" | "triko" | "sifon" | "karisim" | "bilmiyorum",
@@ -80,6 +93,10 @@ function parseVisionResponse(text: string): VisionResult {
     ? (raw.details as unknown[]).filter((d): d is string => typeof d === 'string').slice(0, 3)
     : undefined;
 
+  const signals: string[] = Array.isArray(raw.signals)
+    ? (raw.signals as unknown[]).filter((s): s is string => typeof s === 'string').slice(0, 6)
+    : [];
+
   const mappedCategory = CATEGORY_MAP[raw.category ?? ''];
   if (!mappedCategory) console.warn('[vision] bilinmeyen kategori:', raw.category);
 
@@ -95,6 +112,7 @@ function parseVisionResponse(text: string): VisionResult {
     neckline:     typeof raw.neckline === 'string' ? raw.neckline : undefined,
     sleeveLength: typeof raw.sleeve   === 'string' ? raw.sleeve   : undefined,
     details:      details?.length ? details : undefined,
+    signals,
   };
 }
 
