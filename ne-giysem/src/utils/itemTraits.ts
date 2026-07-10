@@ -61,16 +61,33 @@ const TURKISH_TO_CANONICAL: Record<string, string> = {
   bilmiyorum: '',          unknown:  '',
 };
 
-// İsimden kumaş çıkarımı: fabric=unknown/bilmiyorum/eksik iken itemName'e bakılır
-const NAME_FABRIC_MAP: Array<[string, string]> = [
-  ['saten',   'satin'],   ['kadife',  'velvet'],  ['ipek',    'silk'],
-  ['yün',     'wool'],    ['yun',     'wool'],     ['keten',   'linen'],
-  ['kaşmir',  'cashmere'],['kasmir',  'cashmere'], ['deri',    'leather'],
-  ['şifon',   'chiffon'], ['sifon',   'chiffon'],  ['viskon',  'viscose'],
-  ['triko',   'knit'],    ['karışım', 'blend'],    ['karisim', 'blend'],
-  ['pamuk',   'cotton'],  ['denim',   'denim'],    ['kot',     'denim'],
-  ['polyester','polyester'],
+// Eski kayıtlarda `signals` yok. Backfill tamamlanana kadar Türkçe metinden türet.
+// Backfill sonrası bu fallback ölü kod olur; İngilizce isimlerde zaten eşleşmez.
+const LEGACY_SIGNAL_RULES: Array<[string, string[]]> = [
+  ['sequin',          ['payet', 'pullu']],
+  ['satin',           ['saten']],
+  ['velvet',          ['kadife']],
+  ['draped',          ['drape']],
+  ['metallic_thread', ['simli']],
+  ['shiny',           ['parlak']],
+  ['beaded',          ['taşlı', 'tasli']],
+  ['evening_wear',    ['abiye', 'gece elbise']],
+  ['structured',      ['straforlu']],
+  ['patent',          ['rugan']],
+  ['stiletto',        ['stiletto']],
+  ['athletic',        ['spor', 'koşu', 'kosu', 'antrenman', 'performans', 'yoga',
+                       'atletik', 'eşofman', 'esofman', 'bisikletçi', 'bisikletci', 'sweat']],
+  ['tailored',        ['klasik', 'blazer', 'takım', 'takim', 'ofis', 'tailor']],
+  ['strapless',       ['straplez']],
+  ['one_shoulder',    ['tek omuz', 'tek_omuz']],
 ];
+
+/** Kanonik sinyaller. Yoksa (eski kayıt) Türkçe metinden türetilir. */
+export function resolveSignals(item: WardrobeItem): string[] {
+  if (item.signals && item.signals.length > 0) return item.signals;
+  const blob = [(item.itemName ?? ''), ...(item.details ?? [])].join(' ').toLowerCase();
+  return LEGACY_SIGNAL_RULES.filter(([, kws]) => kws.some((k) => blob.includes(k))).map(([s]) => s);
+}
 
 function resolveFabric(item: WardrobeItem): string {
   const f = item.fabric ?? '';
@@ -78,10 +95,9 @@ function resolveFabric(item: WardrobeItem): string {
     // Türkçe fabric değerini kanonik İngilizceye çevir; bilinmeyense olduğu gibi dön
     return TURKISH_TO_CANONICAL[f] ?? f;
   }
-  const name = (item.itemName ?? '').toLowerCase();
-  for (const [kw, mapped] of NAME_FABRIC_MAP) {
-    if (name.includes(kw)) return mapped;
-  }
+  const sg = resolveSignals(item);
+  if (sg.includes('satin'))  return 'satin';
+  if (sg.includes('velvet')) return 'velvet';
   return '';
 }
 

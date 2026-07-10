@@ -1,6 +1,6 @@
 import type { WardrobeItem } from '../types';
 import type { OccasionId } from '../constants/occasions';
-import { getFormality } from './itemTraits';
+import { getFormality, resolveSignals } from './itemTraits';
 
 // ─── Tip tanımı ───────────────────────────────────────────────────────────────
 
@@ -109,12 +109,12 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
 
 // ─── Fonksiyonlar ─────────────────────────────────────────────────────────────
 
-// Gece/akşam sinyali taşıyan anahtar kelimeler (isim bazlı — formalite yakalayamıyor)
-const EVENING_KEYWORDS = ['payet', 'saten', 'pul', 'drape', 'parlak', 'simli', 'taşlı', 'kadife'];
+// Gece/akşam kanonik sinyalleri (formalite yakalayamıyor — dilden bağımsız)
+const OCC_EVENING_SIGNALS  = ['sequin', 'satin', 'draped', 'shiny', 'metallic_thread', 'beaded', 'velvet'];
 // Bu okazyonlar "gündüz/rahat" — gece parçaları buralara girmemeli
 const DAYTIME_OCCASIONS: OccasionId[] = ['tatil', 'spor', 'gunluk', 'seyahat', 'brunch'];
 // Gece karakterli ayakkabı sinyalleri (ofise uymaz)
-const SHOE_EVENING_KEYWORDS = ['rugan', 'stiletto', 'saten', 'payet', 'simli', 'taşlı', 'parlak'];
+const SHOE_EVENING_SIGNALS = ['patent', 'stiletto', 'satin', 'sequin', 'metallic_thread', 'beaded', 'shiny'];
 
 /**
  * Sadece dress-code / fonksiyonel çelişkileri filtreler (hardExcluded).
@@ -124,16 +124,15 @@ export function isItemAllowed(item: WardrobeItem, occasion: OccasionId): boolean
   const sub = item.subCategory;
   if (!sub) return true;
   if (OCCASION_RULES[occasion].hardExcluded.includes(sub)) return false;
+  const sg = resolveSignals(item);
   // Gündüz okazyonlarında, gece-sinyali taşıyan elbiseleri ele
   if (DAYTIME_OCCASIONS.includes(occasion) && item.category === 'dress_jumpsuit') {
-    const signal = [(item.itemName ?? ''), ...(item.details ?? [])].join(' ').toLowerCase();
-    if (EVENING_KEYWORDS.some((kw) => signal.includes(kw))) return false;
+    if (OCC_EVENING_SIGNALS.some((k) => sg.includes(k))) return false;
   }
   // İş: gece karakterli ayakkabıları ele (rugan/stiletto formalitesi yüksek olduğu için
-  // formalite filtresine takılmıyor — isim sinyali gerekli, payetli elbise çözümünün aynısı)
+  // formalite filtresine takılmıyor — kanonik sinyal gerekli, payetli elbise çözümünün aynısı)
   if (occasion === 'is' && item.category === 'shoes') {
-    const signal = [(item.itemName ?? ''), ...(item.details ?? [])].join(' ').toLowerCase();
-    if (SHOE_EVENING_KEYWORDS.some((kw) => signal.includes(kw))) return false;
+    if (SHOE_EVENING_SIGNALS.some((k) => sg.includes(k))) return false;
   }
   return true;
 }

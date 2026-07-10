@@ -46,6 +46,7 @@ export interface WardrobeItem {
   neckline?: string;
   sleeveLength?: string;
   details?: string[];
+  signals?: string[];      // kanonik, dilden bağımsız makine sinyalleri
   createdAt: string;
 }
 

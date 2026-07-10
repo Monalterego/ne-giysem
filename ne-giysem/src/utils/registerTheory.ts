@@ -1,20 +1,13 @@
 import type { WardrobeItem } from '../types';
 import type { OccasionId } from '../constants/occasions';
+import { resolveSignals } from './itemTraits';
 
 // ─── Tip ─────────────────────────────────────────────────────────────────────
 
 type Register = 'athletic' | 'casual' | 'business' | 'evening';
 
-// ─── Anahtar kelime listeleri ─────────────────────────────────────────────────
-
-const ATHLETIC_KW = [
-  'spor', 'tayt', 'bisikletçi', 'bisikletci', 'antrenman', 'performans',
-  'koşu', 'kosu', 'yoga', 'atletik', 'eşofman', 'esofman', 'sweat',
-];
-const EVENING_KW = [
-  'saten', 'abiye', 'gece', 'payet', 'drape', 'pul', 'simli', 'kadife', 'straforlu',
-];
-const BUSINESS_KW = ['klasik', 'blazer', 'takım', 'takim', 'tailor', 'ofis'];
+// Evening register'ı tetikleyen kanonik sinyaller
+const REG_EVENING = ['satin', 'evening_wear', 'sequin', 'draped', 'metallic_thread', 'velvet', 'structured'];
 
 // ─── Fonksiyonlar ─────────────────────────────────────────────────────────────
 
@@ -23,13 +16,13 @@ const BUSINESS_KW = ['klasik', 'blazer', 'takım', 'takim', 'tailor', 'ofis'];
  * Öncelik sırası: athletic > evening > business > casual.
  */
 export function getRegister(item: WardrobeItem): Register {
-  const name = (item.itemName ?? '').toLowerCase();
-  const sub  = item.subCategory ?? '';
-  if (ATHLETIC_KW.some((k) => name.includes(k)) || sub === 'tayt') return 'athletic';
-  if (EVENING_KW.some((k) => name.includes(k)) || sub === 'clutch') return 'evening';
+  const sub = item.subCategory ?? '';
+  const sg  = resolveSignals(item);
+  if (sg.includes('athletic') || sub === 'tayt') return 'athletic';
+  if (REG_EVENING.some((k) => sg.includes(k)) || sub === 'clutch') return 'evening';
   // halter tek başına gece sinyali değil (yazlık plaj elbiselerinin klasiği) — sadece maxi ile birlikteyse gece
   if (item.neckline === 'halter' && sub === 'maxi_elbise') return 'evening';
-  if (['blazer', 'gomlek', 'loafer'].includes(sub) || BUSINESS_KW.some((k) => name.includes(k))) return 'business';
+  if (['blazer', 'gomlek', 'loafer'].includes(sub) || sg.includes('tailored')) return 'business';
   return 'casual';
 }
 
@@ -53,8 +46,7 @@ const REGISTER_FIT: Record<OccasionId, Record<Register, number>> = {
  */
 function isSmartSneaker(item: WardrobeItem): boolean {
   if ((item.subCategory ?? '') !== 'sneaker') return false;
-  const name = (item.itemName ?? '').toLowerCase();
-  return !ATHLETIC_KW.some((k) => name.includes(k));
+  return !resolveSignals(item).includes('athletic');
 }
 
 /** 0–1 register-okasyon uyum skoru. 'all' → gunluk olarak çözülür. */

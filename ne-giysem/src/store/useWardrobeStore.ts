@@ -53,6 +53,7 @@ function mapRow(row: any): WardrobeItem {
     neckline:     row.neckline       ?? undefined,
     sleeveLength: row.sleeve_length  ?? undefined,
     details:      row.details        ?? undefined,
+    signals:      parseJsonArray(row.signals),
     createdAt:    row.created_at,
   };
 }
