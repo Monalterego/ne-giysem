@@ -15,8 +15,8 @@ export default function SplashScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.line} />
-      <Text style={styles.title}>Ne Giysem?</Text>
-      <Text style={styles.subtitle}>KİŞİSEL STİL DANIŞMANIN</Text>
+      <Text style={styles.title}>SESTINA</Text>
+      <Text style={styles.subtitle}>Aynı parçalar. Asla aynı gün.</Text>
     </View>
   );
 }
@@ -38,7 +38,8 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: fonts.heading,
     color: colors.white,
-    letterSpacing: -1,
+    letterSpacing: 8,
+    fontWeight: '400',
   },
   subtitle: {
     fontSize: 10,

@@ -141,7 +141,7 @@ export default function StyleResultScreen({ route, navigation }: Props) {
 
   const handleShare = async () => {
     await Share.share({
-      message: `Stil DNA'm: ${dnaName || primary.name} (${breakdown}) — Ne Giysem? ile keşfettim!`,
+      message: `Stil DNA'm: ${dnaName || primary.name} (${breakdown}) — Sestina ile keşfettim!`,
     });
   };
 

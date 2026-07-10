@@ -205,7 +205,7 @@ function ModelModal({
   const handleShare = async () => {
     if (!imageUrl) return;
     await Share.share({
-      message: `Sanal manken kombinim — Ne Giysem? ile oluşturuldu: ${imageUrl}`,
+      message: `Sanal manken kombinim — Sestina ile oluşturuldu: ${imageUrl}`,
       url: imageUrl,
     });
   };
