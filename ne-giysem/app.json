@@ -26,9 +26,16 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ],
-      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -56,18 +63,20 @@
           "resizeMode": "contain",
           "backgroundColor": "#FAFAFA"
         }
-      ]
+      ],
+      "expo-localization"
     ],
-    "extra": {
-      "eas": {
-        "projectId": "c1c22437-3f12-46a0-9018-04a66262ac02"
-      }
-    },
     "runtimeVersion": {
       "policy": "appVersion"
     },
+    "extra": {
+      "eas": {
+        "projectId": "97d71a2a-fac5-4a94-9a9f-11ca1ad99a4b"
+      }
+    },
+    "owner": "monalterego",
     "updates": {
-      "url": "https://u.expo.dev/c1c22437-3f12-46a0-9018-04a66262ac02"
+      "url": "https://u.expo.dev/97d71a2a-fac5-4a94-9a9f-11ca1ad99a4b"
     }
   }
 }
