@@ -82,6 +82,14 @@ const LEGACY_SIGNAL_RULES: Array<[string, string[]]> = [
   ['one_shoulder',    ['tek omuz', 'tek_omuz']],
 ];
 
+const LEGACY_NAME_FABRIC: Array<[string, string]> = [
+  ['saten','satin'], ['kadife','velvet'], ['ipek','silk'], ['yün','wool'], ['yun','wool'],
+  ['keten','linen'], ['kaşmir','cashmere'], ['kasmir','cashmere'], ['deri','leather'],
+  ['şifon','chiffon'], ['sifon','chiffon'], ['viskon','viscose'], ['triko','knit'],
+  ['karışım','blend'], ['karisim','blend'], ['pamuk','cotton'], ['denim','denim'],
+  ['kot','denim'], ['polyester','polyester'],
+];
+
 /** Kanonik sinyaller. Yoksa (eski kayıt) Türkçe metinden türetilir. */
 export function resolveSignals(item: WardrobeItem): string[] {
   if (item.signals && item.signals.length > 0) return item.signals;
@@ -95,9 +103,15 @@ function resolveFabric(item: WardrobeItem): string {
     // Türkçe fabric değerini kanonik İngilizceye çevir; bilinmeyense olduğu gibi dön
     return TURKISH_TO_CANONICAL[f] ?? f;
   }
-  const sg = resolveSignals(item);
-  if (sg.includes('satin'))  return 'satin';
-  if (sg.includes('velvet')) return 'velvet';
+  // LEGACY: backfill öncesi kayıtlarda (signals boş) kumaşı İSİMDEN kurtar.
+  // Backfill sonrası bu dal hiç çalışmaz; İngilizce isimlerde zaten eşleşmez.
+  // Kumaş details'ten türetilmez — "Hasır tote"un detayındaki 'deri sap' yanıltır.
+  if (!item.signals || item.signals.length === 0) {
+    const name = (item.itemName ?? '').toLowerCase();
+    for (const [kw, mapped] of LEGACY_NAME_FABRIC) {
+      if (name.includes(kw)) return mapped;
+    }
+  }
   return '';
 }
 
