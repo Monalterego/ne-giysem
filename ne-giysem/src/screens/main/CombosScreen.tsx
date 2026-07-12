@@ -95,9 +95,7 @@ const ComboCard = React.memo(function ComboCard({
       <View style={styles.cardFooter}>
         <View style={styles.footerLeft}>
           <Text style={styles.comboLabel}>{combo.label}</Text>
-          {combo.reasoning ? (
-            <Text style={styles.comboReasoning}>{combo.reasoning}</Text>
-          ) : null}
+          {/* Kombin gerekçesi geçici gizlendi (i18n bekliyor) — combo.reasoning motorda üretiliyor */}
         </View>
 
         {isGenerating ? (
