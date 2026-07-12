@@ -27,6 +27,7 @@ import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+import { t } from '../../i18n';
 
 const CATEGORY_LABEL: Record<string, string> = {
   upper:          'Üst',
@@ -41,11 +42,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 const FREE_RENDER_LIMIT = 3;
 const FEW_COMBOS = 4;
 
+// Anahtar referansları — t() gösterim anında çağrılır (dil değişince donmaz)
 const LOADING_MSGS = [
-  'Parçalar seçiliyor…',
-  'Mankenin hazırlanıyor…',
-  'Kombin giydiriliyor…',
-  'Son rötuşlar yapılıyor…',
+  'combos.selectingItems',
+  'combos.modelPreparingDots',
+  'combos.dressingCombo',
+  'combos.finalTouches',
 ] as const;
 
 function comboKey(combo: Combo): string {
@@ -110,7 +112,7 @@ const ComboCard = React.memo(function ComboCard({
         {isGenerating ? (
           <View style={styles.generatingState}>
             <ActivityIndicator size="small" color={colors.textSecondary} />
-            <Text style={styles.generatingText}>Manken hazırlanıyor...</Text>
+            <Text style={styles.generatingText}>{t('combos.modelPreparing')}</Text>
           </View>
         ) : (
           <View style={styles.footerActions}>
@@ -121,13 +123,13 @@ const ComboCard = React.memo(function ComboCard({
               activeOpacity={0.85}
             >
               <Feather name="user" size={14} color={colors.text} />
-              <Text style={styles.modelBtnText}>Üzerinde Gör</Text>
+              <Text style={styles.modelBtnText}>{t('combos.tryOn')}</Text>
             </TouchableOpacity>
 
             {/* Giy butonu */}
             {isWorn ? (
               <View style={[styles.wearBtn, styles.wearBtnWorn]}>
-                <Text style={[styles.wearBtnText, styles.wearBtnTextWorn]}>✓ Giyildi</Text>
+                <Text style={[styles.wearBtnText, styles.wearBtnTextWorn]}>{t('combos.worn')}</Text>
               </View>
             ) : (
               <TouchableOpacity
@@ -138,7 +140,7 @@ const ComboCard = React.memo(function ComboCard({
               >
                 {isSaving
                   ? <ActivityIndicator size="small" color={colors.white} />
-                  : <Text style={styles.wearBtnText}>Giy →</Text>
+                  : <Text style={styles.wearBtnText}>{t('combos.wear')}</Text>
                 }
               </TouchableOpacity>
             )}
@@ -218,7 +220,7 @@ function ModelModal({
         <View style={[modalStyles.header, { paddingTop: insets.top + spacing.sm }]}>
           <TouchableOpacity style={modalStyles.closeBtn} onPress={onClose} activeOpacity={0.7}>
             <Feather name="arrow-left" size={20} color={colors.text} />
-            <Text style={modalStyles.closeBtnText}>Geri</Text>
+            <Text style={modalStyles.closeBtnText}>{t('combos.back')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -231,11 +233,11 @@ function ModelModal({
               <Feather name="shopping-bag" size={36} color={colors.text} />
             </View>
 
-            <Text style={modalStyles.loadingTitle}>Kombinini hazırlıyoruz</Text>
+            <Text style={modalStyles.loadingTitle}>{t('combos.preparingCombo')}</Text>
 
             {/* Değişen mesaj */}
             <Animated.Text style={[modalStyles.loadingMsg, { opacity: fadeValue }]}>
-              {LOADING_MSGS[msgIdx]}
+              {t(LOADING_MSGS[msgIdx])}
             </Animated.Text>
 
             {/* İlerleme noktaları */}
@@ -274,7 +276,7 @@ function ModelModal({
             <View style={modalStyles.footer}>
               <TouchableOpacity style={modalStyles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
                 <Feather name="share-2" size={16} color={colors.white} />
-                <Text style={modalStyles.shareBtnText}>Paylaş</Text>
+                <Text style={modalStyles.shareBtnText}>{t('combos.share')}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -298,16 +300,16 @@ function PremiumModal({
     <Modal visible={visible} animationType="fade" transparent>
       <View style={premiumStyles.overlay}>
         <View style={premiumStyles.card}>
-          <Text style={premiumStyles.title}>Limit Doldu</Text>
+          <Text style={premiumStyles.title}>{t('combos.limitReached')}</Text>
           <Text style={premiumStyles.body}>
             Ücretsiz planda {FREE_RENDER_LIMIT} sanal manken hakkın var.{'\n'}
             Premium'a geçerek sınırsız kullan.
           </Text>
           <TouchableOpacity style={premiumStyles.premiumBtn} onPress={onClose} activeOpacity={0.85}>
-            <Text style={premiumStyles.premiumBtnText}>Premium'a Geç →</Text>
+            <Text style={premiumStyles.premiumBtnText}>{t('combos.goPremium')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={premiumStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-            <Text style={premiumStyles.cancelBtnText}>Kapat</Text>
+            <Text style={premiumStyles.cancelBtnText}>{t('combos.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -332,19 +334,19 @@ function NoAvatarModal({
     <Modal visible={visible} animationType="fade" transparent>
       <View style={noAvatarStyles.overlay}>
         <View style={noAvatarStyles.card}>
-          <Text style={noAvatarStyles.title}>Fotoğraf Gerekiyor</Text>
+          <Text style={noAvatarStyles.title}>{t('combos.photoRequired')}</Text>
           <Text style={noAvatarStyles.body}>
             Bu özelliği kullanmak için tam boy bir fotoğrafın gerekiyor. Yüzün ve vücudun görünür
             olmalı, iyi aydınlatmalı düz bir zeminde dur.
           </Text>
           <TouchableOpacity style={noAvatarStyles.primaryBtn} onPress={onGoToProfile} activeOpacity={0.85}>
-            <Text style={noAvatarStyles.primaryBtnText}>Fotoğraf Ekle</Text>
+            <Text style={noAvatarStyles.primaryBtnText}>{t('combos.addPhoto')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={noAvatarStyles.secondaryBtn} onPress={onUseAiModel} activeOpacity={0.75}>
-            <Text style={noAvatarStyles.secondaryBtnText}>Yapay Manken Kullan</Text>
+            <Text style={noAvatarStyles.secondaryBtnText}>{t('combos.useVirtualModel')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={noAvatarStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-            <Text style={noAvatarStyles.cancelBtnText}>Kapat</Text>
+            <Text style={noAvatarStyles.cancelBtnText}>{t('combos.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -531,7 +533,7 @@ export default function CombosScreen() {
       if (!finalUrl) return;
 
       const imgRes = await fetch(finalUrl);
-      if (!imgRes.ok) throw new Error('Görsel indirilemedi');
+      if (!imgRes.ok) throw new Error(t('combos.imageDownloadError'));
       const imgBuffer = await imgRes.arrayBuffer();
       const imgBytes  = new Uint8Array(imgBuffer);
 
@@ -552,8 +554,8 @@ export default function CombosScreen() {
     } catch (err) {
       setModelModalVisible(false);
       Alert.alert(
-        'Hata',
-        err instanceof Error ? err.message : 'Manken görüntüsü oluşturulamadı. Lütfen tekrar dene.',
+        t('combos.errorTitle'),
+        err instanceof Error ? err.message : t('combos.modelCreateError'),
       );
     } finally {
       setGeneratingComboId(null);
@@ -568,7 +570,7 @@ export default function CombosScreen() {
   const handleItemPressCb  = useCallback((itemId: string, url: string) => {
     const isData = /^data:image\//i.test(url ?? '');
     if (isData) {
-      Alert.alert('Görsel açılamadı', 'Bu parçanın görseli görüntülenemiyor.');
+      Alert.alert(t('combos.imageOpenError'), t('combos.imageOpenErrorMsg'));
       return;
     }
     setLightboxItemId(itemId);
@@ -601,7 +603,7 @@ export default function CombosScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Kombinler</Text>
+          <Text style={styles.headerTitle}>{t('combos.title')}</Text>
           {combos.length > 0 && (
             <Text style={styles.headerCount}>{combos.length} öneri</Text>
           )}
@@ -651,7 +653,7 @@ export default function CombosScreen() {
             // YENİ KULLANICI — dolap tamamen boş
             <>
               <Feather name="camera" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
-              <Text style={styles.emptyTitle}>Dolabın henüz boş</Text>
+              <Text style={styles.emptyTitle}>{t('combos.emptyWardrobe')}</Text>
               <Text style={styles.emptySubtitle}>
                 Birkaç parça ekle, senin tarzına ve hava durumuna göre kombinler hazırlayalım.
               </Text>
@@ -661,17 +663,17 @@ export default function CombosScreen() {
                 activeOpacity={0.85}
               >
                 <Feather name="plus" size={16} color={colors.background} />
-                <Text style={styles.emptyCtaText}>İlk Parçanı Ekle</Text>
+                <Text style={styles.emptyCtaText}>{t('combos.addFirstItem')}</Text>
               </TouchableOpacity>
             </>
           ) : (
             // DOLAP DOLU ama bu okazyona kombin çıkmadı
             <>
               <Feather name="layers" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
-              <Text style={styles.emptyTitle}>Bu okazyon için kombin çıkmadı</Text>
+              <Text style={styles.emptyTitle}>{t('combos.noComboForOccasion')}</Text>
               {missing.length > 0 ? (
                 <>
-                  <Text style={styles.emptySubtitle}>Kombin için dolabında şunlar gerekiyor:</Text>
+                  <Text style={styles.emptySubtitle}>{t('combos.needForCombo')}</Text>
                   {missing.map((cat) => (
                     <View key={cat} style={styles.missingRow}>
                       <Text style={styles.missingBullet}>–</Text>
@@ -690,7 +692,7 @@ export default function CombosScreen() {
                 activeOpacity={0.85}
               >
                 <Feather name="plus" size={16} color={colors.text} />
-                <Text style={styles.emptyCtaSecondaryText}>Parça Ekle</Text>
+                <Text style={styles.emptyCtaSecondaryText}>{t('combos.addItemShort')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -733,7 +735,7 @@ export default function CombosScreen() {
             visibleCount < localCombos.length ? (
               <View style={styles.loadMoreContainer}>
                 <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore} activeOpacity={0.85}>
-                  <Text style={styles.loadMoreText}>Daha fazla kombin</Text>
+                  <Text style={styles.loadMoreText}>{t('combos.loadMore')}</Text>
                 </TouchableOpacity>
               </View>
             ) : null

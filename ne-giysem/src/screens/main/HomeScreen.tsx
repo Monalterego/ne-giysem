@@ -17,16 +17,18 @@ import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+import { t } from '../../i18n';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
-function getGreeting(): string {
+// Saat→anahtar döndürür; t() render'da çağrılmalı (dil değişince güncellensin)
+function getGreetingKey(): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Günaydın';
-  if (h < 17) return 'İyi günler';
-  return 'İyi akşamlar';
+  if (h < 12) return 'home.greetingMorning';
+  if (h < 17) return 'home.greetingAfternoon';
+  return 'home.greetingEvening';
 }
 
 function getInitial(name: string, email: string): string {
@@ -71,7 +73,7 @@ function TodayComboCard({ combo, onPress }: { combo: Combo; onPress: () => void 
         <Text style={styles.comboLabel}>{combo.label}</Text>
         <View style={styles.comboRight}>
           <Text style={styles.comboScore}>{combo.score}%</Text>
-          <Text style={styles.comboAction}>Günün Seçimi →</Text>
+          <Text style={styles.comboAction}>{t('home.dailyPick')}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -82,12 +84,12 @@ function EmptyComboCard({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.emptyCombo} onPress={onPress} activeOpacity={0.85}>
       <Feather name="plus-circle" size={28} color={colors.border} style={{ marginBottom: spacing.md }} />
-      <Text style={styles.emptyComboTitle}>Kombinin hazır değil</Text>
+      <Text style={styles.emptyComboTitle}>{t('home.comboNotReady')}</Text>
       <Text style={styles.emptyComboSub}>
         Üst, alt ve ayakkabı ekle — kombin otomatik oluşsun
       </Text>
       <View style={styles.emptyComboBtn}>
-        <Text style={styles.emptyComboText}>Parça Ekle →</Text>
+        <Text style={styles.emptyComboText}>{t('home.addItem')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -149,9 +151,9 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.topBar}>
           <View style={styles.greetingWrap}>
             <Text style={styles.greeting}>
-              {getGreeting()}{displayName ? `, ${displayName}` : ''}
+              {t(getGreetingKey())}{displayName ? `, ${displayName}` : ''}
             </Text>
-            <Text style={styles.greetingSub}>Bugün ne giymek istersin?</Text>
+            <Text style={styles.greetingSub}>{t('home.greetingSub')}</Text>
           </View>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
@@ -161,7 +163,7 @@ export default function HomeScreen({ navigation }: Props) {
 
         {/* ── Günün Kombini ── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Günün Kombini</Text>
+          <Text style={styles.sectionTitle}>{t('home.outfitOfDay')}</Text>
         </View>
         {todayCombo ? (
           <TodayComboCard combo={todayCombo} onPress={() => navigation.navigate('Combos')} />
@@ -192,7 +194,7 @@ export default function HomeScreen({ navigation }: Props) {
               <Feather name="thermometer" size={18} color={colors.textSecondary} />
               <View style={{ marginLeft: spacing.sm }}>
                 <Text style={styles.weatherCity}>İstanbul</Text>
-                <Text style={styles.weatherTemp}>Hava durumu alınamadı</Text>
+                <Text style={styles.weatherTemp}>{t('home.weatherUnavailable')}</Text>
               </View>
             </View>
           )}
@@ -200,7 +202,7 @@ export default function HomeScreen({ navigation }: Props) {
 
         {/* ── Hızlı Aksiyonlar ── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Keşfet</Text>
+          <Text style={styles.sectionTitle}>{t('home.explore')}</Text>
         </View>
         <View style={styles.quickRow}>
           <QuickAction
@@ -224,9 +226,9 @@ export default function HomeScreen({ navigation }: Props) {
         {preview.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Dolabım</Text>
+              <Text style={styles.sectionTitle}>{t('home.myWardrobe')}</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Wardrobe')}>
-                <Text style={styles.seeAll}>Tümünü gör →</Text>
+                <Text style={styles.seeAll}>{t('home.seeAll')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.previewGrid}>
