@@ -4,13 +4,20 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
 import { useUserStore } from './src/store/useUserStore';
-import { initI18n } from './src/i18n';
+import { initI18n, getLocale } from './src/i18n';
 import RootNavigator from './src/navigation/RootNavigator';
 
 export default function App() {
   // i18n hazır olmadan render etme — çeviriler ilk boyamadan önce yüklenmeli
   const [i18nReady, setI18nReady] = useState(false);
-  useEffect(() => { initI18n().then(() => setI18nReady(true)); }, []);
+  // Dil değişince tüm ağacı remount etmek için store'daki locale'i izle
+  const locale = useUserStore((s) => s.locale);
+  useEffect(() => {
+    initI18n().then(() => {
+      useUserStore.getState().setUserLocale(getLocale());  // store'u i18n ile hizala
+      setI18nReady(true);
+    });
+  }, []);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -89,7 +96,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer key={locale}>
         <RootNavigator />
         <StatusBar style="auto" />
       </NavigationContainer>

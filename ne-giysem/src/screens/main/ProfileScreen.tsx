@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
+import { t } from '../../i18n';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -62,6 +63,8 @@ export default function ProfileScreen() {
   const setPhysicalProfile        = useUserStore((s: UserState) => s.setPhysicalProfile);
   const setAvatarUrl              = useUserStore((s: UserState) => s.setAvatarUrl);
   const setTargetOnboardingScreen = useUserStore((s: UserState) => s.setTargetOnboardingScreen);
+  const locale                    = useUserStore((s: UserState) => s.locale);
+  const setUserLocale             = useUserStore((s: UserState) => s.setUserLocale);
   const items    = useWardrobeStore((s) => s.items);
   const setItems = useWardrobeStore((s) => s.setItems);
 
@@ -341,6 +344,31 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* DİL / LANGUAGE */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>{t('settings.language').toUpperCase()}</Text>
+          <View style={styles.langRow}>
+            <TouchableOpacity
+              style={[styles.langBtn, locale === 'tr' && styles.langBtnActive]}
+              onPress={() => setUserLocale('tr')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.langBtnText, locale === 'tr' && styles.langBtnTextActive]}>
+                {t('settings.turkish')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langBtn, locale === 'en' && styles.langBtnActive]}
+              onPress={() => setUserLocale('en')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.langBtnText, locale === 'en' && styles.langBtnTextActive]}>
+                {t('settings.english')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* 5 ── HESAP ── */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>HESAP</Text>
@@ -527,6 +555,14 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textSecondary,
   },
+  langRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  langBtn: {
+    flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, alignItems: 'center',
+  },
+  langBtnActive: { backgroundColor: colors.text, borderColor: colors.text },
+  langBtnText: { ...typography.body, color: colors.text },
+  langBtnTextActive: { color: colors.background },
   emptyMuted: {
     ...typography.bodySmall,
     color: colors.textSecondary,
