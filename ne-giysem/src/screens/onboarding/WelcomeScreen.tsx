@@ -13,30 +13,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { colors, fonts } from '../../constants/theme';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-const SLIDES = [
-  {
-    emojis: ['👕', '👗', '👠', '🧥'],
-    title: 'Dolabını Dijitalleştir',
-    subtitle: 'Fotoğrafla, keşfet, her gün mükemmel görün. AI destekli kişisel stil danışmanın.',
-  },
-  {
-    emojis: ['✨', '🎯', '🎨', '💡'],
-    title: 'AI ile Kombin Yap',
-    subtitle: 'Yapay zeka destekli stil önerileri ile her gün harika kombinler oluştur.',
-  },
-  {
-    emojis: ['🛍️', '📸', '💫', '⭐'],
-    title: 'Mağazada Analiz Et',
-    subtitle: 'Mağazada beğendiğin ürünü çek, dolabınla uyumunu anında öğren.',
-  },
-];
-
 export default function WelcomeScreen({ navigation }: Props) {
+  // Component içinde tanımlı — dil değişince render'da t() yeniden çalışır
+  const SLIDES = [
+    {
+      emojis: ['👕', '👗', '👠', '🧥'],
+      title: t('welcome.slide1Title'),
+      subtitle: t('welcome.slide1Subtitle'),
+    },
+    {
+      emojis: ['✨', '🎯', '🎨', '💡'],
+      title: t('welcome.slide2Title'),
+      subtitle: t('welcome.slide2Subtitle'),
+    },
+    {
+      emojis: ['🛍️', '📸', '💫', '⭐'],
+      title: t('welcome.slide3Title'),
+      subtitle: t('welcome.slide3Subtitle'),
+    },
+  ];
+
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -103,7 +105,7 @@ export default function WelcomeScreen({ navigation }: Props) {
       <View style={styles.footer}>
         <TouchableOpacity style={styles.button} onPress={handleNext} activeOpacity={0.85}>
           <Text style={styles.buttonText}>
-            {activeIndex < SLIDES.length - 1 ? 'İleri →' : 'Başlayalım →'}
+            {activeIndex < SLIDES.length - 1 ? t('welcome.next') : t('welcome.start')}
           </Text>
         </TouchableOpacity>
       </View>

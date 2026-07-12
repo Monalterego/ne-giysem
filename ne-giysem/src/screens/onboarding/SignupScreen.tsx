@@ -17,6 +17,7 @@ import type { OnboardingStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Signup'>;
 
@@ -90,20 +91,20 @@ export default function SignupScreen({ navigation }: Props) {
 
           <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
             <Feather name="globe" size={16} color={colors.text} />
-            <Text style={styles.socialText}>Google ile devam et</Text>
+            <Text style={styles.socialText}>{t('auth.googleContinue')}</Text>
           </TouchableOpacity>
 
           {/* Separator */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>veya</Text>
+            <Text style={styles.dividerText}>{t('common.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           {/* Inputlar */}
           <TextInput
             style={styles.input}
-            placeholder="Adın"
+            placeholder={t('auth.namePlaceholder')}
             placeholderTextColor={colors.textTertiary}
             value={name}
             onChangeText={setName}
@@ -112,7 +113,7 @@ export default function SignupScreen({ navigation }: Props) {
           />
           <TextInput
             style={styles.input}
-            placeholder="E-posta"
+            placeholder={t('auth.email')}
             placeholderTextColor={colors.textTertiary}
             value={email}
             onChangeText={setEmail}
@@ -122,7 +123,7 @@ export default function SignupScreen({ navigation }: Props) {
           />
           <TextInput
             style={styles.input}
-            placeholder="Şifre"
+            placeholder={t('auth.password')}
             placeholderTextColor={colors.textTertiary}
             value={password}
             onChangeText={setPassword}
@@ -145,15 +146,15 @@ export default function SignupScreen({ navigation }: Props) {
           >
             {loading
               ? <ActivityIndicator color={colors.white} />
-              : <Text style={styles.primaryBtnText}>Kayıt Ol</Text>
+              : <Text style={styles.primaryBtnText}>{t('auth.signupButton')}</Text>
             }
           </TouchableOpacity>
 
           {/* Giriş Yap */}
           <View style={styles.loginRow}>
-            <Text style={styles.loginHint}>Zaten hesabın var mı?</Text>
+            <Text style={styles.loginHint}>{t('auth.haveAccount')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}> Giriş Yap</Text>
+              <Text style={styles.loginLink}>{t('auth.loginLink')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

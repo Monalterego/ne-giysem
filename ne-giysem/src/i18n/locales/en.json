@@ -8,11 +8,41 @@
     "back": "Back",
     "next": "Next",
     "done": "Done",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "or": "or"
   },
   "settings": {
     "language": "Language",
     "turkish": "Turkish",
     "english": "English"
+  },
+  "splash": {
+    "tagline": "Same pieces. Never the same day."
+  },
+  "welcome": {
+    "slide1Title": "Digitize Your Wardrobe",
+    "slide1Subtitle": "Snap, discover, and look great every day. Your AI-powered personal stylist.",
+    "slide2Title": "Create Outfits with AI",
+    "slide2Subtitle": "Build great outfits every day with AI-powered style suggestions.",
+    "slide3Title": "Analyze In-Store",
+    "slide3Subtitle": "Snap an item you like in a store and instantly see how it fits your wardrobe.",
+    "next": "Next →",
+    "start": "Let's start →"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "googleContinue": "Continue with Google",
+    "signupTitle": "Sign Up",
+    "namePlaceholder": "Your name",
+    "signupButton": "Sign Up",
+    "haveAccount": "Already have an account?",
+    "loginLink": " Log In",
+    "loginTitle": "Log In",
+    "loginSubtitle": "Enter your details to access your account",
+    "loginButton": "Log In",
+    "noAccount": "Don't have an account?",
+    "signupLink": " Sign Up",
+    "backArrow": "← Back"
   }
 }

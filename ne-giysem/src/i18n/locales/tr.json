@@ -8,11 +8,41 @@
     "back": "Geri",
     "next": "İleri",
     "done": "Tamam",
-    "loading": "Yükleniyor..."
+    "loading": "Yükleniyor...",
+    "or": "veya"
   },
   "settings": {
     "language": "Dil",
     "turkish": "Türkçe",
     "english": "İngilizce"
+  },
+  "splash": {
+    "tagline": "Aynı parçalar. Asla aynı gün."
+  },
+  "welcome": {
+    "slide1Title": "Dolabını Dijitalleştir",
+    "slide1Subtitle": "Fotoğrafla, keşfet, her gün mükemmel görün. AI destekli kişisel stil danışmanın.",
+    "slide2Title": "AI ile Kombin Yap",
+    "slide2Subtitle": "Yapay zeka destekli stil önerileri ile her gün harika kombinler oluştur.",
+    "slide3Title": "Mağazada Analiz Et",
+    "slide3Subtitle": "Mağazada beğendiğin ürünü çek, dolabınla uyumunu anında öğren.",
+    "next": "İleri →",
+    "start": "Başlayalım →"
+  },
+  "auth": {
+    "email": "E-posta",
+    "password": "Şifre",
+    "googleContinue": "Google ile devam et",
+    "signupTitle": "Kayıt Ol",
+    "namePlaceholder": "Adın",
+    "signupButton": "Kayıt Ol",
+    "haveAccount": "Zaten hesabın var mı?",
+    "loginLink": " Giriş Yap",
+    "loginTitle": "Giriş Yap",
+    "loginSubtitle": "Hesabına erişmek için bilgilerini gir",
+    "loginButton": "Giriş Yap",
+    "noAccount": "Hesabın yok mu?",
+    "signupLink": " Kayıt Ol",
+    "backArrow": "← Geri"
   }
 }

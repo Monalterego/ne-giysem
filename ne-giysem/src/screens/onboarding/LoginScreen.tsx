@@ -16,6 +16,7 @@ import type { OnboardingStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Login'>;
 
@@ -82,17 +83,17 @@ export default function LoginScreen({ navigation }: Props) {
         >
           {/* Geri */}
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.backText}>← Geri</Text>
+            <Text style={styles.backText}>{t('auth.backArrow')}</Text>
           </TouchableOpacity>
 
           {/* Header */}
-          <Text style={styles.title}>Giriş Yap</Text>
-          <Text style={styles.subtitle}>Hesabına erişmek için bilgilerini gir</Text>
+          <Text style={styles.title}>{t('auth.loginTitle')}</Text>
+          <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
 
           {/* Email */}
           <TextInput
             style={styles.input}
-            placeholder="E-posta"
+            placeholder={t('auth.email')}
             placeholderTextColor={colors.muted}
             value={email}
             onChangeText={setEmail}
@@ -104,7 +105,7 @@ export default function LoginScreen({ navigation }: Props) {
           {/* Şifre */}
           <TextInput
             style={styles.input}
-            placeholder="Şifre"
+            placeholder={t('auth.password')}
             placeholderTextColor={colors.muted}
             value={password}
             onChangeText={setPassword}
@@ -124,15 +125,15 @@ export default function LoginScreen({ navigation }: Props) {
           >
             {loading
               ? <ActivityIndicator color={colors.white} />
-              : <Text style={styles.primaryBtnText}>Giriş Yap</Text>
+              : <Text style={styles.primaryBtnText}>{t('auth.loginButton')}</Text>
             }
           </TouchableOpacity>
 
           {/* Kayıt linki */}
           <View style={styles.signupRow}>
-            <Text style={styles.signupHint}>Hesabın yok mu?</Text>
+            <Text style={styles.signupHint}>{t('auth.noAccount')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-              <Text style={styles.signupLink}> Kayıt Ol</Text>
+              <Text style={styles.signupLink}>{t('auth.signupLink')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

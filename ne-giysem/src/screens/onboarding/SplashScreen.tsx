@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { colors, fonts } from '../../constants/theme';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Splash'>;
 
@@ -16,7 +17,7 @@ export default function SplashScreen({ navigation }: Props) {
     <View style={styles.container}>
       <View style={styles.line} />
       <Text style={styles.title}>SESTINA</Text>
-      <Text style={styles.subtitle}>Aynı parçalar. Asla aynı gün.</Text>
+      <Text style={styles.subtitle}>{t('splash.tagline')}</Text>
     </View>
   );
 }
