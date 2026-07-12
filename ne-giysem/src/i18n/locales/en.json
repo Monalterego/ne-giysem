@@ -229,5 +229,27 @@
     "permissionTitle": "Permission Required",
     "permissionPhoto": "You need to grant photo access permission.",
     "logout": "Log Out"
+  },
+  "style": {
+    "choiceTitle": "Let's Discover Your Style",
+    "choiceSubtitle": "Choose the path that suits you best",
+    "path1Title": "I Know My Style",
+    "path1Desc": "Pick directly from style categories",
+    "path2Title": "I Want to Explore",
+    "path2Desc": "Find your style with a quiz — 8 questions to build your profile",
+    "path3Title": "Inspire Me",
+    "path3Desc": "Like/skip images — your style DNA is ready in 20 swipes",
+    "selectBadge": "PATH A",
+    "selectTitle": "Choose Your Style",
+    "selectReset": "Reset",
+    "selectSubtitle": "You can pick multiple — and adjust the weights",
+    "exploreBadge": "PATH C · DISCOVERY MODE",
+    "swipeHint": "Like → right · Skip → left",
+    "resultBadge": "YOUR STYLE DNA CARD",
+    "paletteLabel": "YOUR COLOR PALETTE",
+    "createWardrobe": "Build My Wardrobe →",
+    "share": "Share",
+    "saveError": "Couldn't save your style profile. Please try again.",
+    "emptyResponse": "Empty response"
   }
 }

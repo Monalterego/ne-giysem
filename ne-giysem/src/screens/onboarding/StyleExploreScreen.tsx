@@ -16,6 +16,7 @@ import type { OnboardingStackParamList, StyleEntry } from '../../navigation/type
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { STYLE_DATA_MAP } from '../../constants/styles';
 import { STYLE_CARDS, type StyleCardData } from '../../constants/styleCards';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleExplore'>;
 
@@ -259,11 +260,11 @@ export default function StyleExploreScreen({ navigation }: Props) {
 
       {/* Başlık + sayaç */}
       <View style={styles.header}>
-        <Text style={styles.badge}>YOL C · KEŞİF MODU</Text>
+        <Text style={styles.badge}>{t('style.exploreBadge')}</Text>
         <Text style={styles.counter}>{swipeCount + 1} / {MIN_SWIPES}</Text>
       </View>
 
-      <Text style={styles.swipeHint}>Beğen → sağa · Geç → sola</Text>
+      <Text style={styles.swipeHint}>{t('style.swipeHint')}</Text>
 
       {/* Kart yığını */}
       <View style={styles.stackArea}>

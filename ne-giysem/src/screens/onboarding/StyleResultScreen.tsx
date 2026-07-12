@@ -17,6 +17,7 @@ import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { STYLE_DATA_MAP } from '../../constants/styles';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleResult'>;
 
@@ -73,7 +74,7 @@ async function fetchDnaFromClaude(
   if (!res.ok) throw new Error(`API ${res.status}`);
   const json = await res.json();
   const text: string = (json as any)?.content?.[0]?.text ?? '';
-  if (!text) throw new Error('Boş yanıt');
+  if (!text) throw new Error(t('style.emptyResponse'));
 
   const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
   const raw   = JSON.parse(clean);
@@ -131,7 +132,7 @@ export default function StyleResultScreen({ route, navigation }: Props) {
         { onConflict: 'user_id' },
       );
     if (error) {
-      Alert.alert('Hata', 'Stil profili kaydedilemedi. Lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), t('style.saveError'));
       setSaving(false);
       return;
     }
@@ -149,7 +150,7 @@ export default function StyleResultScreen({ route, navigation }: Props) {
     <View style={styles.bg}>
       <SafeAreaView style={styles.safe}>
 
-        <Text style={styles.badge}>STİL DNA KARTIN</Text>
+        <Text style={styles.badge}>{t('style.resultBadge')}</Text>
 
         {/* DNA Kartı */}
         <View style={styles.card}>
@@ -168,7 +169,7 @@ export default function StyleResultScreen({ route, navigation }: Props) {
               <View key={i} style={[styles.paletteCircle, { backgroundColor: hex }]} />
             ))}
           </View>
-          <Text style={styles.paletteLabel}>RENK PALETİN</Text>
+          <Text style={styles.paletteLabel}>{t('style.paletteLabel')}</Text>
 
           {/* Trait badge'leri */}
           {!aiLoading && traits.length > 0 && (
@@ -198,13 +199,13 @@ export default function StyleResultScreen({ route, navigation }: Props) {
           >
             {saving
               ? <ActivityIndicator color={colors.black} />
-              : <Text style={styles.primaryBtnText}>Dolabımı Oluştur →</Text>
+              : <Text style={styles.primaryBtnText}>{t('style.createWardrobe')}</Text>
             }
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.75}>
             <Feather name="share-2" size={14} color="rgba(255,255,255,0.4)" />
-            <Text style={styles.shareBtnText}>Paylaş</Text>
+            <Text style={styles.shareBtnText}>{t('style.share')}</Text>
           </TouchableOpacity>
         </View>
 

@@ -229,5 +229,27 @@
     "permissionTitle": "İzin Gerekiyor",
     "permissionPhoto": "Fotoğraflara erişim için izin vermeniz gerekiyor.",
     "logout": "Çıkış Yap"
+  },
+  "style": {
+    "choiceTitle": "Stilini Tanıyalım",
+    "choiceSubtitle": "Sana en uygun yolu seç",
+    "path1Title": "Tarzımı Biliyorum",
+    "path1Desc": "Stil kategorilerinden direkt seçim yap",
+    "path2Title": "Keşfetmek İstiyorum",
+    "path2Desc": "Quiz ile tarzını bul, 8 soruda profilini çıkar",
+    "path3Title": "İlham Ver",
+    "path3Desc": "Görselleri beğen/geç — 20 swipe ile stil DNA'n hazır",
+    "selectBadge": "YOL A",
+    "selectTitle": "Tarzını Seç",
+    "selectReset": "Sıfırla",
+    "selectSubtitle": "Birden fazla seçebilirsin — ağırlıkları ayarlayabilirsin",
+    "exploreBadge": "YOL C · KEŞİF MODU",
+    "swipeHint": "Beğen → sağa · Geç → sola",
+    "resultBadge": "STİL DNA KARTIN",
+    "paletteLabel": "RENK PALETİN",
+    "createWardrobe": "Dolabımı Oluştur →",
+    "share": "Paylaş",
+    "saveError": "Stil profili kaydedilemedi. Lütfen tekrar dene.",
+    "emptyResponse": "Boş yanıt"
   }
 }

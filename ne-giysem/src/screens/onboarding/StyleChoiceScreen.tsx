@@ -1,35 +1,25 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+import { useUserStore } from '../../store/useUserStore';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleChoice'>;
 
-const PATHS = [
-  {
-    num: '01',
-    title: 'Tarzımı Biliyorum',
-    description: 'Stil kategorilerinden direkt seçim yap',
-    route: 'StyleSelect' as const,
-  },
-  {
-    num: '02',
-    title: 'Keşfetmek İstiyorum',
-    description: 'Quiz ile tarzını bul, 8 soruda profilini çıkar',
-    route: 'StyleQuiz' as const,
-  },
-  {
-    num: '03',
-    title: 'İlham Ver',
-    description: 'Görselleri beğen/geç — 20 swipe ile stil DNA\'n hazır',
-    route: 'StyleExplore' as const,
-  },
-];
-
 export default function StyleChoiceScreen({ navigation }: Props) {
+  const locale = useUserStore((s) => s.locale);
+
+  // Component içinde — dil değişince etiketler güncellenir (route çevrilmez)
+  const PATHS = useMemo(() => [
+    { num: '01', title: t('style.path1Title'), description: t('style.path1Desc'), route: 'StyleSelect' as const },
+    { num: '02', title: t('style.path2Title'), description: t('style.path2Desc'), route: 'StyleQuiz' as const },
+    { num: '03', title: t('style.path3Title'), description: t('style.path3Desc'), route: 'StyleExplore' as const },
+  ], [locale]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -37,8 +27,8 @@ export default function StyleChoiceScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Stilini Tanıyalım</Text>
-          <Text style={styles.subtitle}>Sana en uygun yolu seç</Text>
+          <Text style={styles.title}>{t('style.choiceTitle')}</Text>
+          <Text style={styles.subtitle}>{t('style.choiceSubtitle')}</Text>
         </View>
 
         {PATHS.map((path) => (

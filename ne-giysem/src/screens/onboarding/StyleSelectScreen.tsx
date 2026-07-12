@@ -15,6 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { STYLE_GROUPS, STYLE_DATA_MAP } from '../../constants/styles';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleSelect'>;
 
@@ -211,17 +212,17 @@ export default function StyleSelectScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.badge}>YOL A</Text>
+        <Text style={styles.badge}>{t('style.selectBadge')}</Text>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Tarzını Seç</Text>
+          <Text style={styles.title}>{t('style.selectTitle')}</Text>
           {entries.length > 0 && (
             <TouchableOpacity onPress={() => setEntries([])} activeOpacity={0.7}>
-              <Text style={styles.resetLink}>Sıfırla</Text>
+              <Text style={styles.resetLink}>{t('style.selectReset')}</Text>
             </TouchableOpacity>
           )}
         </View>
         <Text style={styles.subtitle}>
-          Birden fazla seçebilirsin — ağırlıkları ayarlayabilirsin
+          {t('style.selectSubtitle')}
         </Text>
 
         {STYLE_GROUPS.map((group) => (
