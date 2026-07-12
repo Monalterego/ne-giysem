@@ -21,27 +21,6 @@ import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 
-// ─── Sabit eşlemeler ──────────────────────────────────────────────────────────
-
-const BODY_TYPE_TR: Record<string, string> = {
-  hourglass: 'Kum Saati', pear: 'Armut', apple: 'Elma',
-  rectangle: 'Dikdörtgen', triangle: 'Üçgen',
-};
-const SKIN_TONE_TR: Record<string, string> = {
-  very_light: 'Çok Açık', light: 'Açık', wheat: 'Buğday',
-  medium: 'Orta', tan: 'Bronz', dark: 'Koyu',
-};
-const HAIR_COLOR_TR: Record<string, string> = {
-  black: 'Siyah', dark_brown: 'Koyu Kahve', brown: 'Kahve',
-  light_brown: 'Açık Kahve', honey: 'Bal', red: 'Kızıl', gray: 'Gri', colored: 'Renkli',
-};
-const HAIR_LENGTH_TR: Record<string, string> = {
-  short: 'Kısa', medium: 'Orta', long: 'Uzun', very_long: 'Çok Uzun',
-};
-const HAIR_TYPE_TR: Record<string, string> = {
-  straight: 'Düz', wavy: 'Dalgalı', curly: 'Kıvırcık', afro: 'Afro',
-};
-
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
 function initials(name: string): string {
@@ -115,13 +94,13 @@ export default function ProfileScreen() {
   const hasPhysProfile = (user?.height ?? null) !== null;
 
   const physItems = [
-    { label: 'Boy',          value: user?.height   ? `${user.height} cm`                      : null },
-    { label: 'Yaş',          value: user?.age      ? `${user.age}`                            : null },
-    { label: 'Vücut Tipi',   value: user?.bodyType   ? BODY_TYPE_TR[user.bodyType]   ?? user.bodyType   : null },
-    { label: 'Ten Rengi',    value: user?.skinTone   ? SKIN_TONE_TR[user.skinTone]   ?? user.skinTone   : null },
-    { label: 'Saç Rengi',    value: user?.hairColor  ? HAIR_COLOR_TR[user.hairColor] ?? user.hairColor  : null },
-    { label: 'Saç Uzunluğu', value: user?.hairLength ? HAIR_LENGTH_TR[user.hairLength] ?? user.hairLength : null },
-    { label: 'Saç Tipi',     value: user?.hairType   ? HAIR_TYPE_TR[user.hairType]   ?? user.hairType   : null },
+    { label: t('profile.heightLabel'),     value: user?.height   ? `${user.height} cm` : null },
+    { label: t('profile.ageLabel'),        value: user?.age      ? `${user.age}`       : null },
+    { label: t('profile.bodyTypeLabel'),   value: user?.bodyType   ? t(`bodyType.${user.bodyType}`)     : null },
+    { label: t('profile.skinToneLabel'),   value: user?.skinTone   ? t(`skinTone.${user.skinTone}`)     : null },
+    { label: t('profile.hairColorLabel'),  value: user?.hairColor  ? t(`hairColor.${user.hairColor}`)   : null },
+    { label: t('profile.hairLengthLabel'), value: user?.hairLength ? t(`hairLength.${user.hairLength}`) : null },
+    { label: t('profile.hairTypeLabel'),   value: user?.hairType   ? t(`hairType.${user.hairType}`)     : null },
   ];
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -130,7 +109,7 @@ export default function ProfileScreen() {
     if (!user) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('İzin Gerekiyor', 'Fotoğraflara erişim için izin vermeniz gerekiyor.');
+      Alert.alert(t('profile.permissionTitle'), t('profile.permissionPhoto'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -218,7 +197,7 @@ export default function ProfileScreen() {
 
         {/* 1 ── KOMBİNLERİ KENDİNDE GÖR ── */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>KOMBİNLERİ KENDİNDE GÖR</Text>
+          <Text style={styles.sectionLabel}>{t('profile.seeOnYourself')}</Text>
           <View style={styles.avatarPickerSection}>
             <TouchableOpacity
               style={styles.avatarPickerCircle}
@@ -286,24 +265,24 @@ export default function ProfileScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{items.length}</Text>
-            <Text style={styles.statLabel}>Parça</Text>
+            <Text style={styles.statLabel}>{t('profile.item')}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{combos.length}</Text>
-            <Text style={styles.statLabel}>Kombin</Text>
+            <Text style={styles.statLabel}>{t('profile.combo')}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{avgScore}%</Text>
-            <Text style={styles.statLabel}>Ort. Uyum</Text>
+            <Text style={styles.statLabel}>{t('profile.avgFit')}</Text>
           </View>
         </View>
 
         {/* 4 ── FİZİKSEL BİLGİLERİM ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.sectionLabel}>FİZİKSEL BİLGİLERİM</Text>
+            <Text style={styles.sectionLabel}>{t('profile.physicalInfo')}</Text>
             {hasPhysProfile && (
               <TouchableOpacity
                 onPress={() => {
@@ -312,7 +291,7 @@ export default function ProfileScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.editLink}>Düzenle</Text>
+                <Text style={styles.editLink}>{t('common.edit')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -329,7 +308,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.emptyDna}>
-              <Text style={styles.emptyMuted}>Fiziksel profilin eksik.</Text>
+              <Text style={styles.emptyMuted}>{t('profile.physicalIncomplete')}</Text>
               <TouchableOpacity
                 style={styles.styleBtn}
                 onPress={() => {
@@ -371,7 +350,7 @@ export default function ProfileScreen() {
 
         {/* 5 ── HESAP ── */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>HESAP</Text>
+          <Text style={styles.sectionLabel}>{t('profile.account')}</Text>
 
           {!editingName ? (
             <TouchableOpacity
@@ -414,7 +393,7 @@ export default function ProfileScreen() {
                   {savingName ? (
                     <ActivityIndicator color={colors.white} size="small" />
                   ) : (
-                    <Text style={styles.saveBtnText}>Kaydet</Text>
+                    <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -428,7 +407,7 @@ export default function ProfileScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.physEditLink}>Fiziksel bilgileri düzenle →</Text>
+                <Text style={styles.physEditLink}>{t('profile.editPhysical')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -436,7 +415,7 @@ export default function ProfileScreen() {
           <View style={styles.listDivider} />
 
           <TouchableOpacity style={styles.listItem} onPress={handleLogout} activeOpacity={0.7}>
-            <Text style={[styles.listItemText, styles.logoutText]}>Çıkış Yap</Text>
+            <Text style={[styles.listItemText, styles.logoutText]}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>
 

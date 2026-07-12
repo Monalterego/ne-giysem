@@ -19,30 +19,16 @@ import { supabase } from '../../lib/supabase';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { ClothingCategory, WardrobeItem } from '../../types';
-import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
+import { CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
 type ViewMode = 'grid' | 'list';
 
 const VIEW_MODE_KEY = 'wardrobe_view_mode';
 
-const FILTERS: { label: string; value: ClothingCategory | 'all' }[] = [
-  { label: 'Tümü', value: 'all' },
-  ...CATEGORY_ORDER.map((cat) => ({ label: CATEGORY_META[cat].label, value: cat })),
-];
-
-const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
-  CATEGORY_ORDER.map((cat) => [cat, CATEGORY_META[cat].label]),
-);
-
-const SEASON_LABEL: Record<string, string> = {
-  spring: 'İlkbahar',
-  summer: 'Yaz',
-  fall:   'Sonbahar',
-  winter: 'Kış',
-};
-
+// Alt-kategori value listeleri (sıra + varlık kontrolü için); etiketler render'da subcatLabel ile çevrilir
 const SUBCATEGORIES: Partial<Record<ClothingCategory, { value: string; label: string }[]>> = {
   upper: [
     { value: 'tisort',     label: 'T-Shirt'  },
@@ -115,6 +101,16 @@ export default function WardrobeScreen({ navigation }: Props) {
   const fetchItems = useWardrobeStore((s) => s.fetchItems);
   const removeItem = useWardrobeStore((s) => s.removeItem);
   const user       = useUserStore((s) => s.user);
+  const locale     = useUserStore((s) => s.locale);
+
+  // Kategori filtreleri — locale'e bağlı (dil değişince etiketler güncellenir)
+  const FILTERS = useMemo(
+    (): { label: string; value: ClothingCategory | 'all' }[] => [
+      { label: t('wardrobe.all'), value: 'all' },
+      ...CATEGORY_ORDER.map((cat) => ({ label: catLabel(cat), value: cat })),
+    ],
+    [locale],
+  );
 
   const [selectedIds,  setSelectedIds]  = useState<Set<string>>(new Set());
   const [deleting,     setDeleting]     = useState(false);
@@ -185,11 +181,11 @@ export default function WardrobeScreen({ navigation }: Props) {
 
   const confirmDeleteSelected = () => {
     Alert.alert(
-      'Parçaları Sil',
-      `${selectedIds.size} parçayı kalıcı olarak silmek istediğine emin misin?`,
+      t('wardrobe.deleteSelectedTitle'),
+      t('wardrobe.deleteSelectedConfirm', { count: selectedIds.size }),
       [
-        { text: 'İptal', style: 'cancel' },
-        { text: 'Sil',   style: 'destructive', onPress: deleteSelected },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: deleteSelected },
       ],
     );
   };
@@ -199,7 +195,7 @@ export default function WardrobeScreen({ navigation }: Props) {
     const ids = Array.from(selectedIds);
     const { error } = await supabase.from('wardrobe_items').delete().in('id', ids);
     if (error) {
-      Alert.alert('Hata', 'Silme işlemi başarısız oldu.');
+      Alert.alert(t('combos.errorTitle'), t('wardrobe.deleteFailed'));
     } else {
       ids.forEach((id) => removeItem(id));
       cancelSelection();
@@ -209,35 +205,35 @@ export default function WardrobeScreen({ navigation }: Props) {
 
   const confirmDeleteSingle = (id: string) => {
     Alert.alert(
-      'Parçayı Sil',
-      'Bu parçayı kalıcı olarak silmek istediğine emin misin?',
+      t('wardrobe.deleteItemTitle'),
+      t('wardrobe.deleteConfirm'),
       [
-        { text: 'İptal', style: 'cancel' },
-        { text: 'Sil',   style: 'destructive', onPress: () => deleteSingle(id) },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => deleteSingle(id) },
       ],
     );
   };
 
   const deleteSingle = async (id: string) => {
     const { error } = await supabase.from('wardrobe_items').delete().eq('id', id);
-    if (error) Alert.alert('Hata', 'Silme işlemi başarısız oldu.');
+    if (error) Alert.alert(t('combos.errorTitle'), t('wardrobe.deleteFailed'));
     else removeItem(id);
   };
 
   // ─── "…" menü ────────────────────────────────────────────────────────────────
 
   const openItemMenu = (item: WardrobeItem) => {
-    Alert.alert('Seçenekler', undefined, [
+    Alert.alert(t('wardrobe.options'), undefined, [
       {
-        text: 'Düzenle',
+        text: t('common.edit'),
         onPress: () => navigation.navigate('UploadDetail', { existingItem: item }),
       },
       {
-        text: 'Sil',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => confirmDeleteSingle(item.id),
       },
-      { text: 'İptal', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -258,16 +254,16 @@ export default function WardrobeScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safe}>
         <View style={styles.emptyContainer}>
           <Feather name="inbox" size={48} color={colors.border} style={{ marginBottom: spacing.lg }} />
-          <Text style={styles.emptyTitle}>Henüz kıyafet eklemedin</Text>
+          <Text style={styles.emptyTitle}>{t('wardrobe.emptyTitle')}</Text>
           <Text style={styles.emptySubtitle}>
-            Dolabını dijitalleştirmek için{'\n'}ilk kıyafetini ekle
+            {t('wardrobe.emptySubtitle')}
           </Text>
           <TouchableOpacity
             style={styles.cta}
             onPress={() => navigation.navigate('Upload')}
             activeOpacity={0.85}
           >
-            <Text style={styles.ctaText}>+ Yeni Parça Ekle</Text>
+            <Text style={styles.ctaText}>{t('wardrobe.addFirst')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -330,14 +326,14 @@ export default function WardrobeScreen({ navigation }: Props) {
         />
         <View style={styles.listInfo}>
           <Text style={styles.listCategory}>
-            {CATEGORY_LABEL[item.category] ?? item.category}
+            {catLabel(item.category)}
           </Text>
           {item.subCategory ? (
-            <Text style={styles.listSub}>{item.subCategory}</Text>
+            <Text style={styles.listSub}>{subcatLabel(item.subCategory)}</Text>
           ) : null}
           {item.seasons.length > 0 && (
             <Text style={styles.listSeasons}>
-              {item.seasons.map((s) => SEASON_LABEL[s] ?? s).join(' · ')}
+              {item.seasons.map((s) => t(`season.${s}`)).join(' · ')}
             </Text>
           )}
         </View>
@@ -367,9 +363,9 @@ export default function WardrobeScreen({ navigation }: Props) {
       {selectionMode ? (
         <View style={styles.header}>
           <TouchableOpacity onPress={cancelSelection} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={styles.cancelBtn}>İptal</Text>
+            <Text style={styles.cancelBtn}>{t('common.cancel')}</Text>
           </TouchableOpacity>
-          <Text style={styles.selectionTitle}>{selectedIds.size} parça seçildi</Text>
+          <Text style={styles.selectionTitle}>{t('wardrobe.selectedCount', { count: selectedIds.size })}</Text>
           <TouchableOpacity
             onPress={confirmDeleteSelected}
             disabled={deleting}
@@ -377,15 +373,15 @@ export default function WardrobeScreen({ navigation }: Props) {
           >
             {deleting
               ? <ActivityIndicator color={colors.error} size="small" />
-              : <Text style={styles.deleteBtn}>Sil</Text>
+              : <Text style={styles.deleteBtn}>{t('common.delete')}</Text>
             }
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Dolabım</Text>
-            <Text style={styles.headerCount}>{filteredItems.length} parça</Text>
+            <Text style={styles.headerTitle}>{t('wardrobe.title')}</Text>
+            <Text style={styles.headerCount}>{t('wardrobe.itemsCount', { count: filteredItems.length })}</Text>
           </View>
           <View style={styles.viewToggle}>
             <TouchableOpacity
@@ -414,7 +410,7 @@ export default function WardrobeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('Upload')}
             activeOpacity={0.82}
           >
-            <Text style={styles.addBtnText}>+ Yeni Parça</Text>
+            <Text style={styles.addBtnText}>{t('wardrobe.addNew')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -459,10 +455,10 @@ export default function WardrobeScreen({ navigation }: Props) {
             activeOpacity={0.75}
           >
             <Text style={[styles.subChipText, activeSub === 'all' && styles.subChipTextActive]}>
-              Hepsi
+              {t('wardrobe.allSub')}
             </Text>
           </TouchableOpacity>
-          {availableSubcategories.map(({ value, label }) => {
+          {availableSubcategories.map(({ value }) => {
             const active = activeSub === value;
             return (
               <TouchableOpacity
@@ -472,7 +468,7 @@ export default function WardrobeScreen({ navigation }: Props) {
                 activeOpacity={0.75}
               >
                 <Text style={[styles.subChipText, active && styles.subChipTextActive]}>
-                  {label}
+                  {subcatLabel(value)}
                 </Text>
               </TouchableOpacity>
             );

@@ -1,4 +1,5 @@
 import type { ClothingCategory } from '../types';
+import { t } from '../i18n';
 
 export interface SubCategoryEntry {
   label: string;
@@ -108,3 +109,17 @@ export const CATEGORY_META: Record<ClothingCategory, CategoryMeta> = {
 export const CATEGORY_ORDER: ClothingCategory[] = [
   'upper', 'lower', 'dress_jumpsuit', 'outer', 'shoes', 'bag', 'accessory',
 ];
+
+/** Kanonik kategori value'sundan çevrilmiş etiket. Örn: catLabel('upper') → 'Top'/'Üst' */
+export function catLabel(value: string): string {
+  const key = `cat.${value}`;
+  const translated = t(key);
+  return translated === key ? value : translated;  // anahtar yoksa value'ya düş
+}
+
+/** Kanonik alt-kategori value'sundan çevrilmiş etiket. Örn: subcatLabel('bluz') → 'Blouse'/'Bluz' */
+export function subcatLabel(value: string): string {
+  const key = `subcat.${value}`;
+  const translated = t(key);
+  return translated === key ? value : translated;
+}
