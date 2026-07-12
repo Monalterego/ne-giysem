@@ -94,8 +94,7 @@ const ComboCard = React.memo(function ComboCard({
       {/* Footer */}
       <View style={styles.cardFooter}>
         <View style={styles.footerLeft}>
-          <Text style={styles.comboLabel}>{combo.label}</Text>
-          {/* Kombin gerekçesi geçici gizlendi (i18n bekliyor) — combo.reasoning motorda üretiliyor */}
+          {/* Kombin başlığı + gerekçesi geçici gizlendi (i18n bekliyor) — motorda üretiliyor */}
         </View>
 
         {isGenerating ? (
