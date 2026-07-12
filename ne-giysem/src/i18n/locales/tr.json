@@ -251,5 +251,24 @@
     "share": "Paylaş",
     "saveError": "Stil profili kaydedilemedi. Lütfen tekrar dene.",
     "emptyResponse": "Boş yanıt"
+  },
+  "physicalProfile": {
+    "title": "Fiziksel Profilin",
+    "subtitle": "Kombinler sana daha iyi uysun diye",
+    "height": "BOY",
+    "age": "YAŞ",
+    "bodyType": "VÜCUT TİPİ",
+    "skinTone": "TEN RENGİ",
+    "hairColor": "SAÇ RENGİ",
+    "hairLength": "SAÇ UZUNLUĞU",
+    "hairType": "SAÇ TİPİ",
+    "continue": "Devam Et →",
+    "skip": "Şimdi değil, atla →",
+    "saveError": "Profil kaydedilemedi. Lütfen tekrar dene.",
+    "descHourglass": "Omuz ve kalça geniş, bel ince",
+    "descPear": "Kalça omuzdan geniş",
+    "descApple": "Orta bölge dolgun",
+    "descRectangle": "Omuz-bel-kalça düz",
+    "descTriangle": "Omuz geniş, kalça dar"
   }
 }

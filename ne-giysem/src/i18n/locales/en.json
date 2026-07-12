@@ -251,5 +251,24 @@
     "share": "Share",
     "saveError": "Couldn't save your style profile. Please try again.",
     "emptyResponse": "Empty response"
+  },
+  "physicalProfile": {
+    "title": "Your Physical Profile",
+    "subtitle": "So outfits fit you better",
+    "height": "HEIGHT",
+    "age": "AGE",
+    "bodyType": "BODY TYPE",
+    "skinTone": "SKIN TONE",
+    "hairColor": "HAIR COLOR",
+    "hairLength": "HAIR LENGTH",
+    "hairType": "HAIR TYPE",
+    "continue": "Continue →",
+    "skip": "Not now, skip →",
+    "saveError": "Couldn't save your profile. Please try again.",
+    "descHourglass": "Broad shoulders and hips, narrow waist",
+    "descPear": "Hips wider than shoulders",
+    "descApple": "Fuller midsection",
+    "descRectangle": "Shoulders, waist, hips aligned",
+    "descTriangle": "Broad shoulders, narrow hips"
   }
 }

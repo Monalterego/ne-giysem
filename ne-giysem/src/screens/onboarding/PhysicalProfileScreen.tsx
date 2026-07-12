@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PhysicalProfile'>;
 
@@ -25,14 +26,6 @@ const GRID_GAP = spacing.xs + 2;
 const GRID_W   = (SCREEN_W - layout.screenPaddingH * 2 - GRID_GAP) / 2;
 
 // ─── Sabit veriler ────────────────────────────────────────────────────────────
-
-const BODY_TYPES = [
-  { key: 'hourglass', name: 'Kum Saati',  desc: 'Omuz ve kalça geniş, bel ince' },
-  { key: 'pear',      name: 'Armut',       desc: 'Kalça omuzdan geniş' },
-  { key: 'apple',     name: 'Elma',        desc: 'Orta bölge dolgun' },
-  { key: 'rectangle', name: 'Dikdörtgen',  desc: 'Omuz-bel-kalça düz' },
-  { key: 'triangle',  name: 'Üçgen',       desc: 'Omuz geniş, kalça dar' },
-] as const;
 
 const SKIN_TONES = [
   { key: 'very_light', color: '#F5E6D3' },
@@ -52,20 +45,6 @@ const HAIR_COLORS = [
   { key: 'red',         color: '#8B3A2A' },
   { key: 'gray',        color: '#C4C4C4' },
   { key: 'colored',     color: '#E040FB' },
-] as const;
-
-const HAIR_LENGTHS = [
-  { key: 'short',     name: 'Kısa' },
-  { key: 'medium',    name: 'Orta' },
-  { key: 'long',      name: 'Uzun' },
-  { key: 'very_long', name: 'Çok Uzun' },
-] as const;
-
-const HAIR_TYPES = [
-  { key: 'straight', name: 'Düz' },
-  { key: 'wavy',     name: 'Dalgalı' },
-  { key: 'curly',    name: 'Kıvırcık' },
-  { key: 'afro',     name: 'Afro' },
 ] as const;
 
 // ─── NumberStepper bileşeni ───────────────────────────────────────────────────
@@ -135,6 +114,30 @@ export default function PhysicalProfileScreen(_: Props) {
   const user                = useUserStore((s: UserState) => s.user);
   const setOnboarded        = useUserStore((s: UserState) => s.setOnboarded);
   const setPhysicalProfile  = useUserStore((s: UserState) => s.setPhysicalProfile);
+  const locale              = useUserStore((s: UserState) => s.locale);
+
+  // İsim/açıklama içeren diziler component içinde — dil değişince güncellenir (key değerleri sabit)
+  const BODY_TYPES = useMemo(() => [
+    { key: 'hourglass', name: t('bodyType.hourglass'), desc: t('physicalProfile.descHourglass') },
+    { key: 'pear',      name: t('bodyType.pear'),      desc: t('physicalProfile.descPear') },
+    { key: 'apple',     name: t('bodyType.apple'),     desc: t('physicalProfile.descApple') },
+    { key: 'rectangle', name: t('bodyType.rectangle'), desc: t('physicalProfile.descRectangle') },
+    { key: 'triangle',  name: t('bodyType.triangle'),  desc: t('physicalProfile.descTriangle') },
+  ], [locale]);
+
+  const HAIR_LENGTHS = useMemo(() => [
+    { key: 'short',     name: t('hairLength.short') },
+    { key: 'medium',    name: t('hairLength.medium') },
+    { key: 'long',      name: t('hairLength.long') },
+    { key: 'very_long', name: t('hairLength.very_long') },
+  ], [locale]);
+
+  const HAIR_TYPES = useMemo(() => [
+    { key: 'straight', name: t('hairType.straight') },
+    { key: 'wavy',     name: t('hairType.wavy') },
+    { key: 'curly',    name: t('hairType.curly') },
+    { key: 'afro',     name: t('hairType.afro') },
+  ], [locale]);
 
   const [height,     setHeight]     = useState(165);
   const [age,        setAge]        = useState(25);
@@ -161,7 +164,7 @@ export default function PhysicalProfileScreen(_: Props) {
         })
         .eq('id', user.id);
       if (error) {
-        Alert.alert('Hata', 'Profil kaydedilemedi. Lütfen tekrar dene.');
+        Alert.alert(t('combos.errorTitle'), t('physicalProfile.saveError'));
         setSaving(false);
         return;
       }
@@ -188,12 +191,12 @@ export default function PhysicalProfileScreen(_: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Fiziksel Profilin</Text>
-        <Text style={styles.subtitle}>Kombinler sana daha iyi uysun diye</Text>
+        <Text style={styles.title}>{t('physicalProfile.title')}</Text>
+        <Text style={styles.subtitle}>{t('physicalProfile.subtitle')}</Text>
 
         {/* ── Boy ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>BOY</Text>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.height')}</Text>
           <NumberStepper
             value={height}
             unit="cm"
@@ -204,7 +207,7 @@ export default function PhysicalProfileScreen(_: Props) {
 
         {/* ── Yaş ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>YAŞ</Text>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.age')}</Text>
           <NumberStepper
             value={age}
             onDecrement={() => setAge((v) => Math.max(16, v - 1))}
@@ -214,7 +217,7 @@ export default function PhysicalProfileScreen(_: Props) {
 
         {/* ── Vücut Tipi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>VÜCUT TİPİ</Text>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.bodyType')}</Text>
           {BODY_TYPES.map((item) => (
             <TouchableOpacity
               key={item.key}
@@ -233,7 +236,7 @@ export default function PhysicalProfileScreen(_: Props) {
 
         {/* ── Ten Rengi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>TEN RENGİ</Text>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.skinTone')}</Text>
           <View style={styles.circleRowSpread}>
             {SKIN_TONES.map((item) => (
               <TouchableOpacity
@@ -250,7 +253,7 @@ export default function PhysicalProfileScreen(_: Props) {
 
         {/* ── Saç Rengi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SAÇ RENGİ</Text>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.hairColor')}</Text>
           <View style={styles.circleRowWrap}>
             {HAIR_COLORS.map((item) => (
               <TouchableOpacity
@@ -267,7 +270,7 @@ export default function PhysicalProfileScreen(_: Props) {
 
         {/* ── Saç Uzunluğu ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SAÇ UZUNLUĞU</Text>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.hairLength')}</Text>
           <View style={styles.gridRow}>
             {HAIR_LENGTHS.map((item) => (
               <TouchableOpacity
@@ -286,7 +289,7 @@ export default function PhysicalProfileScreen(_: Props) {
 
         {/* ── Saç Tipi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SAÇ TİPİ</Text>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.hairType')}</Text>
           <View style={styles.gridRow}>
             {HAIR_TYPES.map((item) => (
               <TouchableOpacity
@@ -315,11 +318,11 @@ export default function PhysicalProfileScreen(_: Props) {
         >
           {saving
             ? <ActivityIndicator color={colors.white} />
-            : <Text style={styles.primaryBtnText}>Devam Et →</Text>
+            : <Text style={styles.primaryBtnText}>{t('physicalProfile.continue')}</Text>
           }
         </TouchableOpacity>
         <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={0.7}>
-          <Text style={styles.skipBtnText}>Şimdi değil, atla →</Text>
+          <Text style={styles.skipBtnText}>{t('physicalProfile.skip')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
