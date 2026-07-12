@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 export interface StyleData {
   name: string;
   turkishDesc: string;
@@ -170,3 +172,19 @@ export const STYLE_DATA_MAP: Record<string, StyleData> = Object.fromEntries(
 );
 
 export const ALL_STYLE_DATA: StyleData[] = STYLE_GROUPS.flatMap((g) => g.styles);
+
+/** Stil adından çevrilmiş açıklama. styleDescOf('Old Money') → 'Klasik zerafet...'/'Classic elegance...' */
+export function styleDescOf(name: string): string {
+  const key = name.toLowerCase().replace(/ /g, '_').replace(/-/g, '_');
+  return t(`styleDesc.${key}`, { defaultValue: '' });
+}
+
+/** Grup adından çevrilmiş etiket. groupLabelOf('Zamansız') → 'Zamansız'/'Timeless' */
+export function groupLabelOf(groupName: string): string {
+  const map: Record<string, string> = {
+    'Zamansız': 'timeless', 'Günlük & Rahat': 'casual', 'Feminen': 'feminine',
+    'Edgy': 'edgy', 'Diğer': 'other',
+  };
+  const key = map[groupName];
+  return key ? t(`styleGroup.${key}`, { defaultValue: groupName }) : groupName;
+}

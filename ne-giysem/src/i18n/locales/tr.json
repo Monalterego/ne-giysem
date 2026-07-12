@@ -270,5 +270,33 @@
     "descApple": "Orta bölge dolgun",
     "descRectangle": "Omuz-bel-kalça düz",
     "descTriangle": "Omuz geniş, kalça dar"
+  },
+  "styleDesc": {
+    "minimalist": "Sade, nötr, temiz çizgiler",
+    "old_money": "Klasik zerafet, mütevazı lüks",
+    "quiet_luxury": "Logosuz, kaliteli, sessiz şıklık",
+    "smart_casual": "İş ve günlük arası denge",
+    "clean_girl": "Doğal, parlak, bakımlı estetik",
+    "streetwear": "Kentsel, cesur sokak stili",
+    "athleisure": "Spor giyim her yerde şık",
+    "downtown_girl": "Şehirli, karanlık, cool kadın",
+    "coquette": "Pembe, narin, romantik feminenlik",
+    "soft_girl": "Pastel renkler, masum estetik",
+    "bohemian": "Özgür ruh, akışkan katmanlar",
+    "cottagecore": "Kır evi romantizmi, doğallık",
+    "coastal_grandmother": "Kıyı şehri zarif rahatı",
+    "dark_academia": "Kitap, kahve, karanlık klasizm",
+    "grunge_chic": "Karamsar ama şık isyan",
+    "mob_wife": "Çarpıcı, dramatik, kürkler",
+    "avant_garde": "Alışılmadık, deneysel tasarım",
+    "preppy": "Okul kulübü şıklığı, klasik",
+    "gorpcore": "Outdoor, fonksiyonel, doğa stili"
+  },
+  "styleGroup": {
+    "timeless": "Zamansız",
+    "casual": "Günlük & Rahat",
+    "feminine": "Feminen",
+    "edgy": "Edgy",
+    "other": "Diğer"
   }
 }

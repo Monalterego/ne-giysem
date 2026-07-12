@@ -14,7 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
-import { STYLE_DATA_MAP } from '../../constants/styles';
+import { STYLE_DATA_MAP, styleDescOf } from '../../constants/styles';
 import { STYLE_CARDS, type StyleCardData } from '../../constants/styleCards';
 import { t } from '../../i18n';
 
@@ -94,7 +94,7 @@ const MoodboardCard = React.memo(function MoodboardCard({
         >
           <Text style={cardStyles.cardName} numberOfLines={1}>{card.name}</Text>
           <Text style={cardStyles.cardDesc} numberOfLines={2}>
-            {data?.turkishDesc ?? card.keywords.join(' · ')}
+            {styleDescOf(data?.name ?? card.name) || card.keywords.join(' · ')}
           </Text>
         </LinearGradient>
       )}

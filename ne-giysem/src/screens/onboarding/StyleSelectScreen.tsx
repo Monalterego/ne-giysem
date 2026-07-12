@@ -14,7 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
-import { STYLE_GROUPS, STYLE_DATA_MAP } from '../../constants/styles';
+import { STYLE_GROUPS, STYLE_DATA_MAP, styleDescOf, groupLabelOf } from '../../constants/styles';
 import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleSelect'>;
@@ -159,7 +159,7 @@ function StyleCard({
       {/* İsim + açıklama */}
       <View style={styles.cardInfo}>
         <Text style={styles.cardName} numberOfLines={1}>{name}</Text>
-        <Text style={styles.cardDesc} numberOfLines={1}>{data.turkishDesc}</Text>
+        <Text style={styles.cardDesc} numberOfLines={1}>{styleDescOf(data.name)}</Text>
       </View>
 
       {/* Seçim badge — kaldırılabilirse ✕ göster (görsel ipucu) */}
@@ -228,7 +228,7 @@ export default function StyleSelectScreen({ navigation }: Props) {
         {STYLE_GROUPS.map((group) => (
           <View key={group.groupName} style={styles.group}>
             <View style={styles.groupHeader}>
-              <Text style={styles.groupName}>{group.groupName}</Text>
+              <Text style={styles.groupName}>{groupLabelOf(group.groupName)}</Text>
             </View>
             {group.styles.map((style) => {
               const entry      = entries.find((e) => e.name === style.name);

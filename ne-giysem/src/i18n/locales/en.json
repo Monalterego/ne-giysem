@@ -270,5 +270,33 @@
     "descApple": "Fuller midsection",
     "descRectangle": "Shoulders, waist, hips aligned",
     "descTriangle": "Broad shoulders, narrow hips"
+  },
+  "styleDesc": {
+    "minimalist": "Simple, neutral, clean lines",
+    "old_money": "Classic elegance, understated luxury",
+    "quiet_luxury": "No logos, quality, quiet elegance",
+    "smart_casual": "Balance between work and casual",
+    "clean_girl": "Natural, glowing, polished aesthetic",
+    "streetwear": "Urban, bold street style",
+    "athleisure": "Sporty wear, chic anywhere",
+    "downtown_girl": "Urban, dark, cool woman",
+    "coquette": "Pink, delicate, romantic femininity",
+    "soft_girl": "Pastel colors, innocent aesthetic",
+    "bohemian": "Free spirit, flowing layers",
+    "cottagecore": "Cottage romance, natural charm",
+    "coastal_grandmother": "Coastal town elegant ease",
+    "dark_academia": "Books, coffee, dark classicism",
+    "grunge_chic": "Moody yet chic rebellion",
+    "mob_wife": "Striking, dramatic, furs",
+    "avant_garde": "Unconventional, experimental design",
+    "preppy": "Prep-club chic, classic",
+    "gorpcore": "Outdoor, functional, nature style"
+  },
+  "styleGroup": {
+    "timeless": "Timeless",
+    "casual": "Casual & Comfortable",
+    "feminine": "Feminine",
+    "edgy": "Edgy",
+    "other": "Other"
   }
 }
