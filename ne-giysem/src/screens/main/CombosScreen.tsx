@@ -28,16 +28,7 @@ import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { t } from '../../i18n';
-
-const CATEGORY_LABEL: Record<string, string> = {
-  upper:          'Üst',
-  lower:          'Alt',
-  dress_jumpsuit: 'Elbise/Tulum',
-  outer:          'Dış Giyim',
-  shoes:          'Ayakkabı',
-  bag:            'Çanta',
-  accessory:      'Aksesuar',
-};
+import { catLabel } from '../../constants/categories';
 
 const FREE_RENDER_LIMIT = 3;
 const FEW_COMBOS = 4;
@@ -92,7 +83,7 @@ const ComboCard = React.memo(function ComboCard({
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemLabel}>{CATEGORY_LABEL[item.category] ?? item.category}</Text>
+            <Text style={styles.itemLabel}>{catLabel(item.category)}</Text>
           </TouchableOpacity>
         ))}
         <View style={styles.scoreBadge}>
