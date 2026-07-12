@@ -112,14 +112,10 @@ export const CATEGORY_ORDER: ClothingCategory[] = [
 
 /** Kanonik kategori value'sundan çevrilmiş etiket. Örn: catLabel('upper') → 'Top'/'Üst' */
 export function catLabel(value: string): string {
-  const key = `cat.${value}`;
-  const translated = t(key);
-  return translated === key ? value : translated;  // anahtar yoksa value'ya düş
+  return t(`cat.${value}`, { defaultValue: value });  // anahtar yoksa ham value döner
 }
 
 /** Kanonik alt-kategori value'sundan çevrilmiş etiket. Örn: subcatLabel('bluz') → 'Blouse'/'Bluz' */
 export function subcatLabel(value: string): string {
-  const key = `subcat.${value}`;
-  const translated = t(key);
-  return translated === key ? value : translated;
+  return t(`subcat.${value}`, { defaultValue: value });  // anahtar yoksa ham value döner
 }
