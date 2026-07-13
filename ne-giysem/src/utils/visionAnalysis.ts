@@ -1,5 +1,6 @@
 import type { ClothingCategory, Season } from '../types';
 import { supabase } from '../lib/supabase';
+import { getLocale } from '../i18n';
 
 const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
 
@@ -42,7 +43,14 @@ const SEASON_MAP: Record<string, Season> = {
   kis: 'winter',
 };
 
-const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndür, başka hiçbir metin yazma.
+function buildPrompt(): string {
+  const locale = getLocale();
+  // SADECE "name" dile duyarlı — diğer tüm alanlar sabit Türkçe token (motor/DB okuyor)
+  const nameInstruction = locale === 'en'
+    ? `"name": short Zara/H&M-style product name IN ENGLISH. If there's a special fabric/cut, put it in the name — e.g. "Satin strapless maxi dress", "Sequined mini dress", "Low-rise wide-leg jeans"`
+    : `"name": Zara/HM tarzı kısa ürün adı. ÖZEL kumaş/kesim varsa isme YAZ — örn. "Saten straplez maxi elbise", "Payetli mini elbise", "Düşük bel geniş paça jean"`;
+
+  return `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndür, başka hiçbir metin yazma.
 
 ⚠️ EN KRİTİK 3 ALAN (bunları mutlaka doğru yap — kombinlerin doğruluğu bunlara bağlı):
 1. category + subcategory TUTARLI olmalı (tek parça belden aşağı devam eden giysi = elbise_tulum, üst değil)
@@ -61,7 +69,7 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
     ayakkabi için → "sneaker" | "loafer" | "bot" | "cizme" | "topuklu" | "sandalet" | "terlik" | "babet"
     canta için → "omuz_cantasi" | "clutch" | "tote" | "bel_cantasi" | "sirt_cantasi" | "mini_canta"
     aksesuar için → "kolye" | "kupe" | "bileklik" | "yuzuk" | "fular" | "kaskol" | "bandana" | "kemer" | "sapka" | "gozluk",
-  "name": Zara/HM tarzı kısa ürün adı. ÖZEL kumaş/kesim varsa isme YAZ — örn. "Saten straplez maxi elbise", "Payetli mini elbise", "Düşük bel geniş paça jean",
+  ${nameInstruction},
   "fit": kesim — "slim" | "regular" | "oversized" | "crop" | "midi" | "maxi" | "mini",
   "neckline": yaka tipi, SADECE ust ve elbise_tulum için — "yuvarlak" | "v yaka" | "polo" | "balikci" | "kayik" | "halter" | "dik yaka" | null,
   "sleeve": kol boyu, SADECE ust için — "kolsuz" | "kisa kol" | "3/4 kol" | "uzun kol" | "balon kol" | null,
@@ -82,6 +90,7 @@ const PROMPT = `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndü
   "fabric": kumaş — GÖRÜNÜR DOKUYA bak: parlak/yansımalı yüzey → "saten" veya "ipek" (asla pamuk); örgü dokusu → "triko"; tüylü mat → "kadife"; mat dokusuz günlük → "pamuk". EMİN DEĞİLSEN "bilmiyorum" — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "kasmir" | "polyester" | "viskon" | "saten" | "kadife" | "deri" | "suni_deri" | "triko" | "sifon" | "karisim" | "bilmiyorum",
   "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
 }`;
+}
 
 function parseVisionResponse(text: string): VisionResult {
   // Markdown code fence'leri temizle
@@ -139,7 +148,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
             type: 'image',
             source: { type: 'base64', media_type: 'image/png', data: base64 },
           },
-          { type: 'text', text: PROMPT },
+          { type: 'text', text: buildPrompt() },
         ],
       },
       // Prefill: JSON disiplinini garantiler; yanıt '{' ile devam eder
