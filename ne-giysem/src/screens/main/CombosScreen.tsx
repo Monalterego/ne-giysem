@@ -21,7 +21,7 @@ import { useUserStore } from '../../store/useUserStore';
 import { useComboStore } from '../../store/useComboStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
-import { OCCASIONS } from '../../constants/occasions';
+import { OCCASIONS, occasionLabel } from '../../constants/occasions';
 import { generateVirtualModelImage, getModelImage, comboSignatureForCache } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
@@ -627,7 +627,7 @@ export default function CombosScreen() {
             >
               <Feather name={occ.icon as any} size={12} color={active ? colors.white : colors.text} />
               <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {occ.label}
+                {occasionLabel(occ.id)}
               </Text>
             </TouchableOpacity>
           );
@@ -671,7 +671,7 @@ export default function CombosScreen() {
                 </>
               ) : (
                 <Text style={styles.emptySubtitle}>
-                  Bu okazyona uygun parçaların yok. Başka bir okazyon dene ya da dolabına parça ekle.
+                  {t('combos.noItemsForOccasion')}
                 </Text>
               )}
               <TouchableOpacity
@@ -699,8 +699,7 @@ export default function CombosScreen() {
               <View style={styles.infoBanner}>
                 <Feather name="info" size={14} color={colors.textSecondary} />
                 <Text style={styles.infoBannerText}>
-                  Bu okazyon için {combos.length} uyumlu kombin bulundu. Dolabına bu tarza uygun
-                  birkaç parça eklersen daha fazla öneri çıkar.
+                  {t('combos.combosFound', { count: combos.length })}
                 </Text>
               </View>
             ) : null

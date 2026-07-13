@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/theme';
+import { t } from '../i18n';
 import type { MainTabParamList } from './types';
 
 import HomeScreen from '../screens/main/HomeScreen';
@@ -36,7 +37,7 @@ export default function MainTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Ana Sayfa',
+          tabBarLabel: t('nav.home'),
           tabBarIcon: ({ focused, color, size }) => (
             <Feather name="home" size={size} color={color} strokeWidth={focused ? 2.5 : 1.8} />
           ),
@@ -46,7 +47,7 @@ export default function MainTabNavigator() {
         name="Wardrobe"
         component={WardrobeNavigator}
         options={{
-          tabBarLabel: 'Dolap',
+          tabBarLabel: t('nav.wardrobe'),
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'shirt' : 'shirt-outline'}
@@ -60,7 +61,7 @@ export default function MainTabNavigator() {
         name="Combos"
         component={CombosScreen}
         options={{
-          tabBarLabel: 'Kombin',
+          tabBarLabel: t('nav.combos'),
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons
               name={focused ? 'sparkles' : 'sparkles-outline'}
@@ -74,7 +75,7 @@ export default function MainTabNavigator() {
         name="Scan"
         component={ScanNavigator}
         options={{
-          tabBarLabel: 'Tara',
+          tabBarLabel: t('nav.scan'),
           tabBarIcon: ({ focused, color, size }) => (
             <Feather name="camera" size={size} color={color} strokeWidth={focused ? 2.5 : 1.8} />
           ),
@@ -84,7 +85,7 @@ export default function MainTabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Profil',
+          tabBarLabel: t('nav.profile'),
           tabBarIcon: ({ focused, color, size }) => (
             <Feather name="user" size={size} color={color} strokeWidth={focused ? 2.5 : 1.8} />
           ),

@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 export const OCCASIONS = [
   {
     id: 'gunluk',
@@ -65,3 +67,8 @@ export const OCCASIONS = [
 ] as const;
 
 export type OccasionId = typeof OCCASIONS[number]['id'];
+
+/** Okazyon id'sinden çevrilmiş etiket. occasionLabel('gunluk') → 'Everyday'/'Günlük' */
+export function occasionLabel(id: string): string {
+  return t(`occasion.${id}`, { defaultValue: id });
+}

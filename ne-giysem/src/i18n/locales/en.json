@@ -88,7 +88,9 @@
     "imageOpenError": "Couldn't open image",
     "imageOpenErrorMsg": "This item's image can't be displayed.",
     "imageDownloadError": "Couldn't download image",
-    "modelCreateError": "Couldn't create the model image. Please try again."
+    "modelCreateError": "Couldn't create the model image. Please try again.",
+    "noItemsForOccasion": "You don't have pieces for this occasion. Try another occasion or add items to your wardrobe.",
+    "combosFound": "%{count} matching outfits found for this occasion. Add a few pieces in this style to get more suggestions."
   },
   "wardrobe": {
     "title": "My Wardrobe",
@@ -427,5 +429,23 @@
     "L101": "Nature hikes, camping",
     "L102": "2000s nostalgia, metallic",
     "hint": "Select to continue automatically"
+  },
+  "nav": {
+    "home": "Home",
+    "wardrobe": "Wardrobe",
+    "combos": "Outfits",
+    "scan": "Scan",
+    "profile": "Profile"
+  },
+  "occasion": {
+    "gunluk": "Everyday",
+    "is": "Work",
+    "brunch": "Brunch & Coffee",
+    "gece": "Night Out",
+    "date": "Date",
+    "davet": "Wedding & Events",
+    "spor": "Sport & Active",
+    "seyahat": "Travel",
+    "tatil": "Vacation & Beach"
   }
 }

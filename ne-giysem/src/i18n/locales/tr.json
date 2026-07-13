@@ -88,7 +88,9 @@
     "imageOpenError": "Görsel açılamadı",
     "imageOpenErrorMsg": "Bu parçanın görseli görüntülenemiyor.",
     "imageDownloadError": "Görsel indirilemedi",
-    "modelCreateError": "Manken görüntüsü oluşturulamadı. Lütfen tekrar dene."
+    "modelCreateError": "Manken görüntüsü oluşturulamadı. Lütfen tekrar dene.",
+    "noItemsForOccasion": "Bu okazyona uygun parçaların yok. Başka bir okazyon dene ya da dolabına parça ekle.",
+    "combosFound": "Bu okazyon için %{count} uyumlu kombin bulundu. Dolabına bu tarza uygun birkaç parça eklersen daha fazla öneri çıkar."
   },
   "wardrobe": {
     "title": "Dolabım",
@@ -427,5 +429,23 @@
     "L101": "Doğa yürüyüşü, kamp",
     "L102": "2000'ler nostaljisi, metalik",
     "hint": "Seç ve otomatik ilerle"
+  },
+  "nav": {
+    "home": "Ana Sayfa",
+    "wardrobe": "Dolap",
+    "combos": "Kombin",
+    "scan": "Tara",
+    "profile": "Profil"
+  },
+  "occasion": {
+    "gunluk": "Günlük",
+    "is": "İş",
+    "brunch": "Brunch & Kahve",
+    "gece": "Gece & Out",
+    "date": "Date",
+    "davet": "Düğün & Davet",
+    "spor": "Spor & Aktif",
+    "seyahat": "Seyahat",
+    "tatil": "Tatil & Plaj"
   }
 }
