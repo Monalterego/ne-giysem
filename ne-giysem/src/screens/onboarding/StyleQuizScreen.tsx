@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
+import { t } from '../../i18n';
 import { colors, fonts, spacing } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleQuiz'>;
@@ -31,180 +32,180 @@ interface StyleQuestion { question: string; options: StyleOption[]; }
 
 const GROUP_QUESTIONS: GroupQuestion[] = [
   {
-    question: 'Giyinirken kendini en çok\nnasıl hissetmek istersin?',
+    question: 'quiz.q0',
     options: [
-      { label: 'Sakin, zarif, zamansız', group: 'Zamansız' },
-      { label: 'Rahat, pratik, özgür', group: 'Günlük & Rahat' },
-      { label: 'Yumuşak, romantik, narin', group: 'Feminen' },
-      { label: 'Cesur, dramatik, dikkat çekici', group: 'Edgy' },
-      { label: 'İşlevsel, özgün, kuralsız', group: 'Diğer' },
+      { label: 'quiz.L0', group: 'Zamansız' },
+      { label: 'quiz.L1', group: 'Günlük & Rahat' },
+      { label: 'quiz.L2', group: 'Feminen' },
+      { label: 'quiz.L3', group: 'Edgy' },
+      { label: 'quiz.L4', group: 'Diğer' },
     ],
   },
   {
-    question: 'Hangi renk dünyası\nseni içine çeker?',
+    question: 'quiz.q1',
     options: [
-      { label: 'Nötr: bej, krem, gri, siyah-beyaz', group: 'Zamansız' },
-      { label: 'Spor & şehir: siyah, gri, neon aksan', group: 'Günlük & Rahat' },
-      { label: 'Pastel & yumuşak: pembe, lila, toprak', group: 'Feminen' },
-      { label: 'Koyu & metalik: siyah, bordo, gümüş', group: 'Edgy' },
-      { label: 'Doğa & fonksiyon: haki, kahve, turuncu', group: 'Diğer' },
+      { label: 'quiz.L5', group: 'Zamansız' },
+      { label: 'quiz.L6', group: 'Günlük & Rahat' },
+      { label: 'quiz.L7', group: 'Feminen' },
+      { label: 'quiz.L8', group: 'Edgy' },
+      { label: 'quiz.L9', group: 'Diğer' },
     ],
   },
   {
-    question: 'Kendini en çok\nnerede hayal edersin?',
+    question: 'quiz.q2',
     options: [
-      { label: 'Şehir merkezi, ofis, klasik mekânlar', group: 'Zamansız' },
-      { label: 'Sokak, spor salonu, hareketli şehir', group: 'Günlük & Rahat' },
-      { label: 'Doğa, bahçe, romantik kaçamak', group: 'Feminen' },
-      { label: 'Gece hayatı, sanat galerisi, konser', group: 'Edgy' },
-      { label: 'Dağ, kamp, kampüs, açık hava', group: 'Diğer' },
+      { label: 'quiz.L10', group: 'Zamansız' },
+      { label: 'quiz.L11', group: 'Günlük & Rahat' },
+      { label: 'quiz.L12', group: 'Feminen' },
+      { label: 'quiz.L13', group: 'Edgy' },
+      { label: 'quiz.L14', group: 'Diğer' },
     ],
   },
 ];
 
-// ─── Katman 2: Stil soruları (gruba göre dallanma) ───────────────────────────
+// ─── Katman 2: Stil soruları (gruba göre dallanma) ────────────────────────────
 
 const STYLE_QUESTIONS: Record<GroupName, StyleQuestion[]> = {
   'Zamansız': [
-    { question: 'Dolabının kalbi\nhangisi?', options: [
-      { label: 'Sade monokrom parçalar',       scores: [{ style: 'Minimalist',    pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
-      { label: 'Miras değeri olan klasikler',   scores: [{ style: 'Old Money',     pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
-      { label: 'Logosuz ama üstün kalite',      scores: [{ style: 'Quiet Luxury',  pts: 3 }, { style: 'Minimalist',   pts: 1 }] },
-      { label: 'İyi kesim blazer + jean',       scores: [{ style: 'Smart Casual',  pts: 3 }, { style: 'Old Money',    pts: 1 }] },
-      { label: 'Temiz, bakımlı, doğal görünüm', scores: [{ style: 'Clean Girl',    pts: 3 }, { style: 'Minimalist',   pts: 1 }] },
+    { question: 'quiz.q3', options: [
+      { label: 'quiz.L15', scores: [{ style: 'Minimalist',    pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
+      { label: 'quiz.L16', scores: [{ style: 'Old Money',     pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
+      { label: 'quiz.L17', scores: [{ style: 'Quiet Luxury',  pts: 3 }, { style: 'Minimalist',   pts: 1 }] },
+      { label: 'quiz.L18', scores: [{ style: 'Smart Casual',  pts: 3 }, { style: 'Old Money',    pts: 1 }] },
+      { label: 'quiz.L19', scores: [{ style: 'Clean Girl',    pts: 3 }, { style: 'Minimalist',   pts: 1 }] },
     ]},
-    { question: 'Lüks senin için\nne demek?', options: [
-      { label: 'Az ama öz, gösterişsiz',          scores: [{ style: 'Minimalist',   pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
-      { label: 'Köklü, klasik, zamana direnen',    scores: [{ style: 'Old Money',    pts: 3 }] },
-      { label: 'Dokunduğunda anlaşılan kalite',    scores: [{ style: 'Quiet Luxury', pts: 3 }] },
-      { label: 'Zahmetsiz şıklık',                 scores: [{ style: 'Smart Casual', pts: 3 }, { style: 'Clean Girl', pts: 1 }] },
-      { label: 'Sağlıklı cilt, sade güzellik',     scores: [{ style: 'Clean Girl',   pts: 3 }] },
+    { question: 'quiz.q4', options: [
+      { label: 'quiz.L20', scores: [{ style: 'Minimalist',   pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
+      { label: 'quiz.L21', scores: [{ style: 'Old Money',    pts: 3 }] },
+      { label: 'quiz.L22', scores: [{ style: 'Quiet Luxury', pts: 3 }] },
+      { label: 'quiz.L23', scores: [{ style: 'Smart Casual', pts: 3 }, { style: 'Clean Girl', pts: 1 }] },
+      { label: 'quiz.L24', scores: [{ style: 'Clean Girl',   pts: 3 }] },
     ]},
-    { question: 'Günlük kombininin\nolmazsa olmazı?', options: [
-      { label: 'Beyaz tişört + iyi pantolon', scores: [{ style: 'Minimalist',   pts: 3 }, { style: 'Smart Casual', pts: 1 }] },
-      { label: 'Kaşmir kazak / blazer',       scores: [{ style: 'Old Money',    pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
-      { label: 'Nötr trençkot',               scores: [{ style: 'Quiet Luxury', pts: 3 }, { style: 'Old Money',    pts: 1 }] },
-      { label: 'Gömlek + tailored pantolon',  scores: [{ style: 'Smart Casual', pts: 3 }] },
-      { label: 'Slick topuz + altın halka küpe', scores: [{ style: 'Clean Girl', pts: 3 }] },
+    { question: 'quiz.q5', options: [
+      { label: 'quiz.L25', scores: [{ style: 'Minimalist',   pts: 3 }, { style: 'Smart Casual', pts: 1 }] },
+      { label: 'quiz.L26', scores: [{ style: 'Old Money',    pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
+      { label: 'quiz.L27', scores: [{ style: 'Quiet Luxury', pts: 3 }, { style: 'Old Money',    pts: 1 }] },
+      { label: 'quiz.L28', scores: [{ style: 'Smart Casual', pts: 3 }] },
+      { label: 'quiz.L29', scores: [{ style: 'Clean Girl', pts: 3 }] },
     ]},
-    { question: 'Aksesuar\nyaklaşımın?', options: [
-      { label: 'Neredeyse hiç, çok sade',               scores: [{ style: 'Minimalist',   pts: 3 }] },
-      { label: 'İnce, klasik, altın',                    scores: [{ style: 'Old Money',    pts: 3 }, { style: 'Clean Girl', pts: 1 }] },
-      { label: 'Kaliteli ama dikkat çekmeyen',           scores: [{ style: 'Quiet Luxury', pts: 3 }] },
-      { label: 'İşlevsel + şık (saat, deri çanta)',      scores: [{ style: 'Smart Casual', pts: 3 }] },
-      { label: 'Minimal, doğal, az takı',                scores: [{ style: 'Clean Girl',   pts: 3 }, { style: 'Minimalist', pts: 1 }] },
+    { question: 'quiz.q6', options: [
+      { label: 'quiz.L30', scores: [{ style: 'Minimalist',   pts: 3 }] },
+      { label: 'quiz.L31', scores: [{ style: 'Old Money',    pts: 3 }, { style: 'Clean Girl', pts: 1 }] },
+      { label: 'quiz.L32', scores: [{ style: 'Quiet Luxury', pts: 3 }] },
+      { label: 'quiz.L33', scores: [{ style: 'Smart Casual', pts: 3 }] },
+      { label: 'quiz.L34', scores: [{ style: 'Clean Girl',   pts: 3 }, { style: 'Minimalist', pts: 1 }] },
     ]},
-    { question: 'Hangi cümle\nsana ait?', options: [
-      { label: '"Az çoktur."',                              scores: [{ style: 'Minimalist',   pts: 3 }] },
-      { label: '"Kalite asla eskimez."',                    scores: [{ style: 'Old Money',    pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
-      { label: '"Bilen bilir, göstermeye gerek yok."',      scores: [{ style: 'Quiet Luxury', pts: 3 }] },
-      { label: '"Her ortama uyum sağlarım."',               scores: [{ style: 'Smart Casual', pts: 3 }] },
-      { label: '"Doğallık en büyük şıklık."',               scores: [{ style: 'Clean Girl',   pts: 3 }] },
+    { question: 'quiz.q7', options: [
+      { label: 'quiz.L35', scores: [{ style: 'Minimalist',   pts: 3 }] },
+      { label: 'quiz.L36', scores: [{ style: 'Old Money',    pts: 3 }, { style: 'Quiet Luxury', pts: 1 }] },
+      { label: 'quiz.L37', scores: [{ style: 'Quiet Luxury', pts: 3 }] },
+      { label: 'quiz.L38', scores: [{ style: 'Smart Casual', pts: 3 }] },
+      { label: 'quiz.L39', scores: [{ style: 'Clean Girl',   pts: 3 }] },
     ]},
   ],
 
   'Feminen': [
-    { question: 'Hangi detay\nkalbini çalar?', options: [
-      { label: 'Fiyonk, dantel, kurdele',    scores: [{ style: 'Coquette',            pts: 3 }, { style: 'Soft Girl',           pts: 1 }] },
-      { label: 'Pastel, yumuşak kumaş',      scores: [{ style: 'Soft Girl',           pts: 3 }, { style: 'Coquette',            pts: 1 }] },
-      { label: 'Akışkan, etnik desen, saçak', scores: [{ style: 'Bohemian',           pts: 3 }] },
-      { label: 'Çiçekli, fırfırlı, kırsal',  scores: [{ style: 'Cottagecore',         pts: 3 }] },
-      { label: 'Keten, sade, kıyı rahatı',   scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
+    { question: 'quiz.q8', options: [
+      { label: 'quiz.L40', scores: [{ style: 'Coquette',            pts: 3 }, { style: 'Soft Girl',           pts: 1 }] },
+      { label: 'quiz.L41', scores: [{ style: 'Soft Girl',           pts: 3 }, { style: 'Coquette',            pts: 1 }] },
+      { label: 'quiz.L42', scores: [{ style: 'Bohemian',           pts: 3 }] },
+      { label: 'quiz.L43', scores: [{ style: 'Cottagecore',         pts: 3 }] },
+      { label: 'quiz.L44', scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
     ]},
-    { question: 'Hayalindeki\ngün?', options: [
-      { label: 'Romantik bir buluşma',        scores: [{ style: 'Coquette',            pts: 3 }, { style: 'Soft Girl',  pts: 1 }] },
-      { label: 'Sevimli bir kafede vakit',    scores: [{ style: 'Soft Girl',           pts: 3 }] },
-      { label: 'Festival, müzik, özgürlük',   scores: [{ style: 'Bohemian',            pts: 3 }] },
-      { label: 'Bahçede çay, ekmek pişirmek', scores: [{ style: 'Cottagecore',         pts: 3 }] },
-      { label: 'Sahilde uzun yürüyüş',        scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
+    { question: 'quiz.q9', options: [
+      { label: 'quiz.L45', scores: [{ style: 'Coquette',            pts: 3 }, { style: 'Soft Girl',  pts: 1 }] },
+      { label: 'quiz.L46', scores: [{ style: 'Soft Girl',           pts: 3 }] },
+      { label: 'quiz.L47', scores: [{ style: 'Bohemian',            pts: 3 }] },
+      { label: 'quiz.L48', scores: [{ style: 'Cottagecore',         pts: 3 }] },
+      { label: 'quiz.L49', scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
     ]},
-    { question: 'Hangi kumaş\n& desen?', options: [
-      { label: 'Saten, tül, pembe tonlar',    scores: [{ style: 'Coquette',            pts: 3 }] },
-      { label: 'Yumuşak örgü, pastel',        scores: [{ style: 'Soft Girl',           pts: 3 }, { style: 'Coquette',            pts: 1 }] },
-      { label: 'Kadife, etnik, dökümlü',      scores: [{ style: 'Bohemian',            pts: 3 }] },
-      { label: 'Çiçekli pamuk, keten',        scores: [{ style: 'Cottagecore',         pts: 3 }, { style: 'Coastal Grandmother', pts: 1 }] },
-      { label: 'Çizgili keten, doğal',        scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
+    { question: 'quiz.q10', options: [
+      { label: 'quiz.L50', scores: [{ style: 'Coquette',            pts: 3 }] },
+      { label: 'quiz.L51', scores: [{ style: 'Soft Girl',           pts: 3 }, { style: 'Coquette',            pts: 1 }] },
+      { label: 'quiz.L52', scores: [{ style: 'Bohemian',            pts: 3 }] },
+      { label: 'quiz.L53', scores: [{ style: 'Cottagecore',         pts: 3 }, { style: 'Coastal Grandmother', pts: 1 }] },
+      { label: 'quiz.L54', scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
     ]},
-    { question: 'Saç & makyaj\nvibe\'ın?', options: [
-      { label: 'Dağınık topuz, fiyonk, allık', scores: [{ style: 'Coquette',            pts: 3 }] },
-      { label: 'Doğal dalga, parıltılı, masum', scores: [{ style: 'Soft Girl',          pts: 3 }] },
-      { label: 'Örgüler, doğal, serbest',       scores: [{ style: 'Bohemian',           pts: 3 }] },
-      { label: 'Toplu saç, taze yüz',           scores: [{ style: 'Cottagecore',        pts: 3 }] },
-      { label: 'Bakımlı, zahmetsiz, doğal',     scores: [{ style: 'Coastal Grandmother', pts: 3 }, { style: 'Soft Girl', pts: 1 }] },
+    { question: 'quiz.q11', options: [
+      { label: 'quiz.L55', scores: [{ style: 'Coquette',            pts: 3 }] },
+      { label: 'quiz.L56', scores: [{ style: 'Soft Girl',          pts: 3 }] },
+      { label: 'quiz.L57', scores: [{ style: 'Bohemian',           pts: 3 }] },
+      { label: 'quiz.L58', scores: [{ style: 'Cottagecore',        pts: 3 }] },
+      { label: 'quiz.L59', scores: [{ style: 'Coastal Grandmother', pts: 3 }, { style: 'Soft Girl', pts: 1 }] },
     ]},
-    { question: 'Hangi cümle\nsana ait?', options: [
-      { label: '"Narin ve romantik."',                      scores: [{ style: 'Coquette',            pts: 3 }] },
-      { label: '"Yumuşaklık güçtür."',                      scores: [{ style: 'Soft Girl',           pts: 3 }] },
-      { label: '"Ruhum özgür, kurallar bana göre değil."',  scores: [{ style: 'Bohemian',            pts: 3 }] },
-      { label: '"Basit ve doğal bir hayat istiyorum."',     scores: [{ style: 'Cottagecore',         pts: 3 }] },
-      { label: '"Zarif ama hiç çabalamadan."',              scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
+    { question: 'quiz.q12', options: [
+      { label: 'quiz.L60', scores: [{ style: 'Coquette',            pts: 3 }] },
+      { label: 'quiz.L61', scores: [{ style: 'Soft Girl',           pts: 3 }] },
+      { label: 'quiz.L62', scores: [{ style: 'Bohemian',            pts: 3 }] },
+      { label: 'quiz.L63', scores: [{ style: 'Cottagecore',         pts: 3 }] },
+      { label: 'quiz.L64', scores: [{ style: 'Coastal Grandmother', pts: 3 }] },
     ]},
   ],
 
   'Edgy': [
-    { question: 'Hangi atmosfer\nseni çeker?', options: [
-      { label: 'Eski kütüphane, kahve, tüvit', scores: [{ style: 'Dark Academia', pts: 3 }] },
-      { label: "2000'ler nostaljisi, metalik",  scores: [{ style: 'Y2K',          pts: 3 }] },
-      { label: 'Karanlık rock, yırtık, isyan',  scores: [{ style: 'Grunge Chic',  pts: 3 }] },
-      { label: 'Lüks, kürk, dramatik güç',      scores: [{ style: 'Mob Wife',     pts: 3 }] },
-      { label: 'Deneysel, sıra dışı tasarım',   scores: [{ style: 'Avant-garde',  pts: 3 }] },
+    { question: 'quiz.q13', options: [
+      { label: 'quiz.L65',  scores: [{ style: 'Dark Academia', pts: 3 }] },
+      { label: 'quiz.L102', scores: [{ style: 'Y2K',          pts: 3 }] },
+      { label: 'quiz.L66',  scores: [{ style: 'Grunge Chic',  pts: 3 }] },
+      { label: 'quiz.L67',  scores: [{ style: 'Mob Wife',     pts: 3 }] },
+      { label: 'quiz.L68',  scores: [{ style: 'Avant-garde',  pts: 3 }] },
     ]},
-    { question: 'Renk &\nmalzeme?', options: [
-      { label: 'Kahve, bordo, tüvit, deri',      scores: [{ style: 'Dark Academia', pts: 3 }] },
-      { label: 'Pembe, mavi, metalik, parıltı',  scores: [{ style: 'Y2K',           pts: 3 }] },
-      { label: 'Siyah, gri, yıpranmış denim',    scores: [{ style: 'Grunge Chic',   pts: 3 }, { style: 'Dark Academia', pts: 1 }] },
-      { label: 'Siyah, kürk, kırmızı, altın',   scores: [{ style: 'Mob Wife',      pts: 3 }] },
-      { label: 'Beklenmedik kesim, asimetri',    scores: [{ style: 'Avant-garde',   pts: 3 }] },
+    { question: 'quiz.q14', options: [
+      { label: 'quiz.L69', scores: [{ style: 'Dark Academia', pts: 3 }] },
+      { label: 'quiz.L70', scores: [{ style: 'Y2K',           pts: 3 }] },
+      { label: 'quiz.L71', scores: [{ style: 'Grunge Chic',   pts: 3 }, { style: 'Dark Academia', pts: 1 }] },
+      { label: 'quiz.L72', scores: [{ style: 'Mob Wife',      pts: 3 }] },
+      { label: 'quiz.L73', scores: [{ style: 'Avant-garde',   pts: 3 }] },
     ]},
-    { question: 'Olmazsa olmaz\nparçan?', options: [
-      { label: 'Tüvit blazer / yün hırka',       scores: [{ style: 'Dark Academia', pts: 3 }] },
-      { label: 'Düşük bel pantolon / mini',       scores: [{ style: 'Y2K',          pts: 3 }] },
-      { label: 'Deri ceket / yırtık jean',        scores: [{ style: 'Grunge Chic',  pts: 3 }] },
-      { label: 'Kürk / büyük güneş gözlüğü',     scores: [{ style: 'Mob Wife',     pts: 3 }] },
-      { label: 'Heykelsi, sıra dışı bir parça',   scores: [{ style: 'Avant-garde',  pts: 3 }, { style: 'Grunge Chic', pts: 1 }] },
+    { question: 'quiz.q15', options: [
+      { label: 'quiz.L74', scores: [{ style: 'Dark Academia', pts: 3 }] },
+      { label: 'quiz.L75', scores: [{ style: 'Y2K',          pts: 3 }] },
+      { label: 'quiz.L76', scores: [{ style: 'Grunge Chic',  pts: 3 }] },
+      { label: 'quiz.L77', scores: [{ style: 'Mob Wife',     pts: 3 }] },
+      { label: 'quiz.L78', scores: [{ style: 'Avant-garde',  pts: 3 }, { style: 'Grunge Chic', pts: 1 }] },
     ]},
-    { question: 'Tavrın\nnasıl?', options: [
-      { label: 'Entelektüel, gizemli', scores: [{ style: 'Dark Academia', pts: 3 }] },
-      { label: 'Eğlenceli, nostaljik, cesur', scores: [{ style: 'Y2K',         pts: 3 }] },
-      { label: 'Umursamaz, asi',              scores: [{ style: 'Grunge Chic', pts: 3 }] },
-      { label: 'Güçlü, baskın, görkemli',     scores: [{ style: 'Mob Wife',    pts: 3 }] },
-      { label: 'Kuralları yıkan, sanatçı',    scores: [{ style: 'Avant-garde', pts: 3 }] },
+    { question: 'quiz.q16', options: [
+      { label: 'quiz.L79', scores: [{ style: 'Dark Academia', pts: 3 }] },
+      { label: 'quiz.L80', scores: [{ style: 'Y2K',         pts: 3 }] },
+      { label: 'quiz.L81', scores: [{ style: 'Grunge Chic', pts: 3 }] },
+      { label: 'quiz.L82', scores: [{ style: 'Mob Wife',    pts: 3 }] },
+      { label: 'quiz.L83', scores: [{ style: 'Avant-garde', pts: 3 }] },
     ]},
-    { question: 'Hangi cümle\nsana ait?', options: [
-      { label: '"Estetik ve bilgi iç içe."',      scores: [{ style: 'Dark Academia', pts: 3 }] },
-      { label: '"Geçmişi bugüne taşırım."',       scores: [{ style: 'Y2K',           pts: 3 }] },
-      { label: '"Mükemmellik sıkıcı."',           scores: [{ style: 'Grunge Chic',   pts: 3 }] },
-      { label: '"Sahne benim, herkes baksın."',   scores: [{ style: 'Mob Wife',      pts: 3 }] },
-      { label: '"Giysi bir sanat eseridir."',     scores: [{ style: 'Avant-garde',   pts: 3 }] },
+    { question: 'quiz.q17', options: [
+      { label: 'quiz.L84', scores: [{ style: 'Dark Academia', pts: 3 }] },
+      { label: 'quiz.L85', scores: [{ style: 'Y2K',           pts: 3 }] },
+      { label: 'quiz.L86', scores: [{ style: 'Grunge Chic',   pts: 3 }] },
+      { label: 'quiz.L87', scores: [{ style: 'Mob Wife',      pts: 3 }] },
+      { label: 'quiz.L88', scores: [{ style: 'Avant-garde',   pts: 3 }] },
     ]},
   ],
 
   'Günlük & Rahat': [
-    { question: 'Rahatlık senin için\nnasıl görünür?', options: [
-      { label: 'Oversize, sokak, cesur grafik', scores: [{ style: 'Streetwear',    pts: 3 }] },
-      { label: 'Spor giyim, teknik kumaş',      scores: [{ style: 'Athleisure',    pts: 3 }] },
-      { label: 'Şehirli, siyah, cool duruş',    scores: [{ style: 'Downtown Girl', pts: 3 }] },
+    { question: 'quiz.q18', options: [
+      { label: 'quiz.L89', scores: [{ style: 'Streetwear',    pts: 3 }] },
+      { label: 'quiz.L90', scores: [{ style: 'Athleisure',    pts: 3 }] },
+      { label: 'quiz.L91', scores: [{ style: 'Downtown Girl', pts: 3 }] },
     ]},
-    { question: 'Ayakkabı\ntercihin?', options: [
-      { label: 'Statement sneaker',          scores: [{ style: 'Streetwear',    pts: 3 }, { style: 'Athleisure', pts: 1 }] },
-      { label: 'Performans spor ayakkabı',   scores: [{ style: 'Athleisure',    pts: 3 }] },
-      { label: 'Bot / sade siyah',           scores: [{ style: 'Downtown Girl', pts: 3 }] },
+    { question: 'quiz.q19', options: [
+      { label: 'quiz.L92', scores: [{ style: 'Streetwear',    pts: 3 }, { style: 'Athleisure', pts: 1 }] },
+      { label: 'quiz.L93', scores: [{ style: 'Athleisure',    pts: 3 }] },
+      { label: 'quiz.L94', scores: [{ style: 'Downtown Girl', pts: 3 }] },
     ]},
-    { question: 'Hangi cümle\nsana ait?', options: [
-      { label: '"Sokak benim podyumum."',       scores: [{ style: 'Streetwear',    pts: 3 }] },
-      { label: '"Konfor ve stil bir arada."',   scores: [{ style: 'Athleisure',    pts: 3 }] },
-      { label: '"Az çabayla cool görünmek."',   scores: [{ style: 'Downtown Girl', pts: 3 }] },
+    { question: 'quiz.q20', options: [
+      { label: 'quiz.L95', scores: [{ style: 'Streetwear',    pts: 3 }] },
+      { label: 'quiz.L96', scores: [{ style: 'Athleisure',    pts: 3 }] },
+      { label: 'quiz.L97', scores: [{ style: 'Downtown Girl', pts: 3 }] },
     ]},
   ],
 
   'Diğer': [
-    { question: 'Hangisi sana\ndaha yakın?', options: [
-      { label: 'Klasik kampüs, kolej şıklığı', scores: [{ style: 'Preppy',    pts: 3 }] },
-      { label: 'Outdoor, dağ, fonksiyonel',    scores: [{ style: 'Gorpcore',  pts: 3 }] },
+    { question: 'quiz.q21', options: [
+      { label: 'quiz.L98', scores: [{ style: 'Preppy',    pts: 3 }] },
+      { label: 'quiz.L99', scores: [{ style: 'Gorpcore',  pts: 3 }] },
     ]},
-    { question: 'Bir hafta sonu\nplanı?', options: [
-      { label: 'Yat kulübü, tenis, brunch', scores: [{ style: 'Preppy',   pts: 3 }] },
-      { label: 'Doğa yürüyüşü, kamp',      scores: [{ style: 'Gorpcore', pts: 3 }] },
+    { question: 'quiz.q22', options: [
+      { label: 'quiz.L100', scores: [{ style: 'Preppy',   pts: 3 }] },
+      { label: 'quiz.L101', scores: [{ style: 'Gorpcore', pts: 3 }] },
     ]},
   ],
 };
@@ -335,7 +336,7 @@ export default function StyleQuizScreen({ navigation }: Props) {
 
         <Animated.View style={{ opacity: fadeAnim }}>
           {/* Soru */}
-          <Text style={styles.question}>{question.question}</Text>
+          <Text style={styles.question}>{t(question.question)}</Text>
 
           {/* Seçenekler */}
           <View style={isList ? styles.listGrid : styles.grid}>
@@ -352,7 +353,7 @@ export default function StyleQuizScreen({ navigation }: Props) {
                   activeOpacity={0.82}
                 >
                   <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
-                    {opt.label}
+                    {t(opt.label)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -360,7 +361,7 @@ export default function StyleQuizScreen({ navigation }: Props) {
           </View>
         </Animated.View>
 
-        <Text style={styles.hint}>Seç ve otomatik ilerle</Text>
+        <Text style={styles.hint}>{t('quiz.hint')}</Text>
       </View>
     </SafeAreaView>
   );
