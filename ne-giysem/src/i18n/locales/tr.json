@@ -546,5 +546,21 @@
     "isUpperMsg": "Bel üstünde biten, altına pantolon/etek gereken bir üst ise doğru. Eğer bu tek parça bir elbise ise, yukarıdan \"Elbise\" seç.",
     "willFix": "Düzelteceğim",
     "correctSave": "Doğru, kaydet"
+  },
+  "verdict": {
+    "has_similar": "Zaten benzeri var",
+    "fills_gaps": "Eksik parçaları tamamlıyor",
+    "great_fit": "Dolabına çok uygun"
+  },
+  "storeResult": {
+    "title": "Uyum Analizi",
+    "scannedProduct": "Taranan Ürün",
+    "detectingCategory": "AI kategori tespiti yapılıyor…",
+    "emptyWardrobe": "Dolabın henüz boş",
+    "analyzingWardrobe": "Dolabın analiz ediliyor…",
+    "compatScore": "%{score} puan uyum",
+    "missingTitle": "Eksik Parçalar",
+    "comboSuggestions": "Kombin Önerileri",
+    "emptyDesc": "Dolabına parça ekledikçe uyum analizi burada gösterilecek."
   }
 }

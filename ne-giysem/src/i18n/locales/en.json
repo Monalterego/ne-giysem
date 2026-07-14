@@ -546,5 +546,21 @@
     "isUpperMsg": "If it ends above the waist and needs pants/a skirt underneath, this is correct. If it's a one-piece dress, pick \"Dress\" above.",
     "willFix": "I'll fix it",
     "correctSave": "Correct, save"
+  },
+  "verdict": {
+    "has_similar": "You already have similar",
+    "fills_gaps": "Fills the gaps",
+    "great_fit": "Great fit for your wardrobe"
+  },
+  "storeResult": {
+    "title": "Compatibility Analysis",
+    "scannedProduct": "Scanned Item",
+    "detectingCategory": "AI detecting category…",
+    "emptyWardrobe": "Your wardrobe is empty",
+    "analyzingWardrobe": "Analyzing your wardrobe…",
+    "compatScore": "%{score}% match",
+    "missingTitle": "Missing Pieces",
+    "comboSuggestions": "Outfit Suggestions",
+    "emptyDesc": "As you add items to your wardrobe, compatibility analysis will appear here."
   }
 }

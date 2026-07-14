@@ -20,6 +20,8 @@ import type { StoreAnalysis } from '../../utils/comboEngine';
 import type { WardrobeItem, ClothingCategory } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
+import { t } from '../../i18n';
+import { catLabel } from '../../constants/categories';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
 
@@ -46,20 +48,17 @@ function visionToWardrobeItem(v: VisionResult, processedBase64: string): Wardrob
   };
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  upper:          'Üst',
-  lower:          'Alt',
-  dress_jumpsuit: 'Elbise/Tulum',
-  outer:          'Dış Giyim',
-  shoes:          'Ayakkabı',
-  bag:            'Çanta',
-  accessory:      'Aksesuar',
-};
-
 function verdictColor(verdict: string): string {
   if (verdict === 'Zaten benzeri var')           return colors.accent;
   if (verdict === 'Eksik parçaları tamamlıyor') return colors.text;
   return colors.success;
+}
+
+// Motorun ürettiği Türkçe verdict → çeviri anahtarı (verdictColor Türkçe string'le çalışmaya devam eder)
+function verdictKey(verdict: string): string {
+  if (verdict === 'Zaten benzeri var')           return 'verdict.has_similar';
+  if (verdict === 'Eksik parçaları tamamlıyor') return 'verdict.fills_gaps';
+  return 'verdict.great_fit';
 }
 
 // ─── AI Detay Kartı ──────────────────────────────────────────────────────────
@@ -77,7 +76,7 @@ function AIDetailCard({ vision }: { vision: VisionResult }) {
         <Text style={styles.aiDetailName}>{vision.itemName}</Text>
       )}
       <Text style={styles.aiDetailCategory}>
-        {CATEGORY_LABEL[vision.category] ?? vision.category}
+        {catLabel(vision.category)}
         {vision.subcategory ? ` · ${vision.subcategory}` : ''}
       </Text>
       {pills.length > 0 && (
@@ -116,7 +115,7 @@ function WardrobeComboCard({ items }: { items: WardrobeItem[] }) {
               resizeMode="contain"
             />
             <Text style={styles.comboImgLabel}>
-              {CATEGORY_LABEL[item.category] ?? item.category}
+              {catLabel(item.category)}
             </Text>
           </View>
         ))}
@@ -180,9 +179,9 @@ export default function StoreResultScreen({ route, navigation }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.back}>← Geri</Text>
+          <Text style={styles.back}>{t('auth.backArrow')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Uyum Analizi</Text>
+        <Text style={styles.headerTitle}>{t('storeResult.title')}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -192,7 +191,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         <View style={styles.productImageWrap}>
           <Image source={{ uri: scannedUri }} style={styles.productImage} resizeMode="contain" />
           <View style={styles.productBadge}>
-            <Text style={styles.productBadgeText}>Taranan Ürün</Text>
+            <Text style={styles.productBadgeText}>{t('storeResult.scannedProduct')}</Text>
           </View>
         </View>
 
@@ -200,7 +199,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         {analyzing && (
           <View style={styles.analyzingBannerPurple}>
             <ActivityIndicator size="small" color={colors.text} />
-            <Text style={styles.analyzingText}>AI kategori tespiti yapılıyor…</Text>
+            <Text style={styles.analyzingText}>{t('storeResult.detectingCategory')}</Text>
           </View>
         )}
 
@@ -211,9 +210,9 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         {!items.length ? (
           <View style={styles.emptyCard}>
             <Feather name="shopping-bag" size={36} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>Dolabın henüz boş</Text>
+            <Text style={styles.emptyTitle}>{t('storeResult.emptyWardrobe')}</Text>
             <Text style={styles.emptyDesc}>
-              Dolabına parça ekledikçe uyum analizi burada gösterilecek.
+              {t('storeResult.emptyDesc')}
             </Text>
           </View>
         ) : (
@@ -222,7 +221,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
             {smartAnalyzing && (
               <View style={styles.analyzingBannerBlue}>
                 <ActivityIndicator size="small" color={colors.textSecondary} />
-                <Text style={styles.analyzingText}>Dolabın analiz ediliyor…</Text>
+                <Text style={styles.analyzingText}>{t('storeResult.analyzingWardrobe')}</Text>
               </View>
             )}
 
@@ -230,46 +229,23 @@ export default function StoreResultScreen({ route, navigation }: Props) {
               <>
                 {/* Verdict */}
                 <View style={[styles.verdictBadge, { backgroundColor: verdictColor(compatibility.verdict) }]}>
-                  <Text style={styles.verdictText}>{compatibility.verdict}</Text>
-                  <Text style={styles.verdictScore}>%{compatibility.avgScore} uyumlu</Text>
+                  <Text style={styles.verdictText}>{t(verdictKey(compatibility.verdict))}</Text>
+                  <Text style={styles.verdictScore}>{t('storeResult.compatScore', { score: compatibility.avgScore })}</Text>
                 </View>
 
-                {/* Gerekçeler */}
-                {compatibility.reasons.length > 0 && (
-                  <View style={styles.reasonsCard}>
-                    {compatibility.reasons.map((reason, i) => (
-                      <View key={i} style={styles.reasonRow}>
-                        <Text style={styles.reasonBullet}>•</Text>
-                        <Text style={styles.reasonText}>{reason}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
+                {/* Uyum gerekçeleri geçici gizlendi (i18n bekliyor) — motor üretmeye devam ediyor */}
 
                 {/* Kombin Önerileri */}
                 {compatibility.combos.length > 0 && (
                   <>
-                    <Text style={styles.sectionTitle}>Kombin Önerileri</Text>
+                    <Text style={styles.sectionTitle}>{t('storeResult.comboSuggestions')}</Text>
                     {compatibility.combos.map((comboItems, i) => (
                       <WardrobeComboCard key={i} items={comboItems} />
                     ))}
                   </>
                 )}
 
-                {/* Eksik Parçalar */}
-                {compatibility.missing.length > 0 && (
-                  <>
-                    <Text style={styles.sectionTitle}>Eksik Parçalar</Text>
-                    <View style={styles.missingCard}>
-                      {compatibility.missing.map((m, i) => (
-                        <View key={i} style={styles.missingRow}>
-                          <Text style={styles.missingPlus}>+</Text>
-                          <Text style={styles.missingText}>{m}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </>
-                )}
+                {/* Eksik parçalar geçici gizlendi (i18n bekliyor) */}
               </>
             )}
           </>
