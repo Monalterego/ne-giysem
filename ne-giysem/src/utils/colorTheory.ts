@@ -40,11 +40,25 @@ export function pairScore(hex1: string, hex2: string): number {
   return Math.max(0.30, Math.min(1.0, base + mod));
 }
 
+// Parça-çifti renk skoru cache'i. generateCombos içinde aynı çift yüzlerce kez sorulur;
+// id'ler kalıcı olduğundan simetrik (a.id,b.id) anahtarla memoize edilir. 5000'de temizlenir.
+const _colorScoreCache = new Map<string, number>();
+
+export function clearColorScoreCache(): void {
+  _colorScoreCache.clear();
+}
+
 /** İki parça arasındaki ortalama renk uyum skoru (0–1). */
 export function itemColorScore(a: WardrobeItem, b: WardrobeItem): number {
   if (!a.colors.length || !b.colors.length) return 0.82;
+  const key = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
+  const cached = _colorScoreCache.get(key);
+  if (cached !== undefined) return cached;
   const scores = a.colors.flatMap((c1) => b.colors.map((c2) => pairScore(c1, c2)));
-  return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  const result = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  if (_colorScoreCache.size > 5000) _colorScoreCache.clear();
+  _colorScoreCache.set(key, result);
+  return result;
 }
 
 // ─── outfitColorScore ─────────────────────────────────────────────────────────
