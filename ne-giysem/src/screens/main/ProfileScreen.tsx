@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -47,10 +47,22 @@ export default function ProfileScreen() {
   const items    = useWardrobeStore((s) => s.items);
   const setItems = useWardrobeStore((s) => s.setItems);
 
-  const combos = useMemo(() => generateCombos(items, 50), [items]);
-  const avgScore = combos.length > 0
-    ? Math.round(combos.reduce((sum, c) => sum + c.score, 0) / combos.length)
-    : 0;
+  // İstatistik ertelenmiş hesaplanıyor: render'ı bloke etmesin diye generateCombos
+  // ekran çizildikten SONRA (useEffect) çalışır, sonuç state'e yazılır.
+  const [comboStats, setComboStats] = useState<{ count: number; avgScore: number } | null>(null);
+
+  useEffect(() => {
+    if (!items.length) { setComboStats({ count: 0, avgScore: 0 }); return; }
+    // Bir sonraki frame'de hesapla — ekran önce çizilsin, sonra sayı yerleşsin.
+    const id = setTimeout(() => {
+      const combos = generateCombos(items, 50);
+      const avg = combos.length > 0
+        ? Math.round(combos.reduce((sum, c) => sum + c.score, 0) / combos.length)
+        : 0;
+      setComboStats({ count: combos.length, avgScore: avg });
+    }, 0);
+    return () => clearTimeout(id);
+  }, [items]);
 
   const [styleEntries,  setStyleEntries]  = useState<{ name: string; weight: number }[]>([]);
   const [loadingStyles, setLoadingStyles] = useState(true);
@@ -269,12 +281,12 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{combos.length}</Text>
+            <Text style={styles.statValue}>{comboStats?.count ?? '…'}</Text>
             <Text style={styles.statLabel}>{t('profile.combo')}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{avgScore}%</Text>
+            <Text style={styles.statValue}>{comboStats ? comboStats.avgScore + '%' : '…'}</Text>
             <Text style={styles.statLabel}>{t('profile.avgFit')}</Text>
           </View>
         </View>
