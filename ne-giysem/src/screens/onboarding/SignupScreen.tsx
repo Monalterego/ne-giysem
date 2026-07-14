@@ -80,13 +80,13 @@ export default function SignupScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
         >
           {/* Başlık */}
-          <Text style={styles.title}>Hesap Oluştur</Text>
+          <Text style={styles.title}>{t('auth.createAccount')}</Text>
           <Text style={styles.subtitle}>60 saniyede kişisel stiline kavuş</Text>
 
           {/* Sosyal butonlar — V2 */}
           <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
             <Feather name="smartphone" size={16} color={colors.text} />
-            <Text style={styles.socialText}>Apple ile devam et</Text>
+            <Text style={styles.socialText}>{t('auth.appleContinue')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>

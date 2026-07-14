@@ -44,7 +44,9 @@
     "noAccount": "Don't have an account?",
     "signupLink": " Sign Up",
     "backArrow": "← Back",
-    "profileUpdateError": "Couldn't update profile: "
+    "profileUpdateError": "Couldn't update profile: ",
+    "createAccount": "Create Account",
+    "appleContinue": "Continue with Apple"
   },
   "home": {
     "greetingMorning": "Good morning",
@@ -239,7 +241,9 @@
     "setStyle": "Set Your Style →",
     "completeProfile": "Complete Profile →",
     "editProfile": "Edit My Profile",
-    "nameUpdateError": "Couldn't update name. Try again."
+    "nameUpdateError": "Couldn't update name. Try again.",
+    "photoUploadError": "Couldn't upload photo. Please try again.",
+    "nameEmpty": "Name can't be empty."
   },
   "style": {
     "choiceTitle": "Let's Discover Your Style",

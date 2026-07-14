@@ -146,7 +146,7 @@ export default function ProfileScreen() {
 
       setAvatarUrl(publicUrl);
     } catch {
-      Alert.alert('Hata', 'Fotoğraf yüklenemedi. Lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), t('profile.photoUploadError'));
     } finally {
       setUploadingAvatar(false);
     }
@@ -160,7 +160,7 @@ export default function ProfileScreen() {
     if (!user) return;
     const trimmed = nameInput.trim();
     if (!trimmed) {
-      Alert.alert('Hata', 'İsim boş bırakılamaz.');
+      Alert.alert(t('combos.errorTitle'), t('profile.nameEmpty'));
       return;
     }
     setSavingName(true);

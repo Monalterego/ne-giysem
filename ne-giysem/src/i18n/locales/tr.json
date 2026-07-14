@@ -44,7 +44,9 @@
     "noAccount": "Hesabın yok mu?",
     "signupLink": " Kayıt Ol",
     "backArrow": "← Geri",
-    "profileUpdateError": "Profil güncellenemedi: "
+    "profileUpdateError": "Profil güncellenemedi: ",
+    "createAccount": "Hesap Oluştur",
+    "appleContinue": "Apple ile devam et"
   },
   "home": {
     "greetingMorning": "Günaydın",
@@ -239,7 +241,9 @@
     "setStyle": "Stilini Belirle →",
     "completeProfile": "Profili Tamamla →",
     "editProfile": "Profilimi Düzenle",
-    "nameUpdateError": "İsim güncellenemedi. Tekrar dene."
+    "nameUpdateError": "İsim güncellenemedi. Tekrar dene.",
+    "photoUploadError": "Fotoğraf yüklenemedi. Lütfen tekrar dene.",
+    "nameEmpty": "İsim boş bırakılamaz."
   },
   "style": {
     "choiceTitle": "Stilini Tanıyalım",
