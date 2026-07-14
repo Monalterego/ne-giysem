@@ -16,12 +16,13 @@ import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
-import { CATEGORY_META, CATEGORY_ORDER } from '../../constants/categories';
+import { CATEGORY_META, CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
 import { uuidv4 } from '../../utils/uuid';
 import { base64Decode } from '../../utils/base64';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'UploadDetail'>;
 
@@ -147,7 +148,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
 
   const handleSave = async () => {
     if (!category) {
-      Alert.alert('Kategori Seç', 'Lütfen kıyafetin kategorisini seç.');
+      Alert.alert(t('uploadDetail.categorySelectTitle'), t('uploadDetail.categorySelectMsg'));
       return;
     }
     if (!user) return;
@@ -159,13 +160,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
     if (riskyType && stillAiChoice && !skipCategoryConfirm.current) {
       const isDress = category === 'dress_jumpsuit';
       Alert.alert(
-        isDress ? 'Bu bir elbise mi?' : 'Bu bir üst mü?',
-        isDress
-          ? 'Tek parça, altına ayrı giysi gerekmeyen bir elbise/tulum ise doğru. Eğer bu bir üst (bluz, gömlek) ise, yukarıdan "Üst" seç — yoksa kombinlerde alt eksik kalır.'
-          : 'Bel üstünde biten, altına pantolon/etek gereken bir üst ise doğru. Eğer bu tek parça bir elbise ise, yukarıdan "Elbise" seç.',
+        isDress ? t('uploadDetail.isDressTitle') : t('uploadDetail.isUpperTitle'),
+        isDress ? t('uploadDetail.isDressMsg') : t('uploadDetail.isUpperMsg'),
         [
-          { text: 'Düzelteceğim', style: 'cancel' },
-          { text: 'Doğru, kaydet', onPress: () => { skipCategoryConfirm.current = true; handleSave(); } },
+          { text: t('uploadDetail.willFix'), style: 'cancel' },
+          { text: t('uploadDetail.correctSave'), onPress: () => { skipCategoryConfirm.current = true; handleSave(); } },
         ],
       );
       return;
@@ -246,7 +245,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
 
       navigation.navigate('WardrobeList');
     } catch (err: any) {
-      Alert.alert('Hata', err.message ?? 'Kıyafet kaydedilemedi. Lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), err.message ?? t('uploadDetail.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -254,7 +253,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
 
   const handleUpdate = async () => {
     if (!category) {
-      Alert.alert('Kategori Seç', 'Lütfen kıyafetin kategorisini seç.');
+      Alert.alert(t('uploadDetail.categorySelectTitle'), t('uploadDetail.categorySelectMsg'));
       return;
     }
     if (!existingItem) return;
@@ -269,7 +268,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       updateItem({ ...existingItem, category, subCategory, colors: itemColors, seasons, fabric });
       navigation.navigate('WardrobeList');
     } catch (err: any) {
-      Alert.alert('Hata', err.message ?? 'Güncelleme başarısız. Lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), err.message ?? t('uploadDetail.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -283,9 +282,9 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.back}>← Geri</Text>
+          <Text style={styles.back}>{t('auth.backArrow')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>{isEditMode ? 'Düzenle' : 'Detayları Gir'}</Text>
+        <Text style={styles.title}>{isEditMode ? t('uploadDetail.editTitle') : t('uploadDetail.addTitle')}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -293,7 +292,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         {/* Zarif mesaj — sadece ekleme modunda */}
         {!isEditMode && (
           <Text style={styles.zarifMesaj}>
-            Bilgiler ne kadar doğruysa, kombin önerileri o kadar isabetli olur ✨
+            {t('uploadDetail.hint')}
           </Text>
         )}
 
@@ -314,13 +313,13 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         {analyzing && (
           <View style={styles.aiBanner}>
             <ActivityIndicator size="small" color={colors.text} />
-            <Text style={styles.aiBannerText}>AI analiz ediyor…</Text>
+            <Text style={styles.aiBannerText}>{t('uploadDetail.aiAnalyzing')}</Text>
           </View>
         )}
         {!analyzing && aiDetected && (
           <View style={[styles.aiBanner, styles.aiBannerDone]}>
             <Feather name="zap" size={14} color={colors.text} />
-            <Text style={styles.aiBannerText}>AI tarafından dolduruldu · değiştirebilirsin</Text>
+            <Text style={styles.aiBannerText}>{t('uploadDetail.aiFilled')}</Text>
           </View>
         )}
 
@@ -333,19 +332,19 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             <View style={styles.detailRow}>
               {aiDetails.fit ? (
                 <View style={styles.detailPill}>
-                  <Text style={styles.detailPillLabel}>Kesim</Text>
+                  <Text style={styles.detailPillLabel}>{t('uploadDetail.fit')}</Text>
                   <Text style={styles.detailPillValue}>{aiDetails.fit}</Text>
                 </View>
               ) : null}
               {aiDetails.neckline ? (
                 <View style={styles.detailPill}>
-                  <Text style={styles.detailPillLabel}>Yaka</Text>
+                  <Text style={styles.detailPillLabel}>{t('uploadDetail.neckline')}</Text>
                   <Text style={styles.detailPillValue}>{aiDetails.neckline}</Text>
                 </View>
               ) : null}
               {aiDetails.sleeveLength ? (
                 <View style={styles.detailPill}>
-                  <Text style={styles.detailPillLabel}>Kol</Text>
+                  <Text style={styles.detailPillLabel}>{t('uploadDetail.sleeve')}</Text>
                   <Text style={styles.detailPillValue}>{aiDetails.sleeveLength}</Text>
                 </View>
               ) : null}
@@ -364,10 +363,10 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
 
         {/* Kategori */}
         <Text style={styles.sectionTitle}>
-          Kategori <Text style={styles.required}>*</Text>
+          {t('uploadDetail.category')} <Text style={styles.required}>*</Text>
         </Text>
         <View style={styles.chipRow}>
-          {CATEGORIES.map(({ label, value }) => (
+          {CATEGORIES.map(({ value }) => (
             <TouchableOpacity
               key={value}
               style={[styles.chip, category === value && styles.chipSelected]}
@@ -375,7 +374,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
               activeOpacity={0.75}
             >
               <Text style={[styles.chipText, category === value && styles.chipTextSelected]}>
-                {label}
+                {catLabel(value)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -385,11 +384,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         {category && CATEGORY_META[category].subcategories.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>
-              Alt Kategori{' '}
-              <Text style={styles.optional}>(opsiyonel)</Text>
+              {t('uploadDetail.subcategory')}{' '}
+              <Text style={styles.optional}>{t('uploadDetail.optional')}</Text>
             </Text>
             <View style={styles.chipRow}>
-              {CATEGORY_META[category].subcategories.map(({ label, value }) => (
+              {CATEGORY_META[category].subcategories.map(({ value }) => (
                 <TouchableOpacity
                   key={value}
                   style={[styles.chip, subCategory === value && styles.chipSelected]}
@@ -397,7 +396,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
                   activeOpacity={0.75}
                 >
                   <Text style={[styles.chipText, subCategory === value && styles.chipTextSelected]}>
-                    {label}
+                    {subcatLabel(value)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -406,12 +405,14 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         )}
 
         {/* Kumaş */}
-        <Text style={styles.sectionTitle}>Kumaş</Text>
+        <Text style={styles.sectionTitle}>{t('uploadDetail.fabric')}</Text>
         {FABRIC_GROUPS.map(({ groupLabel, items }) => (
           <View key={groupLabel}>
-            <Text style={styles.fabricGroupLabel}>{groupLabel}</Text>
+            <Text style={styles.fabricGroupLabel}>
+              {t(groupLabel === 'Doğal' ? 'fabricGroup.natural' : 'fabricGroup.other')}
+            </Text>
             <View style={styles.chipRow}>
-              {items.map(({ label, value }) => (
+              {items.map(({ value }) => (
                 <TouchableOpacity
                   key={value}
                   style={[styles.chip, fabric === value && styles.chipSelected]}
@@ -419,7 +420,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
                   activeOpacity={0.75}
                 >
                   <Text style={[styles.chipText, fabric === value && styles.chipTextSelected]}>
-                    {label}
+                    {t(`fabric.${value}`)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -432,17 +433,17 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
           activeOpacity={0.75}
         >
           <Text style={[styles.chipText, fabric === 'bilmiyorum' && styles.chipTextSelected]}>
-            Bilmiyorum
+            {t('fabric.bilmiyorum')}
           </Text>
         </TouchableOpacity>
 
         {/* Mevsim */}
         <Text style={styles.sectionTitle}>
-          Mevsim{' '}
-          <Text style={styles.optional}>(çoklu seçim)</Text>
+          {t('uploadDetail.season')}{' '}
+          <Text style={styles.optional}>{t('uploadDetail.multiSelect')}</Text>
         </Text>
         <View style={styles.chipRow}>
-          {SEASONS.map(({ label, value }) => (
+          {SEASONS.map(({ value }) => (
             <TouchableOpacity
               key={value}
               style={[styles.chip, seasons.includes(value) && styles.chipSelected]}
@@ -450,7 +451,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
               activeOpacity={0.75}
             >
               <Text style={[styles.chipText, seasons.includes(value) && styles.chipTextSelected]}>
-                {label}
+                {t(`season.${value}`)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -460,19 +461,19 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         {category && (
           <View style={styles.confirmCard}>
             <View style={styles.confirmRow}>
-              <Text style={styles.confirmLabel}>Kategori</Text>
+              <Text style={styles.confirmLabel}>{t('uploadDetail.category')}</Text>
               <View style={styles.confirmValueWrap}>
                 <Text style={styles.confirmValue}>
-                  {CATEGORIES.find((c) => c.value === category)?.label ?? category}
-                  {subCategory ? ` · ${CATEGORY_META[category].subcategories.find((s) => s.value === subCategory)?.label ?? ''}` : ''}
+                  {catLabel(category)}
+                  {subCategory ? ` · ${subcatLabel(subCategory)}` : ''}
                 </Text>
                 {aiCategoryRef.current === category && (
-                  <Text style={styles.aiTag}>AI seçti</Text>
+                  <Text style={styles.aiTag}>{t('uploadDetail.aiChose')}</Text>
                 )}
               </View>
             </View>
             <Text style={styles.confirmHint}>
-              Yanlışsa yukarıdan düzelt — doğru kategori, doğru kombinler demek.
+              {t('uploadDetail.confirmHint')}
             </Text>
           </View>
         )}
@@ -487,7 +488,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
           {saving ? (
             <ActivityIndicator color={colors.white} />
           ) : (
-            <Text style={styles.saveBtnText}>{isEditMode ? 'Güncelle' : 'Dolaba Ekle'}</Text>
+            <Text style={styles.saveBtnText}>{isEditMode ? t('uploadDetail.update') : t('uploadDetail.addToWardrobe')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

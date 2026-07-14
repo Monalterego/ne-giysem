@@ -370,7 +370,7 @@ export default function ProfileScreen() {
                 style={styles.nameInput}
                 value={nameInput}
                 onChangeText={setNameInput}
-                placeholder="Adın"
+                placeholder={t('auth.namePlaceholder')}
                 placeholderTextColor={colors.textTertiary}
                 autoFocus
                 returnKeyType="done"
