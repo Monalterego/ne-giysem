@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { MainTabParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { useComboStore } from '../../store/useComboStore';
@@ -346,6 +348,10 @@ function NoAvatarModal({
 
 export default function CombosScreen() {
   const navigation     = useNavigation<any>();
+  const route          = useRoute<RouteProp<MainTabParamList, 'Combos'>>();
+  const focusKey       = route.params?.focusComboKey;
+  const focusOccasion  = route.params?.occasion as Occasion | undefined;
+  const focusConsumed  = useRef(false);
   const items          = useWardrobeStore((s) => s.items);
   const isLoading      = useWardrobeStore((s) => s.isLoading);
   const fetchItems     = useWardrobeStore((s) => s.fetchItems);
@@ -359,7 +365,7 @@ export default function CombosScreen() {
   const PAGE_SIZE = 6;
 
   const [savingKey,      setSavingKey]      = useState<string | null>(null);
-  const [activeOccasion, setActiveOccasion] = useState<Occasion>('all');
+  const [activeOccasion, setActiveOccasion] = useState<Occasion>(focusOccasion ?? 'all');
   const [localCombos,    setLocalCombos]    = useState<Combo[]>([]);
   const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
 
@@ -386,14 +392,24 @@ export default function CombosScreen() {
     clearCache();
   }, [items, user?.id, weather]);
 
+  // Home'dan gelen odak kombini (varsa, bir kez) listenin başına al — eşleşmezse sessizce normal liste
+  const applyFocus = (list: Combo[]): Combo[] => {
+    if (!focusKey || focusConsumed.current) return list;
+    if (focusOccasion && activeOccasion !== focusOccasion) return list;
+    const idx = list.findIndex((c) => comboKey(c) === focusKey);
+    if (idx === -1) return list;
+    focusConsumed.current = true;
+    return idx === 0 ? list : [list[idx], ...list.slice(0, idx), ...list.slice(idx + 1)];
+  };
+
   // Lokal kombin üretimi — senkron, sıfır network; weather değişince yeniden hesaplanır
   useEffect(() => {
     if (!items.length || !user) { setLocalCombos([]); return; }
     const cached = comboCache[activeOccasion];
-    if (cached) { setLocalCombos(cached); setVisibleCount(PAGE_SIZE); return; }
+    if (cached) { setLocalCombos(applyFocus(cached)); setVisibleCount(PAGE_SIZE); return; }
     const combos = generateCombos(items, 24, activeOccasion, weather ?? undefined, user?.styleProfile ?? undefined);
     setCache(activeOccasion, combos);
-    setLocalCombos(combos);
+    setLocalCombos(applyFocus(combos));
     setVisibleCount(PAGE_SIZE);
   }, [items, activeOccasion, user?.id, weather]);
 

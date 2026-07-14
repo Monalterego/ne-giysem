@@ -34,7 +34,7 @@ export type ScanStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Wardrobe: undefined;
-  Combos: undefined;
+  Combos: { focusComboKey?: string; occasion?: string } | undefined;
   Scan: undefined;
   Profile: undefined;
 };

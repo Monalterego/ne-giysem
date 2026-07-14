@@ -31,6 +31,11 @@ function getGreetingKey(): string {
   return 'home.greetingEvening';
 }
 
+// Combos ekranıyla aynı kararlı anahtar (parça id'lerinden) — id her üretimde değişir, bu değişmez
+function comboKey(combo: Combo): string {
+  return combo.items.map((i) => i.id).sort().join('|');
+}
+
 function getInitial(name: string, email: string): string {
   return (name || email).charAt(0).toUpperCase() || '?';
 }
@@ -166,7 +171,13 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.sectionTitle}>{t('home.outfitOfDay')}</Text>
         </View>
         {todayCombo ? (
-          <TodayComboCard combo={todayCombo} onPress={() => navigation.navigate('Combos')} />
+          <TodayComboCard
+            combo={todayCombo}
+            onPress={() => navigation.navigate('Combos', {
+              focusComboKey: comboKey(todayCombo),
+              occasion: 'gunluk',
+            })}
+          />
         ) : (
           <EmptyComboCard
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
