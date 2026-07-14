@@ -170,7 +170,7 @@ export default function ProfileScreen() {
       .eq('id', user.id);
     setSavingName(false);
     if (error) {
-      Alert.alert('Hata', 'İsim güncellenemedi. Tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), t('profile.nameUpdateError'));
       return;
     }
     setUser({ ...user, name: trimmed });
@@ -215,7 +215,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7} disabled={uploadingAvatar}>
               <Text style={styles.avatarPickerBtn}>
-                {user?.avatarUrl ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
+                {user?.avatarUrl ? t('profile.changePhoto') : t('profile.addPhoto')}
               </Text>
             </TouchableOpacity>
             <Text style={styles.avatarPickerHint}>
@@ -226,12 +226,12 @@ export default function ProfileScreen() {
 
         {/* 2 ── STİL DNA ── */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>STİL DNA</Text>
+          <Text style={styles.sectionLabel}>{t('profile.styleDna')}</Text>
           {loadingStyles ? (
             <ActivityIndicator color={colors.textTertiary} size="small" />
           ) : styleEntries.length === 0 ? (
             <View style={styles.emptyDna}>
-              <Text style={styles.emptyMuted}>Stil profili henüz oluşturulmadı.</Text>
+              <Text style={styles.emptyMuted}>{t('profile.noStyleProfile')}</Text>
               <TouchableOpacity
                 style={styles.styleBtn}
                 onPress={() => {
@@ -240,7 +240,7 @@ export default function ProfileScreen() {
                 }}
                 activeOpacity={0.85}
               >
-                <Text style={styles.styleBtnText}>Stilini Belirle →</Text>
+                <Text style={styles.styleBtnText}>{t('profile.setStyle')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -317,7 +317,7 @@ export default function ProfileScreen() {
                 }}
                 activeOpacity={0.85}
               >
-                <Text style={styles.styleBtnText}>Profili Tamamla →</Text>
+                <Text style={styles.styleBtnText}>{t('profile.completeProfile')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -361,7 +361,7 @@ export default function ProfileScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.listItemText}>Profilimi Düzenle</Text>
+              <Text style={styles.listItemText}>{t('profile.editProfile')}</Text>
               <Feather name="chevron-right" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           ) : (

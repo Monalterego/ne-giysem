@@ -43,7 +43,8 @@
     "loginButton": "Log In",
     "noAccount": "Don't have an account?",
     "signupLink": " Sign Up",
-    "backArrow": "← Back"
+    "backArrow": "← Back",
+    "profileUpdateError": "Couldn't update profile: "
   },
   "home": {
     "greetingMorning": "Good morning",
@@ -230,7 +231,15 @@
     "ageLabel": "Age",
     "permissionTitle": "Permission Required",
     "permissionPhoto": "You need to grant photo access permission.",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "changePhoto": "Change Photo",
+    "addPhoto": "Add Photo",
+    "styleDna": "STYLE DNA",
+    "noStyleProfile": "No style profile yet.",
+    "setStyle": "Set Your Style →",
+    "completeProfile": "Complete Profile →",
+    "editProfile": "Edit My Profile",
+    "nameUpdateError": "Couldn't update name. Try again."
   },
   "style": {
     "choiceTitle": "Let's Discover Your Style",
@@ -252,7 +261,8 @@
     "createWardrobe": "Build My Wardrobe →",
     "share": "Share",
     "saveError": "Couldn't save your style profile. Please try again.",
-    "emptyResponse": "Empty response"
+    "emptyResponse": "Empty response",
+    "allPathsSame": "All three paths produce the same result — your Style DNA Card"
   },
   "physicalProfile": {
     "title": "Your Physical Profile",
@@ -428,7 +438,8 @@
     "L100": "Yacht club, tennis, brunch",
     "L101": "Nature hikes, camping",
     "L102": "2000s nostalgia, metallic",
-    "hint": "Select to continue automatically"
+    "hint": "Select to continue automatically",
+    "determiningDirection": "Determining direction"
   },
   "nav": {
     "home": "Home",

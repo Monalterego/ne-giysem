@@ -51,7 +51,7 @@ export default function SignupScreen({ navigation }: Props) {
         .update({ name: trimmedName })
         .eq('id', data.user.id);
       if (profileError) {
-        setError('Profil güncellenemedi: ' + profileError.message);
+        setError(t('auth.profileUpdateError') + profileError.message);
         setLoading(false);
         return;
       }

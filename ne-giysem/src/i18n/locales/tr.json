@@ -43,7 +43,8 @@
     "loginButton": "Giriş Yap",
     "noAccount": "Hesabın yok mu?",
     "signupLink": " Kayıt Ol",
-    "backArrow": "← Geri"
+    "backArrow": "← Geri",
+    "profileUpdateError": "Profil güncellenemedi: "
   },
   "home": {
     "greetingMorning": "Günaydın",
@@ -230,7 +231,15 @@
     "ageLabel": "Yaş",
     "permissionTitle": "İzin Gerekiyor",
     "permissionPhoto": "Fotoğraflara erişim için izin vermeniz gerekiyor.",
-    "logout": "Çıkış Yap"
+    "logout": "Çıkış Yap",
+    "changePhoto": "Fotoğrafı Değiştir",
+    "addPhoto": "Fotoğraf Ekle",
+    "styleDna": "STİL DNA",
+    "noStyleProfile": "Stil profili henüz oluşturulmadı.",
+    "setStyle": "Stilini Belirle →",
+    "completeProfile": "Profili Tamamla →",
+    "editProfile": "Profilimi Düzenle",
+    "nameUpdateError": "İsim güncellenemedi. Tekrar dene."
   },
   "style": {
     "choiceTitle": "Stilini Tanıyalım",
@@ -252,7 +261,8 @@
     "createWardrobe": "Dolabımı Oluştur →",
     "share": "Paylaş",
     "saveError": "Stil profili kaydedilemedi. Lütfen tekrar dene.",
-    "emptyResponse": "Boş yanıt"
+    "emptyResponse": "Boş yanıt",
+    "allPathsSame": "Her üç yol da aynı çıktıyı üretir — Stil DNA Kartın"
   },
   "physicalProfile": {
     "title": "Fiziksel Profilin",
@@ -428,7 +438,8 @@
     "L100": "Yat kulübü, tenis, brunch",
     "L101": "Doğa yürüyüşü, kamp",
     "L102": "2000'ler nostaljisi, metalik",
-    "hint": "Seç ve otomatik ilerle"
+    "hint": "Seç ve otomatik ilerle",
+    "determiningDirection": "Yön belirleniyor"
   },
   "nav": {
     "home": "Ana Sayfa",

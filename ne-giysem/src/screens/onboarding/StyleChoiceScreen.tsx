@@ -48,7 +48,7 @@ export default function StyleChoiceScreen({ navigation }: Props) {
         ))}
 
         <Text style={styles.hint}>
-          Her üç yol da aynı çıktıyı üretir — Stil DNA Kartın
+          {t('style.allPathsSame')}
         </Text>
       </ScrollView>
     </SafeAreaView>

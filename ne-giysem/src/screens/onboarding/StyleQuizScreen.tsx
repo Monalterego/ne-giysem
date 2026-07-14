@@ -12,6 +12,7 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
 import { t } from '../../i18n';
+import { groupLabelOf } from '../../constants/styles';
 import { colors, fonts, spacing } from '../../constants/theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleQuiz'>;
@@ -311,8 +312,8 @@ export default function StyleQuizScreen({ navigation }: Props) {
     : `${50 + ((currentIndex + 1) / Math.max(styleQs.length, 1)) * 50}%`;
 
   const counterText = phase === 'group'
-    ? `${currentIndex + 1} / 3 · Yön belirleniyor`
-    : `${currentIndex + 1} / ${styleQs.length} · ${activeGroup ?? ''}`;
+    ? `${currentIndex + 1} / 3 · ${t('quiz.determiningDirection')}`
+    : `${currentIndex + 1} / ${styleQs.length} · ${activeGroup ? groupLabelOf(activeGroup) : ''}`;
 
   // 5 seçenekli grup kartları için dikey liste; 4 seçenekli stil kartları için 2×2 grid
   const isList = question ? question.options.length > 4 : false;
