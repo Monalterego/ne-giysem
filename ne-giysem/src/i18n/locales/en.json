@@ -60,7 +60,10 @@
     "weatherUnavailable": "Weather unavailable",
     "explore": "Explore",
     "myWardrobe": "My Wardrobe",
-    "seeAll": "See all →"
+    "seeAll": "See all →",
+    "quickUpload": "Upload",
+    "quickStore": "Store",
+    "quickCombo": "Outfits"
   },
   "combos": {
     "title": "Outfits",
@@ -577,5 +580,12 @@
     "missingTitle": "Missing Pieces",
     "comboSuggestions": "Outfit Suggestions",
     "emptyDesc": "As you add items to your wardrobe, compatibility analysis will appear here."
+  },
+  "weather": {
+    "veryCold": "Warm layers",
+    "cold": "Light layers",
+    "mild": "Light jacket",
+    "warm": "Light clothing",
+    "hot": "Summer light"
   }
 }

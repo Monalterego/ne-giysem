@@ -70,7 +70,7 @@ function TodayComboCard({ combo, onPress }: { combo: Combo; onPress: () => void 
         ))}
       </View>
       <View style={styles.comboFooter}>
-        <Text style={styles.comboLabel}>{combo.label}</Text>
+        {/* Kombin başlığı gizlendi (i18n bekliyor) — Combos ekranıyla tutarlı */}
         <View style={styles.comboRight}>
           <Text style={styles.comboScore}>{combo.score}%</Text>
           <Text style={styles.comboAction}>{t('home.dailyPick')}</Text>
@@ -187,7 +187,7 @@ export default function HomeScreen({ navigation }: Props) {
                 </View>
               </View>
               <View style={styles.weatherDivider} />
-              <Text style={styles.weatherTip}>{weather.recommendation}</Text>
+              <Text style={styles.weatherTip}>{t(weather.recommendation)}</Text>
             </>
           ) : (
             <View style={styles.weatherLeft}>
@@ -207,17 +207,17 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.quickRow}>
           <QuickAction
             icon={<Feather name="camera" size={18} color={colors.text} />}
-            label="Yükle"
+            label={t('home.quickUpload')}
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
           />
           <QuickAction
             icon={<Feather name="shopping-bag" size={18} color={colors.text} />}
-            label="Mağaza"
+            label={t('home.quickStore')}
             onPress={() => navigation.navigate('Scan')}
           />
           <QuickAction
             icon={<Ionicons name="sparkles-outline" size={18} color={colors.text} />}
-            label="Kombin"
+            label={t('home.quickCombo')}
             onPress={() => navigation.navigate('Combos')}
           />
         </View>

@@ -21,12 +21,13 @@ export interface WeatherData {
   recommendation: string;
 }
 
+// i18n anahtarı döndürür; t() ekranda çağrılır (dil değişince güncellensin — service'te t() DONAR)
 function getRecommendation(temp: number): string {
-  if (temp < 10) return 'Kalın kıyafetler';
-  if (temp < 15) return 'Ara kat giyim';
-  if (temp < 20) return 'Hafif ceket';
-  if (temp < 25) return 'Hafif kıyafetler';
-  return 'İnce yazlık';
+  if (temp < 10) return 'weather.veryCold';
+  if (temp < 15) return 'weather.cold';
+  if (temp < 20) return 'weather.mild';
+  if (temp < 25) return 'weather.warm';
+  return 'weather.hot';
 }
 
 function iconToEmoji(iconCode: string): string {

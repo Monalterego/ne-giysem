@@ -60,7 +60,10 @@
     "weatherUnavailable": "Hava durumu alınamadı",
     "explore": "Keşfet",
     "myWardrobe": "Dolabım",
-    "seeAll": "Tümünü gör →"
+    "seeAll": "Tümünü gör →",
+    "quickUpload": "Yükle",
+    "quickStore": "Mağaza",
+    "quickCombo": "Kombin"
   },
   "combos": {
     "title": "Kombinler",
@@ -577,5 +580,12 @@
     "missingTitle": "Eksik Parçalar",
     "comboSuggestions": "Kombin Önerileri",
     "emptyDesc": "Dolabına parça ekledikçe uyum analizi burada gösterilecek."
+  },
+  "weather": {
+    "veryCold": "Kalın kıyafetler",
+    "cold": "Ara kat giyim",
+    "mild": "Hafif ceket",
+    "warm": "Hafif kıyafetler",
+    "hot": "İnce yazlık"
   }
 }
