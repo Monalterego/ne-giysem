@@ -115,6 +115,9 @@ const OCC_EVENING_SIGNALS  = ['sequin', 'satin', 'draped', 'shiny', 'metallic_th
 const DAYTIME_OCCASIONS: OccasionId[] = ['tatil', 'spor', 'gunluk', 'seyahat', 'brunch'];
 // Gece karakterli ayakkabı sinyalleri (ofise uymaz)
 const SHOE_EVENING_SIGNALS = ['patent', 'stiletto', 'satin', 'sequin', 'metallic_thread', 'beaded', 'shiny'];
+// Spor/atletik sinyali — bu sinyali taşıyan parçalar SADECE 'spor' okazyonuna aittir.
+// Ayakkabılar muaf: sneaker/loafer smart-casual'da (İş dahil) meşru.
+const ATHLETIC_SIGNAL = 'athletic';
 
 /**
  * Sadece dress-code / fonksiyonel çelişkileri filtreler (hardExcluded).
@@ -133,6 +136,11 @@ export function isItemAllowed(item: WardrobeItem, occasion: OccasionId): boolean
   // formalite filtresine takılmıyor — kanonik sinyal gerekli, payetli elbise çözümünün aynısı)
   if (occasion === 'is' && item.category === 'shoes') {
     if (SHOE_EVENING_SIGNALS.some((k) => sg.includes(k))) return false;
+  }
+  // Spor parçaları (tayt, spor sütyeni, spor çantası vb.) SADECE 'spor' okazyonunda.
+  // Ayakkabılar muaf: sneaker smart-casual'da meşru (İş/günlük).
+  if (occasion !== 'spor' && item.category !== 'shoes' && sg.includes(ATHLETIC_SIGNAL)) {
+    return false;
   }
   return true;
 }
