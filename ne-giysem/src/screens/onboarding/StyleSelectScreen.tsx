@@ -225,6 +225,25 @@ export default function StyleSelectScreen({ navigation }: Props) {
           {t('style.selectSubtitle')}
         </Text>
 
+        {/* Ağırlık slider — 2+ stil seçilince (liste üstünde, kaydırmadan görünsün) */}
+        {entries.length >= 2 && (
+          <View style={styles.weightBox}>
+            <Text style={styles.weightTitle}>{t('style.weightTitle')}</Text>
+            {entries.map((entry) => (
+              <View key={entry.name} style={styles.sliderRow}>
+                <View style={styles.sliderHeader}>
+                  <Text style={styles.sliderLabel}>{entry.name}</Text>
+                  <Text style={styles.sliderPct}>{entry.weight}%</Text>
+                </View>
+                <WeightSlider
+                  value={entry.weight}
+                  onChange={(v) => handleSliderChange(entry.name, v)}
+                />
+              </View>
+            ))}
+          </View>
+        )}
+
         {STYLE_GROUPS.map((group) => (
           <View key={group.groupName} style={styles.group}>
             <View style={styles.groupHeader}>
@@ -248,24 +267,6 @@ export default function StyleSelectScreen({ navigation }: Props) {
           </View>
         ))}
 
-        {/* Ağırlık slider — 2+ stil seçilince */}
-        {entries.length >= 2 && (
-          <View style={styles.weightBox}>
-            <Text style={styles.weightTitle}>AĞIRLIK DAĞILIMI</Text>
-            {entries.map((entry) => (
-              <View key={entry.name} style={styles.sliderRow}>
-                <View style={styles.sliderHeader}>
-                  <Text style={styles.sliderLabel}>{entry.name}</Text>
-                  <Text style={styles.sliderPct}>{entry.weight}%</Text>
-                </View>
-                <WeightSlider
-                  value={entry.weight}
-                  onChange={(v) => handleSliderChange(entry.name, v)}
-                />
-              </View>
-            ))}
-          </View>
-        )}
       </ScrollView>
 
       {/* Footer — sabit buton */}
@@ -278,8 +279,8 @@ export default function StyleSelectScreen({ navigation }: Props) {
         >
           <Text style={[styles.primaryBtnText, entries.length === 0 && styles.primaryBtnTextDisabled]}>
             {entries.length === 0
-              ? 'En az 1 stil seç'
-              : `Devam Et (${entries.length} stil) →`}
+              ? t('style.selectAtLeastOne')
+              : t('style.continueWithCount', { count: entries.length })}
           </Text>
         </TouchableOpacity>
       </View>

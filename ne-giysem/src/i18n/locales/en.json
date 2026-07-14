@@ -269,7 +269,10 @@
     "share": "Share",
     "saveError": "Couldn't save your style profile. Please try again.",
     "emptyResponse": "Empty response",
-    "allPathsSame": "All three paths produce the same result — your Style DNA Card"
+    "allPathsSame": "All three paths produce the same result — your Style DNA Card",
+    "weightTitle": "WEIGHT DISTRIBUTION",
+    "selectAtLeastOne": "Select at least 1 style",
+    "continueWithCount": "Continue (%{count} styles) →"
   },
   "physicalProfile": {
     "title": "Your Physical Profile",

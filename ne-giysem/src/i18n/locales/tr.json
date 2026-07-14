@@ -269,7 +269,10 @@
     "share": "Paylaş",
     "saveError": "Stil profili kaydedilemedi. Lütfen tekrar dene.",
     "emptyResponse": "Boş yanıt",
-    "allPathsSame": "Her üç yol da aynı çıktıyı üretir — Stil DNA Kartın"
+    "allPathsSame": "Her üç yol da aynı çıktıyı üretir — Stil DNA Kartın",
+    "weightTitle": "AĞIRLIK DAĞILIMI",
+    "selectAtLeastOne": "En az 1 stil seç",
+    "continueWithCount": "Devam Et (%{count} stil) →"
   },
   "physicalProfile": {
     "title": "Fiziksel Profilin",
