@@ -447,5 +447,49 @@
     "spor": "Spor & Aktif",
     "seyahat": "Seyahat",
     "tatil": "Tatil & Plaj"
+  },
+  "errors": {
+    "permissionTitle": "İzin Gerekli",
+    "cameraPermission": "Kamera kullanmak için izin ver.",
+    "galleryPermission": "Galeriye erişmek için izin ver.",
+    "imageReadFailed": "Görsel okunamadı, lütfen tekrar dene.",
+    "imageProcessFailed": "Görsel işlenemedi. Lütfen tekrar dene.",
+    "productImageFailed": "Ürün görseli alınamadı. Lütfen tekrar dene.",
+    "bgRemoveFailed": "Arkaplan silinemedi. Lütfen tekrar dene."
+  },
+  "scan": {
+    "preparingImage": "Görsel hazırlanıyor…",
+    "removingBg": "Arkaplan siliniyor…",
+    "urlPlaceholder": "https://www.zara.com/...",
+    "readingProduct": "Ürün sayfası okunuyor…",
+    "comparingWardrobe": "Dolabınla karşılaştırılıyor",
+    "title": "Mağaza Tarama",
+    "subtitle": "Mağazadaki ürünü fotoğrafla, dolabınla uyumunu gör",
+    "cameraTitle": "Mağazada Fotoğrafla",
+    "cameraDesc": "Beğendiğin ürünün fotoğrafını çek, dolabınla anında karşılaştır",
+    "takePhoto": "Fotoğraf Çek",
+    "urlTitle": "URL Yapıştır",
+    "urlDesc": "Zara, H&M, Mango gibi sitelerden ürün linki yapıştır",
+    "soon": "Yakında",
+    "urlNote": "Şimdilik mağazada ürün fotoğrafını çek veya screenshot yükle.",
+    "analyze": "Analiz Et",
+    "galleryTitle": "Görsel Yükle",
+    "galleryDesc": "Telefonundaki ürün screenshot'ını galeriden seç",
+    "pickFromGallery": "Galeriden Seç"
+  },
+  "upload": {
+    "title": "Kıyafet Ekle",
+    "howToAdd": "Kıyafetini nasıl eklemek istersin?",
+    "cameraTitle": "Kamera ile Çek",
+    "cameraSub": "Şu an elindeki kıyafeti fotoğrafla",
+    "galleryTitle": "Galeriden Seç",
+    "gallerySub": "Telefonundaki fotoğraflardan seç",
+    "tipTitle": "En iyi sonuç için",
+    "tip1": "• Düz ve tek renkli bir zemin kullan",
+    "tip2": "• Kıyafeti düz ve gergin tut",
+    "tip3": "• Yeterli ışık olduğundan emin ol",
+    "bgCleaned": "BG Temizlendi",
+    "bgCleanedWeb": "BG Temizlendi (Web Modu)",
+    "reselect": "Yeniden Seç"
   }
 }

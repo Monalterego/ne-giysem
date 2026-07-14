@@ -447,5 +447,49 @@
     "spor": "Sport & Active",
     "seyahat": "Travel",
     "tatil": "Vacation & Beach"
+  },
+  "errors": {
+    "permissionTitle": "Permission Required",
+    "cameraPermission": "Grant camera permission to continue.",
+    "galleryPermission": "Grant gallery access to continue.",
+    "imageReadFailed": "Couldn't read the image, please try again.",
+    "imageProcessFailed": "Couldn't process the image. Please try again.",
+    "productImageFailed": "Couldn't fetch the product image. Please try again.",
+    "bgRemoveFailed": "Couldn't remove the background. Please try again."
+  },
+  "scan": {
+    "preparingImage": "Preparing image…",
+    "removingBg": "Removing background…",
+    "urlPlaceholder": "https://www.zara.com/...",
+    "readingProduct": "Reading product page…",
+    "comparingWardrobe": "Comparing with your wardrobe",
+    "title": "Store Scan",
+    "subtitle": "Snap a product in-store and see how it fits your wardrobe",
+    "cameraTitle": "Snap In-Store",
+    "cameraDesc": "Photograph an item you like and instantly compare it with your wardrobe",
+    "takePhoto": "Take Photo",
+    "urlTitle": "Paste URL",
+    "urlDesc": "Paste a product link from sites like Zara, H&M, Mango",
+    "soon": "Soon",
+    "urlNote": "For now, take a photo in-store or upload a screenshot.",
+    "analyze": "Analyze",
+    "galleryTitle": "Upload Image",
+    "galleryDesc": "Pick a product screenshot from your gallery",
+    "pickFromGallery": "Pick from Gallery"
+  },
+  "upload": {
+    "title": "Add Clothing",
+    "howToAdd": "How do you want to add your item?",
+    "cameraTitle": "Take with Camera",
+    "cameraSub": "Photograph the item in front of you",
+    "galleryTitle": "Pick from Gallery",
+    "gallerySub": "Choose from photos on your phone",
+    "tipTitle": "For best results",
+    "tip1": "• Use a flat, single-color background",
+    "tip2": "• Keep the item flat and taut",
+    "tip3": "• Make sure there's enough light",
+    "bgCleaned": "BG Removed",
+    "bgCleanedWeb": "BG Removed (Web Mode)",
+    "reselect": "Reselect"
   }
 }

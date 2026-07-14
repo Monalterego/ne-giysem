@@ -16,6 +16,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
@@ -52,14 +53,14 @@ export default function UploadScreen({ navigation }: Props) {
     if (source === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin ver.');
+        Alert.alert(t('errors.permissionTitle'), t('errors.cameraPermission'));
         return;
       }
       result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true });
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin ver.');
+        Alert.alert(t('errors.permissionTitle'), t('errors.galleryPermission'));
         return;
       }
       result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true });
@@ -71,7 +72,7 @@ export default function UploadScreen({ navigation }: Props) {
     const uri   = asset.uri;
     const base64Input = asset.base64;
     if (!base64Input) {
-      Alert.alert('Hata', 'Görsel okunamadı, lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), t('errors.imageReadFailed'));
       return;
     }
 
@@ -88,7 +89,7 @@ export default function UploadScreen({ navigation }: Props) {
         setProcessedBase64(processed);
       }
     } catch (err: any) {
-      Alert.alert('Hata', err.message ?? 'Arkaplan silinemedi. Lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), err.message ?? t('errors.bgRemoveFailed'));
       setOriginalUri(null);
     } finally {
       setLoading(false);
@@ -108,16 +109,16 @@ export default function UploadScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.back}>← Geri</Text>
+          <Text style={styles.back}>{t('auth.backArrow')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Kıyafet Ekle</Text>
+        <Text style={styles.title}>{t('upload.title')}</Text>
         <View style={styles.headerRight} />
       </View>
 
       {/* Seçim ekranı */}
       {!originalUri && !loading && (
         <View style={styles.pickContainer}>
-          <Text style={styles.hint}>Kıyafetini nasıl eklemek istersin?</Text>
+          <Text style={styles.hint}>{t('upload.howToAdd')}</Text>
 
           <TouchableOpacity
             style={styles.pickCard}
@@ -126,8 +127,8 @@ export default function UploadScreen({ navigation }: Props) {
           >
             <Feather name="camera" size={28} color={colors.text} />
             <View style={styles.pickCardText}>
-              <Text style={styles.pickCardTitle}>Kamera ile Çek</Text>
-              <Text style={styles.pickCardSub}>Şu an elindeki kıyafeti fotoğrafla</Text>
+              <Text style={styles.pickCardTitle}>{t('upload.cameraTitle')}</Text>
+              <Text style={styles.pickCardSub}>{t('upload.cameraSub')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -138,16 +139,16 @@ export default function UploadScreen({ navigation }: Props) {
           >
             <Feather name="image" size={28} color={colors.text} />
             <View style={styles.pickCardText}>
-              <Text style={styles.pickCardTitle}>Galeriden Seç</Text>
-              <Text style={styles.pickCardSub}>Telefonundaki fotoğraflardan seç</Text>
+              <Text style={styles.pickCardTitle}>{t('upload.galleryTitle')}</Text>
+              <Text style={styles.pickCardSub}>{t('upload.gallerySub')}</Text>
             </View>
           </TouchableOpacity>
 
           <View style={styles.tipBox}>
-            <Text style={styles.tipTitle}>En iyi sonuç için</Text>
-            <Text style={styles.tipText}>• Düz ve tek renkli bir zemin kullan</Text>
-            <Text style={styles.tipText}>• Kıyafeti düz ve gergin tut</Text>
-            <Text style={styles.tipText}>• Yeterli ışık olduğundan emin ol</Text>
+            <Text style={styles.tipTitle}>{t('upload.tipTitle')}</Text>
+            <Text style={styles.tipText}>{t('upload.tip1')}</Text>
+            <Text style={styles.tipText}>{t('upload.tip2')}</Text>
+            <Text style={styles.tipText}>{t('upload.tip3')}</Text>
           </View>
         </View>
       )}
@@ -158,7 +159,7 @@ export default function UploadScreen({ navigation }: Props) {
           <Image source={{ uri: originalUri }} style={styles.previewImage} resizeMode="contain" />
           <View style={styles.loadingOverlay}>
             <ActivityIndicator color={colors.accent} size="large" />
-            <Text style={styles.loadingText}>Arkaplan siliniyor…</Text>
+            <Text style={styles.loadingText}>{t('scan.removingBg')}</Text>
           </View>
         </View>
       )}
@@ -175,7 +176,7 @@ export default function UploadScreen({ navigation }: Props) {
             <View style={styles.badge}>
               <Feather name="check" size={12} color={colors.white} />
               <Text style={styles.badgeText}>
-                {Platform.OS === 'web' ? 'BG Temizlendi (Web Modu)' : 'BG Temizlendi'}
+                {Platform.OS === 'web' ? t('upload.bgCleanedWeb') : t('upload.bgCleaned')}
               </Text>
             </View>
           </View>
@@ -186,10 +187,10 @@ export default function UploadScreen({ navigation }: Props) {
               onPress={() => { setOriginalUri(null); setProcessedBase64(null); }}
               activeOpacity={0.75}
             >
-              <Text style={styles.secondaryBtnText}>Yeniden Seç</Text>
+              <Text style={styles.secondaryBtnText}>{t('upload.reselect')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.primaryBtn} onPress={handleContinue} activeOpacity={0.85}>
-              <Text style={styles.primaryBtnText}>Devam Et →</Text>
+              <Text style={styles.primaryBtnText}>{t('physicalProfile.continue')}</Text>
             </TouchableOpacity>
           </View>
         </View>

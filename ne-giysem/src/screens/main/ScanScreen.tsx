@@ -20,6 +20,7 @@ import type { ScanStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
 
@@ -61,14 +62,14 @@ export default function ScanScreen({ navigation }: Props) {
     if (source === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin ver.');
+        Alert.alert(t('errors.permissionTitle'), t('errors.cameraPermission'));
         return;
       }
       result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true });
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin ver.');
+        Alert.alert(t('errors.permissionTitle'), t('errors.galleryPermission'));
         return;
       }
       result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true });
@@ -80,19 +81,19 @@ export default function ScanScreen({ navigation }: Props) {
     const uri   = asset.uri;
     const base64Input = asset.base64;
     if (!base64Input) {
-      Alert.alert('Hata', 'Görsel okunamadı, lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), t('errors.imageReadFailed'));
       return;
     }
 
     setLoadingUri(uri);
-    setLoadingStep(Platform.OS === 'web' ? 'Görsel hazırlanıyor…' : 'Arkaplan siliniyor…');
+    setLoadingStep(Platform.OS === 'web' ? t('scan.preparingImage') : t('scan.removingBg'));
     setLoading(true);
 
     try {
       const processedBase64 = await processBase64(base64Input);
       navigation.navigate('StoreResult', { processedBase64, originalUri: uri });
     } catch (err: any) {
-      Alert.alert('Hata', err.message ?? 'Görsel işlenemedi. Lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), err.message ?? t('errors.imageProcessFailed'));
     } finally {
       setLoading(false);
       setLoadingUri(null);
@@ -106,13 +107,13 @@ export default function ScanScreen({ navigation }: Props) {
     setLoading(true);
     setLoadingUri(null);
     try {
-      setLoadingStep('Ürün sayfası okunuyor…');
+      setLoadingStep(t('scan.readingProduct'));
       const imageBase64 = await scrapeProductImage(url);
-      setLoadingStep(Platform.OS === 'web' ? 'Görsel hazırlanıyor…' : 'Arkaplan siliniyor…');
+      setLoadingStep(Platform.OS === 'web' ? t('scan.preparingImage') : t('scan.removingBg'));
       const processedBase64 = await processBase64(imageBase64);
       navigation.navigate('StoreResult', { processedBase64, originalUri: url });
     } catch (err: any) {
-      Alert.alert('Hata', err.message ?? 'Ürün görseli alınamadı. Lütfen tekrar dene.');
+      Alert.alert(t('combos.errorTitle'), err.message ?? t('errors.productImageFailed'));
     } finally {
       setLoading(false);
       setLoadingStep('');
@@ -132,9 +133,9 @@ export default function ScanScreen({ navigation }: Props) {
         >
           {/* Başlık */}
           <View style={styles.header}>
-            <Text style={styles.title}>Mağaza Tarama</Text>
+            <Text style={styles.title}>{t('scan.title')}</Text>
             <Text style={styles.subtitle}>
-              Mağazadaki ürünü fotoğrafla, dolabınla uyumunu gör
+              {t('scan.subtitle')}
             </Text>
           </View>
 
@@ -145,9 +146,9 @@ export default function ScanScreen({ navigation }: Props) {
                 <Feather name="camera" size={20} color={colors.text} />
               </View>
               <View style={styles.cardTextWrap}>
-                <Text style={styles.cardTitle}>Mağazada Fotoğrafla</Text>
+                <Text style={styles.cardTitle}>{t('scan.cameraTitle')}</Text>
                 <Text style={styles.cardDesc}>
-                  Beğendiğin ürünün fotoğrafını çek, dolabınla anında karşılaştır
+                  {t('scan.cameraDesc')}
                 </Text>
               </View>
             </View>
@@ -157,13 +158,13 @@ export default function ScanScreen({ navigation }: Props) {
               activeOpacity={0.85}
               disabled={loading}
             >
-              <Text style={styles.primaryBtnText}>Fotoğraf Çek</Text>
+              <Text style={styles.primaryBtnText}>{t('scan.takePhoto')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>veya</Text>
+            <Text style={styles.dividerText}>{t('common.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -174,18 +175,18 @@ export default function ScanScreen({ navigation }: Props) {
                 <Feather name="link" size={20} color={colors.text} />
               </View>
               <View style={styles.cardTextWrap}>
-                <Text style={styles.cardTitle}>URL Yapıştır</Text>
+                <Text style={styles.cardTitle}>{t('scan.urlTitle')}</Text>
                 <Text style={styles.cardDesc}>
-                  Zara, H&M, Mango gibi sitelerden ürün linki yapıştır
+                  {t('scan.urlDesc')}
                 </Text>
               </View>
               <View style={styles.soonBadge}>
-                <Text style={styles.soonText}>Yakında</Text>
+                <Text style={styles.soonText}>{t('scan.soon')}</Text>
               </View>
             </View>
             <TextInput
               style={[styles.urlInput, styles.inputDisabled]}
-              placeholder="https://www.zara.com/..."
+              placeholder={t('scan.urlPlaceholder')}
               placeholderTextColor={colors.textTertiary}
               value={urlInput}
               onChangeText={setUrlInput}
@@ -195,20 +196,20 @@ export default function ScanScreen({ navigation }: Props) {
               editable={false}
             />
             <Text style={styles.comingSoonNote}>
-              Şimdilik mağazada ürün fotoğrafını çek veya screenshot yükle.
+              {t('scan.urlNote')}
             </Text>
             <TouchableOpacity
               style={[styles.secondaryBtn, styles.btnDisabled]}
               activeOpacity={1}
               disabled={true}
             >
-              <Text style={styles.secondaryBtnText}>Analiz Et</Text>
+              <Text style={styles.secondaryBtnText}>{t('scan.analyze')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>veya</Text>
+            <Text style={styles.dividerText}>{t('common.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -219,9 +220,9 @@ export default function ScanScreen({ navigation }: Props) {
                 <Feather name="image" size={20} color={colors.text} />
               </View>
               <View style={styles.cardTextWrap}>
-                <Text style={styles.cardTitle}>Görsel Yükle</Text>
+                <Text style={styles.cardTitle}>{t('scan.galleryTitle')}</Text>
                 <Text style={styles.cardDesc}>
-                  Telefonundaki ürün screenshot'ını galeriden seç
+                  {t('scan.galleryDesc')}
                 </Text>
               </View>
             </View>
@@ -231,7 +232,7 @@ export default function ScanScreen({ navigation }: Props) {
               activeOpacity={0.85}
               disabled={loading}
             >
-              <Text style={styles.secondaryBtnText}>Galeriden Seç</Text>
+              <Text style={styles.secondaryBtnText}>{t('scan.pickFromGallery')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -248,7 +249,7 @@ export default function ScanScreen({ navigation }: Props) {
           <View style={styles.loadingBox}>
             <ActivityIndicator color={colors.textSecondary} size="large" />
             <Text style={styles.loadingText}>{loadingStep}</Text>
-            <Text style={styles.loadingSubText}>Dolabınla karşılaştırılıyor</Text>
+            <Text style={styles.loadingSubText}>{t('scan.comparingWardrobe')}</Text>
           </View>
         </View>
       )}
