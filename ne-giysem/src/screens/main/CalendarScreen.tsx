@@ -177,15 +177,13 @@ export default function CalendarScreen({ navigation }: Props) {
                   {thumb ? (
                     <Image source={{ uri: thumb }} style={styles.dayThumb} resizeMode="cover" />
                   ) : null}
-                  <Text
-                    style={[
-                      styles.dayNum,
-                      thumb && styles.dayNumOnThumb,
-                      selected && styles.dayNumSelected,
-                    ]}
-                  >
-                    {day}
-                  </Text>
+                  {thumb && !selected ? (
+                    <View style={styles.dayNumBackdrop}>
+                      <Text style={[styles.dayNum, styles.dayNumOnThumb]}>{day}</Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.dayNum, selected && styles.dayNumSelected]}>{day}</Text>
+                  )}
                   {thumb ? <View style={styles.dayDot} /> : null}
                 </View>
               </TouchableOpacity>
@@ -357,12 +355,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     color: colors.text,
   },
+  dayNumBackdrop: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 999,
+    backgroundColor: 'rgba(10,10,10,0.62)',   // yarı saydam koyu hap — fotoğraftan bağımsız okunurluk
+  },
   dayNumOnThumb: {
     color: colors.white,
-    // Fotoğraf üzerinde okunabilirlik için gölge
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   dayNumSelected: {
     color: colors.white,
