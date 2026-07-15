@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -29,11 +31,6 @@ function getGreetingKey(): string {
   if (h < 12) return 'home.greetingMorning';
   if (h < 17) return 'home.greetingAfternoon';
   return 'home.greetingEvening';
-}
-
-// Combos ekranıyla aynı kararlı anahtar (parça id'lerinden) — id her üretimde değişir, bu değişmez
-function comboKey(combo: Combo): string {
-  return combo.items.map((i) => i.id).sort().join('|');
 }
 
 function getInitial(name: string, email: string): string {
@@ -60,18 +57,23 @@ function WeatherIcon({ description }: { description?: string }) {
 
 // ─── Alt bileşenler ───────────────────────────────────────────────────────────
 
-function TodayComboCard({ combo, onPress }: { combo: Combo; onPress: () => void }) {
+function TodayComboCard({ combo, onItemPress }: { combo: Combo; onItemPress: (itemId: string, url: string) => void }) {
   return (
-    <TouchableOpacity style={styles.comboCard} onPress={onPress} activeOpacity={0.88}>
+    <View style={styles.comboCard}>
       <View style={styles.comboImages}>
         {combo.items.map((item: WardrobeItem) => (
-          <View key={item.id} style={styles.comboImageWrap}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.comboImageWrap}
+            onPress={() => onItemPress(item.id, item.processedImageUrl)}
+            activeOpacity={0.85}
+          >
             <Image
               source={{ uri: item.processedImageUrl }}
               style={styles.comboImage}
               resizeMode="contain"
             />
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
       <View style={styles.comboFooter}>
@@ -81,7 +83,7 @@ function TodayComboCard({ combo, onPress }: { combo: Combo; onPress: () => void 
           <Text style={styles.comboAction}>{t('home.dailyPick')}</Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -145,6 +147,20 @@ export default function HomeScreen({ navigation }: Props) {
   }, [items, weather, user?.styleProfile, daySeed]);
   const preview        = items.slice(0, 4);
 
+  // Parça fotoğrafı büyütme (lightbox) — Combos ekranıyla aynı desen
+  const [lightboxItemId, setLightboxItemId] = useState<string | null>(null);
+  const handleItemPress = useCallback((itemId: string, url: string) => {
+    if (/^data:image\//i.test(url ?? '')) {
+      Alert.alert(t('combos.imageOpenError'), t('combos.imageOpenErrorMsg'));
+      return;
+    }
+    setLightboxItemId(itemId);
+  }, []);
+  const selectedLightboxItem = useMemo(() => {
+    if (!lightboxItemId || !todayCombo) return null;
+    return todayCombo.items.find((i) => i.id === lightboxItemId) ?? null;
+  }, [lightboxItemId, todayCombo]);
+
   const displayName = getDisplayName(user?.name ?? '', user?.email ?? '');
   const initial     = getInitial(user?.name ?? '', user?.email ?? '');
 
@@ -171,13 +187,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.sectionTitle}>{t('home.outfitOfDay')}</Text>
         </View>
         {todayCombo ? (
-          <TodayComboCard
-            combo={todayCombo}
-            onPress={() => navigation.navigate('Combos', {
-              focusComboKey: comboKey(todayCombo),
-              occasion: 'gunluk',
-            })}
-          />
+          <TodayComboCard combo={todayCombo} onItemPress={handleItemPress} />
         ) : (
           <EmptyComboCard
             onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
@@ -258,6 +268,20 @@ export default function HomeScreen({ navigation }: Props) {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      {/* Parça lightbox */}
+      <Modal visible={lightboxItemId !== null} transparent animationType="fade" onRequestClose={() => setLightboxItemId(null)}>
+        <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
+          <View style={styles.lightboxContainer}>
+            {selectedLightboxItem?.processedImageUrl && (
+              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} resizeMode="contain" />
+            )}
+            <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
+              <Feather name="x" size={20} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -524,5 +548,40 @@ const styles = StyleSheet.create({
 
   bottomPad: {
     height: spacing.md,
+  },
+
+  // Parça lightbox
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxContainer: {
+    width: '88%',
+    aspectRatio: 0.8,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  lightboxImage: {
+    width: '100%',
+    height: '100%',
+  },
+  lightboxClose: {
+    position: 'absolute',
+    top: -14,
+    right: -14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
