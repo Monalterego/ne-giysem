@@ -96,7 +96,8 @@
     "imageDownloadError": "Couldn't download image",
     "modelCreateError": "Couldn't create the model image. Please try again.",
     "noItemsForOccasion": "You don't have pieces for this occasion. Try another occasion or add items to your wardrobe.",
-    "combosFound": "%{count} matching outfits found for this occasion. Add a few pieces in this style to get more suggestions."
+    "combosFound": "%{count} matching outfits found for this occasion. Add a few pieces in this style to get more suggestions.",
+    "plan": "Plan"
   },
   "wardrobe": {
     "title": "My Wardrobe",
@@ -622,6 +623,16 @@
     "m8": "September",
     "m9": "October",
     "m10": "November",
-    "m11": "December"
+    "m11": "December",
+    "planTitle": "Which day?",
+    "plannedOutfits": "Planned Outfits",
+    "noPlannedOnDay": "No outfit planned for this day",
+    "planned": "Planned",
+    "planSaved": "Outfit planned",
+    "planFailed": "Couldn't plan. Please try again.",
+    "removePlanTitle": "Remove plan",
+    "removePlanMsg": "Remove this plan?",
+    "tomorrow": "Tomorrow",
+    "alreadyPlanned": "This outfit is already planned for that day"
   }
 }

@@ -57,6 +57,7 @@ const ComboCard = React.memo(function ComboCard({
   onWear,
   onVirtualModel,
   onItemPress,
+  onPlan,
 }: {
   combo: Combo;
   isWorn: boolean;
@@ -65,6 +66,7 @@ const ComboCard = React.memo(function ComboCard({
   onWear: (c: Combo) => void;
   onVirtualModel: (c: Combo) => void;
   onItemPress: (itemId: string, url: string) => void;
+  onPlan: (c: Combo) => void;
 }) {
   const allItems = [...combo.items, ...(combo.suggestedItems ?? [])];
 
@@ -106,6 +108,15 @@ const ComboCard = React.memo(function ComboCard({
           </View>
         ) : (
           <View style={styles.footerActions}>
+            {/* Planla butonu — dar, sadece ikon (footer yeri dar) */}
+            <TouchableOpacity
+              style={styles.planBtn}
+              onPress={() => onPlan(combo)}
+              activeOpacity={0.85}
+            >
+              <Feather name="calendar" size={14} color={colors.text} />
+            </TouchableOpacity>
+
             {/* Sanal Manken butonu */}
             <TouchableOpacity
               style={styles.modelBtn}
@@ -358,6 +369,7 @@ export default function CombosScreen() {
   const wornComboKeys  = useWardrobeStore((s) => s.wornComboKeys);
   const markWorn       = useWardrobeStore((s) => s.markWorn);
   const fetchWornToday = useWardrobeStore((s) => s.fetchWornToday);
+  const planCombo      = useWardrobeStore((s) => s.planCombo);
   const weather        = useWardrobeStore((s) => s.weather);
   const user           = useUserStore((s) => s.user);
   const { cache: comboCache, setCache, clearCache } = useComboStore();
@@ -379,6 +391,7 @@ export default function CombosScreen() {
   const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
+  const [planTarget,           setPlanTarget]            = useState<Combo | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -579,6 +592,25 @@ export default function CombosScreen() {
     }
     setLightboxItemId(itemId);
   }, []);
+  const handlePlanCb = useCallback((c: Combo) => setPlanTarget(c), []);
+
+  // Planlama modalı — bugünden itibaren 14 gün (bugün dahil)
+  const planDays = useMemo(
+    () => Array.from({ length: 14 }, (_, i) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + i);
+      return d;
+    }),
+    [],
+  );
+  const handlePlanDay = useCallback(async (day: Date) => {
+    if (!planTarget || !user?.id) return;
+    const ok = await planCombo(user.id, planTarget.items.map((i) => i.id), planTarget.score, day);
+    setPlanTarget(null);
+    if (ok) Alert.alert(t('calendar.planSaved'));
+    else Alert.alert(t('combos.errorTitle'), t('calendar.planFailed'));
+  }, [planTarget, user?.id, planCombo]);
 
   // Lightbox için seçili item — tüm kartlardan ID ile bulunur; devasa string state'e girmez
   const selectedLightboxItem = useMemo(() => {
@@ -731,6 +763,7 @@ export default function CombosScreen() {
                 onWear={handleWearCb}
                 onVirtualModel={handleVirtualCb}
                 onItemPress={handleItemPressCb}
+                onPlan={handlePlanCb}
               />
             );
           }}
@@ -755,6 +788,33 @@ export default function CombosScreen() {
             )}
             <TouchableOpacity style={modalStyles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Gün seçme (planlama) modalı */}
+      <Modal visible={planTarget !== null} transparent animationType="fade" onRequestClose={() => setPlanTarget(null)}>
+        <TouchableOpacity style={modalStyles.planOverlay} activeOpacity={1} onPress={() => setPlanTarget(null)}>
+          <View style={modalStyles.planCard}>
+            <Text style={modalStyles.planTitle}>{t('calendar.planTitle')}</Text>
+            <ScrollView style={modalStyles.planList} showsVerticalScrollIndicator={false}>
+              {planDays.map((d, i) => {
+                const label = i === 0
+                  ? t('calendar.today')
+                  : i === 1
+                    ? t('calendar.tomorrow')
+                    : `${t(`calendar.wd${(d.getDay() + 6) % 7}`)} ${d.getDate()} ${t(`calendar.m${d.getMonth()}`)}`;
+                return (
+                  <TouchableOpacity key={i} style={modalStyles.planRow} onPress={() => handlePlanDay(d)} activeOpacity={0.7}>
+                    <Feather name="calendar" size={16} color={colors.textSecondary} />
+                    <Text style={modalStyles.planRowText}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={modalStyles.planCancel} onPress={() => setPlanTarget(null)} activeOpacity={0.8}>
+              <Text style={modalStyles.planCancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -1043,6 +1103,18 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
+  // Planla butonu — dar, ikon-only
+  planBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   // Üretim yükleme durumu
   generatingState: {
     flexDirection: 'row',
@@ -1288,6 +1360,55 @@ const modalStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.65)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Planlama (gün seçme) modalı
+  planOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  planCard: {
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '75%',
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+  },
+  planTitle: {
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  planList: {
+    flexGrow: 0,
+  },
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  planRowText: {
+    ...typography.body,
+    color: colors.text,
+  },
+  planCancel: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    alignItems: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+  },
+  planCancelText: {
+    ...typography.bodySmall,
+    fontFamily: fonts.bodyMedium,
+    color: colors.textSecondary,
   },
 
 });

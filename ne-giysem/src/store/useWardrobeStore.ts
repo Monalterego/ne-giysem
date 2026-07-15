@@ -4,11 +4,27 @@ import type { WardrobeItem } from '../types';
 import { fetchWeather as fetchWeatherApi, getCoords } from '../utils/weatherService';
 import type { WeatherData } from '../utils/weatherService';
 
+// Yerel tarihi 'YYYY-MM-DD' string'e çevirir — DATE kolonu için (toISOString UTC'ye kaydırır, gün kayar)
+export function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Takvim/geçmiş girişi — state'e yazılmaz, sorgudan döndürülür
 export interface WornEntry {
   items: string[];   // parça id'leri (silinmiş olabilir)
   score: number;
   wornAt: string;    // ISO tarih
+}
+
+// Planlanan kombin girişi — gelecek bir güne atanmış
+export interface PlannedEntry {
+  id: string;          // silme için gerekli
+  items: string[];
+  score: number;
+  plannedFor: string;  // 'YYYY-MM-DD'
 }
 
 interface WardrobeState {
@@ -26,6 +42,9 @@ interface WardrobeState {
   markWorn: (key: string) => void;
   fetchWornToday: (userId: string) => Promise<void>;
   fetchWornHistory: (userId: string, from: Date, to: Date) => Promise<WornEntry[]>;
+  fetchPlannedRange: (userId: string, from: Date, to: Date) => Promise<PlannedEntry[]>;
+  planCombo: (userId: string, itemIds: string[], score: number, date: Date) => Promise<boolean>;
+  removePlan: (id: string) => Promise<boolean>;
   fetchWeather: () => Promise<void>;
 }
 
@@ -142,5 +161,41 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
       score: r.score ?? 0,
       wornAt: r.worn_at,
     }));
+  },
+
+  // Belirli tarih aralığındaki planlanan kombinler (planned_for dolu)
+  fetchPlannedRange: async (userId, from, to) => {
+    const { data, error } = await supabase
+      .from('combos')
+      .select('id, items, score, planned_for')
+      .eq('user_id', userId)
+      .not('planned_for', 'is', null)
+      .gte('planned_for', toDateStr(from))
+      .lte('planned_for', toDateStr(to))
+      .order('planned_for', { ascending: true });
+    if (error || !data) return [];
+    return (data as any[]).map((r) => ({
+      id: r.id,
+      items: parseJsonArray(r.items),
+      score: r.score ?? 0,
+      plannedFor: r.planned_for,
+    }));
+  },
+
+  // Kombini bir güne planla — worn_at YOK, bu bir plan kaydı
+  planCombo: async (userId, itemIds, score, date) => {
+    const { error } = await supabase.from('combos').insert({
+      user_id: userId,
+      items: itemIds,
+      score,
+      planned_for: toDateStr(date),
+      created_at: new Date().toISOString(),
+    });
+    return !error;
+  },
+
+  removePlan: async (id) => {
+    const { error } = await supabase.from('combos').delete().eq('id', id);
+    return !error;
   },
 }));

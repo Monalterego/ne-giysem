@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -14,7 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
-import type { WornEntry } from '../../store/useWardrobeStore';
+import type { WornEntry, PlannedEntry } from '../../store/useWardrobeStore';
 import type { WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { t } from '../../i18n';
@@ -24,16 +25,19 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'Calendar'>;
 export default function CalendarScreen({ navigation }: Props) {
   const user  = useUserStore((s) => s.user);
   const items = useWardrobeStore((s) => s.items);
-  const fetchWornHistory = useWardrobeStore((s) => s.fetchWornHistory);
+  const fetchWornHistory  = useWardrobeStore((s) => s.fetchWornHistory);
+  const fetchPlannedRange = useWardrobeStore((s) => s.fetchPlannedRange);
+  const removePlan        = useWardrobeStore((s) => s.removePlan);
 
   const today = new Date();
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [entries, setEntries] = useState<WornEntry[]>([]);
+  const [planned, setPlanned] = useState<PlannedEntry[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
   const [lightboxItemId, setLightboxItemId] = useState<string | null>(null);
 
-  // Ay değişince o ayın tamamını çek
+  // Ay değişince o ayın tamamını çek (giyilen + planlanan)
   useEffect(() => {
     if (!user?.id) return;
     const from = new Date(year, month, 1, 0, 0, 0);
@@ -41,6 +45,9 @@ export default function CalendarScreen({ navigation }: Props) {
     let cancelled = false;
     fetchWornHistory(user.id, from, to).then((data) => {
       if (!cancelled) setEntries(data);
+    });
+    fetchPlannedRange(user.id, from, to).then((data) => {
+      if (!cancelled) setPlanned(data);
     });
     return () => { cancelled = true; };
   }, [year, month, user?.id]);
@@ -57,6 +64,16 @@ export default function CalendarScreen({ navigation }: Props) {
     }
     return m;
   }, [entries, year, month]);
+
+  // Planlananları güne göre grupla — plannedFor 'YYYY-MM-DD' string, YEREL tarih olarak parse edilir
+  const plannedByDay = useMemo(() => {
+    const m = new Map<number, PlannedEntry[]>();
+    for (const p of planned) {
+      const [py, pm, pd] = p.plannedFor.split('-').map(Number);
+      if (py === year && pm - 1 === month) m.set(pd, [...(m.get(pd) ?? []), p]);
+    }
+    return m;
+  }, [planned, year, month]);
 
   // Parça id'lerini gerçek parçalara çöz — silinmişler elenir
   const resolveItems = useCallback((ids: string[]): WardrobeItem[] =>
@@ -87,11 +104,10 @@ export default function CalendarScreen({ navigation }: Props) {
     else setSelectedDay(null);
   };
 
-  // Bir günün ilk kombininin ilk çözülebilir parçasının fotoğrafı (thumbnail)
-  const dayThumb = (day: number): string | null => {
-    const dayEntries = byDay.get(day);
-    if (!dayEntries) return null;
-    for (const e of dayEntries) {
+  // Bir girişler listesinin ilk çözülebilir parçasının fotoğrafı (thumbnail)
+  // — hem giyilen (WornEntry) hem planlanan (PlannedEntry) için çalışır (ikisi de items içerir)
+  const firstThumbOf = (list: { items: string[] }[]): string | null => {
+    for (const e of list) {
       const resolved = resolveItems(e.items);
       if (resolved.length && resolved[0].processedImageUrl) return resolved[0].processedImageUrl;
     }
@@ -99,10 +115,29 @@ export default function CalendarScreen({ navigation }: Props) {
   };
 
   const selectedEntries = selectedDay !== null ? (byDay.get(selectedDay) ?? []) : [];
+  const selectedPlanned = selectedDay !== null ? (plannedByDay.get(selectedDay) ?? []) : [];
 
   const handleItemPress = (item: WardrobeItem) => {
     if (/^data:image\//i.test(item.processedImageUrl ?? '')) return;
     setLightboxItemId(item.id);
+  };
+
+  const handleRemovePlan = (p: PlannedEntry) => {
+    Alert.alert(
+      t('calendar.removePlanTitle'),
+      t('calendar.removePlanMsg'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            const ok = await removePlan(p.id);
+            if (ok) setPlanned((prev) => prev.filter((x) => x.id !== p.id));
+          },
+        },
+      ],
+    );
   };
   const selectedLightboxItem = useMemo(
     () => (lightboxItemId ? items.find((i) => i.id === lightboxItemId) ?? null : null),
@@ -157,9 +192,17 @@ export default function CalendarScreen({ navigation }: Props) {
         <View style={styles.grid}>
           {cells.map((day, idx) => {
             if (day === null) return <View key={`e${idx}`} style={styles.dayCell} />;
-            const thumb    = dayThumb(day);
+            const wornList    = byDay.get(day);
+            const plannedList = plannedByDay.get(day);
+            const isWornDay    = !!wornList?.length;
+            const isPlannedDay = !!plannedList?.length;
+            // Giyilen thumb önceliklidir; yoksa planlanan thumb'ı gösterilir
+            const thumb = (isWornDay ? firstThumbOf(wornList!) : null)
+                       ?? (isPlannedDay ? firstThumbOf(plannedList!) : null);
             const selected = day === selectedDay;
             const todayCell = isToday(day);
+            // Planlı ama giyilmemiş → kesikli çerçeve ile ayırt et
+            const plannedOnly = isPlannedDay && !isWornDay;
             return (
               <TouchableOpacity
                 key={day}
@@ -170,6 +213,7 @@ export default function CalendarScreen({ navigation }: Props) {
                 <View
                   style={[
                     styles.dayInner,
+                    plannedOnly && styles.dayPlanned,
                     todayCell && styles.dayToday,
                     selected && styles.daySelected,
                   ]}
@@ -184,7 +228,7 @@ export default function CalendarScreen({ navigation }: Props) {
                   ) : (
                     <Text style={[styles.dayNum, selected && styles.dayNumSelected]}>{day}</Text>
                   )}
-                  {thumb ? <View style={styles.dayDot} /> : null}
+                  {isWornDay ? <View style={styles.dayDot} /> : null}
                 </View>
               </TouchableOpacity>
             );
@@ -227,6 +271,52 @@ export default function CalendarScreen({ navigation }: Props) {
                   <View style={styles.comboFooter}>
                     <Text style={styles.comboScore}>{entry.score}% {t('calendar.score')}</Text>
                   </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+
+        {/* Seçili günün planlanan kombinleri */}
+        <View style={styles.listSection}>
+          <Text style={styles.listTitle}>{t('calendar.plannedOutfits')}</Text>
+
+          {selectedPlanned.length === 0 ? (
+            <Text style={styles.emptyText}>{t('calendar.noPlannedOnDay')}</Text>
+          ) : (
+            selectedPlanned.map((p) => {
+              const resolved = resolveItems(p.items);
+              return (
+                <View key={p.id} style={styles.comboCard}>
+                  <View style={styles.plannedHeader}>
+                    <Text style={styles.comboScore}>{p.score}% {t('calendar.score')}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleRemovePlan(p)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Feather name="x" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  {resolved.length === 0 ? (
+                    <Text style={styles.deletedText}>{t('calendar.deletedItem')}</Text>
+                  ) : (
+                    <View style={styles.comboImagesRow}>
+                      {resolved.map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={styles.comboImgWrap}
+                          onPress={() => handleItemPress(item)}
+                          activeOpacity={0.85}
+                        >
+                          <Image
+                            source={{ uri: item.processedImageUrl }}
+                            style={styles.comboImg}
+                            resizeMode="contain"
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
               );
             })
@@ -338,6 +428,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     position: 'relative',
   },
+  dayPlanned: {
+    borderStyle: 'dashed',
+    borderColor: colors.textSecondary,
+    borderWidth: 1.5,
+  },
   dayToday: {
     borderColor: colors.accent,
     borderWidth: 2,
@@ -427,6 +522,13 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     fontFamily: fonts.bodyBold,
     color: colors.text,
+  },
+  plannedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   deletedText: {
     ...typography.bodySmall,

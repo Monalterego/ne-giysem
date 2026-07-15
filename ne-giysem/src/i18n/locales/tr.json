@@ -96,7 +96,8 @@
     "imageDownloadError": "Görsel indirilemedi",
     "modelCreateError": "Manken görüntüsü oluşturulamadı. Lütfen tekrar dene.",
     "noItemsForOccasion": "Bu okazyona uygun parçaların yok. Başka bir okazyon dene ya da dolabına parça ekle.",
-    "combosFound": "Bu okazyon için %{count} uyumlu kombin bulundu. Dolabına bu tarza uygun birkaç parça eklersen daha fazla öneri çıkar."
+    "combosFound": "Bu okazyon için %{count} uyumlu kombin bulundu. Dolabına bu tarza uygun birkaç parça eklersen daha fazla öneri çıkar.",
+    "plan": "Planla"
   },
   "wardrobe": {
     "title": "Dolabım",
@@ -622,6 +623,16 @@
     "m8": "Eylül",
     "m9": "Ekim",
     "m10": "Kasım",
-    "m11": "Aralık"
+    "m11": "Aralık",
+    "planTitle": "Hangi güne planlıyorsun?",
+    "plannedOutfits": "Planlanan Kombinler",
+    "noPlannedOnDay": "Bu güne kombin planlanmamış",
+    "planned": "Planlandı",
+    "planSaved": "Kombin planlandı",
+    "planFailed": "Planlama başarısız. Tekrar dene.",
+    "removePlanTitle": "Planı kaldır",
+    "removePlanMsg": "Bu plan kaldırılsın mı?",
+    "tomorrow": "Yarın",
+    "alreadyPlanned": "Bu kombin zaten bu güne planlı"
   }
 }
