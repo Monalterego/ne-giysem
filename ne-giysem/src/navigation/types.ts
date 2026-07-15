@@ -15,6 +15,11 @@ export type OnboardingStackParamList = {
 
 import type { WardrobeItem } from '../types';
 
+export type HomeStackParamList = {
+  HomeMain: undefined;
+  Calendar: undefined;
+};
+
 export type WardrobeStackParamList = {
   WardrobeList: undefined;
   Upload: undefined;

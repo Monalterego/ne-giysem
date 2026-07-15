@@ -4,6 +4,13 @@ import type { WardrobeItem } from '../types';
 import { fetchWeather as fetchWeatherApi, getCoords } from '../utils/weatherService';
 import type { WeatherData } from '../utils/weatherService';
 
+// Takvim/geçmiş girişi — state'e yazılmaz, sorgudan döndürülür
+export interface WornEntry {
+  items: string[];   // parça id'leri (silinmiş olabilir)
+  score: number;
+  wornAt: string;    // ISO tarih
+}
+
 interface WardrobeState {
   items: WardrobeItem[];
   isLoading: boolean;
@@ -18,6 +25,7 @@ interface WardrobeState {
   fetchItems: (userId: string) => Promise<void>;
   markWorn: (key: string) => void;
   fetchWornToday: (userId: string) => Promise<void>;
+  fetchWornHistory: (userId: string, from: Date, to: Date) => Promise<WornEntry[]>;
   fetchWeather: () => Promise<void>;
 }
 
@@ -117,5 +125,22 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
       );
       set({ wornComboKeys: keys });
     }
+  },
+
+  // Belirli tarih aralığındaki giyilen kombinler — takvim/geçmiş için, state'e yazmaz
+  fetchWornHistory: async (userId, from, to) => {
+    const { data, error } = await supabase
+      .from('combos')
+      .select('items, score, worn_at')
+      .eq('user_id', userId)
+      .gte('worn_at', from.toISOString())
+      .lte('worn_at', to.toISOString())
+      .order('worn_at', { ascending: false });
+    if (error || !data) return [];
+    return (data as any[]).map((r) => ({
+      items: parseJsonArray(r.items),
+      score: r.score ?? 0,
+      wornAt: r.worn_at,
+    }));
   },
 }));

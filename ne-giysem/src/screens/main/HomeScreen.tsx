@@ -12,16 +12,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from '../../navigation/types';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { HomeStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
+import type { WornEntry } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { t } from '../../i18n';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'HomeMain'>;
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ export default function HomeScreen({ navigation }: Props) {
   const weather        = useWardrobeStore((s) => s.weather);
   const weatherLoading = useWardrobeStore((s) => s.weatherLoading);
   const fetchWeather   = useWardrobeStore((s) => s.fetchWeather);
+  const fetchWornHistory = useWardrobeStore((s) => s.fetchWornHistory);
 
   useEffect(() => {
     if (user?.id) fetchItems(user.id);
@@ -160,6 +162,58 @@ export default function HomeScreen({ navigation }: Props) {
     if (!lightboxItemId || !todayCombo) return null;
     return todayCombo.items.find((i) => i.id === lightboxItemId) ?? null;
   }, [lightboxItemId, todayCombo]);
+
+  // ── Bu Hafta (takvim önizleme) — Pazartesi başlangıçlı, hafif sorgu, bloke etmez ──
+  const weekStart = useMemo(() => {
+    const d = new Date();
+    const dow = (d.getDay() + 6) % 7; // Pazartesi=0
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - dow);
+    return d;
+  }, []);
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      return d;
+    }),
+    [weekStart],
+  );
+  const [weekEntries, setWeekEntries] = useState<WornEntry[]>([]);
+  useEffect(() => {
+    if (!user?.id) return;
+    const from = new Date(weekStart);
+    const to = new Date(weekStart);
+    to.setDate(to.getDate() + 6);
+    to.setHours(23, 59, 59, 999);
+    let cancelled = false;
+    fetchWornHistory(user.id, from, to).then((d) => {
+      if (!cancelled) setWeekEntries(d);
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, weekStart]);
+
+  // Yerel tarih anahtarıyla gün→giriş eşlemesi
+  const weekByDate = useMemo(() => {
+    const m = new Map<string, WornEntry[]>();
+    for (const e of weekEntries) {
+      const d = new Date(e.wornAt);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      m.set(key, [...(m.get(key) ?? []), e]);
+    }
+    return m;
+  }, [weekEntries]);
+
+  // Bir günün ilk kombininin ilk çözülebilir parçasının thumbnail'i
+  const weekThumb = (dayEntries: WornEntry[]): string | null => {
+    for (const e of dayEntries) {
+      for (const id of e.items) {
+        const found = items.find((i) => i.id === id);
+        if (found?.processedImageUrl) return found.processedImageUrl;
+      }
+    }
+    return null;
+  };
 
   const displayName = getDisplayName(user?.name ?? '', user?.email ?? '');
   const initial     = getInitial(user?.name ?? '', user?.email ?? '');
@@ -221,34 +275,56 @@ export default function HomeScreen({ navigation }: Props) {
           )}
         </View>
 
-        {/* ── Hızlı Aksiyonlar ── */}
+        {/* ── Bu Hafta (takvim önizleme) ── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('home.explore')}</Text>
+          <Text style={styles.sectionTitle}>{t('calendar.homeCardTitle')}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
+            <Text style={styles.seeAll}>{t('calendar.viewAll')}</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.quickRow}>
-          <QuickAction
-            icon={<Feather name="camera" size={18} color={colors.text} />}
-            label={t('home.quickUpload')}
-            onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
-          />
-          <QuickAction
-            icon={<Feather name="shopping-bag" size={18} color={colors.text} />}
-            label={t('home.quickStore')}
-            onPress={() => navigation.navigate('Scan')}
-          />
-          <QuickAction
-            icon={<Ionicons name="sparkles-outline" size={18} color={colors.text} />}
-            label={t('home.quickCombo')}
-            onPress={() => navigation.navigate('Combos')}
-          />
-        </View>
+        <TouchableOpacity
+          style={styles.weekCard}
+          onPress={() => navigation.navigate('Calendar')}
+          activeOpacity={0.9}
+        >
+          {weekEntries.length === 0 ? (
+            <Text style={styles.weekEmpty}>{t('calendar.homeCardEmpty')}</Text>
+          ) : (
+            <View style={styles.weekRow}>
+              {weekDays.map((date) => {
+                const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                const dayEntries = weekByDate.get(key);
+                const thumb = dayEntries ? weekThumb(dayEntries) : null;
+                const wdIdx = (date.getDay() + 6) % 7;
+                const today = new Date();
+                const isToday =
+                  date.getFullYear() === today.getFullYear() &&
+                  date.getMonth() === today.getMonth() &&
+                  date.getDate() === today.getDate();
+                return (
+                  <View key={key} style={styles.weekDay}>
+                    <Text style={styles.weekDayLabel}>{t(`calendar.wd${wdIdx}`)}</Text>
+                    <View style={[styles.weekThumbWrap, isToday && styles.weekThumbToday]}>
+                      {thumb ? (
+                        <Image source={{ uri: thumb }} style={styles.weekThumb} resizeMode="cover" />
+                      ) : null}
+                      <Text style={[styles.weekDayNum, thumb && styles.weekDayNumOnThumb]}>
+                        {date.getDate()}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* ── Dolap Önizleme ── */}
         {preview.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t('home.myWardrobe')}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Wardrobe')}>
+              <TouchableOpacity onPress={() => (navigation as any).navigate('Wardrobe')}>
                 <Text style={styles.seeAll}>{t('home.seeAll')}</Text>
               </TouchableOpacity>
             </View>
@@ -522,6 +598,67 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 10,
     color: colors.textSecondary,
+  },
+
+  // Bu Hafta (takvim önizleme)
+  weekCard: {
+    marginHorizontal: layout.screenPaddingH,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.subtle,
+  },
+  weekEmpty: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weekDay: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  weekDayLabel: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  weekThumbWrap: {
+    width: '86%',
+    aspectRatio: 1,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  weekThumbToday: {
+    borderColor: colors.accent,
+    borderWidth: 2,
+  },
+  weekThumb: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  weekDayNum: {
+    ...typography.caption,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
+  },
+  weekDayNumOnThumb: {
+    color: colors.white,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   // Dolap önizleme

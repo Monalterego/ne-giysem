@@ -5,7 +5,7 @@ import { colors } from '../constants/theme';
 import { t } from '../i18n';
 import type { MainTabParamList } from './types';
 
-import HomeScreen from '../screens/main/HomeScreen';
+import HomeNavigator from './HomeNavigator';
 import WardrobeNavigator from './WardrobeNavigator';
 import CombosScreen from '../screens/main/CombosScreen';
 import ScanNavigator from './ScanNavigator';
@@ -35,7 +35,7 @@ export default function MainTabNavigator() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={HomeNavigator}
         options={{
           tabBarLabel: t('nav.home'),
           tabBarIcon: ({ focused, color, size }) => (
