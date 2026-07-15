@@ -308,9 +308,13 @@ export default function HomeScreen({ navigation }: Props) {
                       {thumb ? (
                         <Image source={{ uri: thumb }} style={styles.weekThumb} resizeMode="cover" />
                       ) : null}
-                      <Text style={[styles.weekDayNum, thumb && styles.weekDayNumOnThumb]}>
-                        {date.getDate()}
-                      </Text>
+                      {thumb ? (
+                        <View style={styles.weekNumBackdrop}>
+                          <Text style={[styles.weekDayNum, styles.weekDayNumOnThumb]}>{date.getDate()}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.weekDayNum}>{date.getDate()}</Text>
+                      )}
                     </View>
                   </View>
                 );
@@ -654,11 +658,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     color: colors.text,
   },
+  weekNumBackdrop: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 999,
+    backgroundColor: 'rgba(10,10,10,0.62)',
+  },
   weekDayNumOnThumb: {
     color: colors.white,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
 
   // Dolap önizleme
