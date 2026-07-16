@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -92,7 +93,8 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (!i18nReady) return null;
+  // i18n yüklenirken boş/siyah değil, splash'le aynı beyaz — açılış kesintisiz akar
+  if (!i18nReady) return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
 
   return (
     <SafeAreaProvider>
