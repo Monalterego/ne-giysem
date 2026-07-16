@@ -1,14 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  PanResponder,
-  type GestureResponderEvent,
-  type LayoutChangeEvent,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,11 +20,6 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleSelect'>;
 // ─── Slider sabitleri ─────────────────────────────────────────────────────────
 
 const MIN_WEIGHT  = 5;
-const THUMB       = 20;
-const TRACK_H     = 4;
-const CONTAINER_H = 32;
-const TRACK_TOP   = (CONTAINER_H - TRACK_H) / 2;
-const THUMB_TOP   = (CONTAINER_H - THUMB)   / 2;
 
 // ─── Ağırlık yardımcıları ─────────────────────────────────────────────────────
 
@@ -71,49 +64,6 @@ function redistributeWeights(
     if (e.name === changedName) return { ...e, weight: newVal };
     return newOthers.find((o) => o.name === e.name)!;
   });
-}
-
-// ─── WeightSlider bileşeni ────────────────────────────────────────────────────
-
-function WeightSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [trackWidth, setTrackWidth] = useState(300);
-  const trackWidthRef = useRef(300);
-  const onChangeRef   = useRef(onChange);
-  onChangeRef.current = onChange;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
-      onPanResponderGrant: (evt: GestureResponderEvent) => {
-        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, trackWidthRef.current));
-        onChangeRef.current(Math.round((x / trackWidthRef.current) * 100));
-      },
-      onPanResponderMove: (evt: GestureResponderEvent) => {
-        const x = Math.max(0, Math.min(evt.nativeEvent.locationX, trackWidthRef.current));
-        onChangeRef.current(Math.round((x / trackWidthRef.current) * 100));
-      },
-    }),
-  ).current;
-
-  const fillWidth = (value / 100) * trackWidth;
-  const thumbLeft = fillWidth - THUMB / 2;
-
-  return (
-    <View
-      style={styles.sliderContainer}
-      onLayout={(e: LayoutChangeEvent) => {
-        const w = e.nativeEvent.layout.width;
-        setTrackWidth(w);
-        trackWidthRef.current = w;
-      }}
-      {...panResponder.panHandlers}
-    >
-      <View style={styles.sliderRail} />
-      <View style={[styles.sliderFill, { width: fillWidth }]} />
-      <View style={[styles.sliderThumb, { left: thumbLeft }]} />
-    </View>
-  );
 }
 
 // ─── StyleCard bileşeni ───────────────────────────────────────────────────────
@@ -235,9 +185,16 @@ export default function StyleSelectScreen({ navigation }: Props) {
                   <Text style={styles.sliderLabel}>{entry.name}</Text>
                   <Text style={styles.sliderPct}>{entry.weight}%</Text>
                 </View>
-                <WeightSlider
+                <Slider
+                  style={styles.sliderContainer}
+                  minimumValue={0}
+                  maximumValue={100}
+                  step={1}
                   value={entry.weight}
-                  onChange={(v) => handleSliderChange(entry.name, v)}
+                  onValueChange={(v) => handleSliderChange(entry.name, Math.round(v))}
+                  minimumTrackTintColor={colors.black}
+                  maximumTrackTintColor={colors.border}
+                  thumbTintColor={colors.black}
                 />
               </View>
             ))}
@@ -455,38 +412,10 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  // Custom slider
+  // Native slider (@react-native-community/slider)
   sliderContainer: {
-    height: CONTAINER_H,
-    position: 'relative',
-  },
-  sliderRail: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: TRACK_TOP,
-    height: TRACK_H,
-    borderRadius: TRACK_H / 2,
-    backgroundColor: colors.border,
-  },
-  sliderFill: {
-    position: 'absolute',
-    left: 0,
-    top: TRACK_TOP,
-    height: TRACK_H,
-    borderRadius: TRACK_H / 2,
-    backgroundColor: colors.text,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    top: THUMB_TOP,
-    width: THUMB,
-    height: THUMB,
-    borderRadius: THUMB / 2,
-    backgroundColor: colors.white,
-    borderWidth: 2,
-    borderColor: colors.text,
-    elevation: 2,
+    width: '100%',
+    height: 40,
   },
 
   // Footer

@@ -93,8 +93,8 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // i18n yüklenirken boş/siyah değil, splash'le aynı beyaz — açılış kesintisiz akar
-  if (!i18nReady) return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
+  // i18n yüklenirken boş değil, splash + uygulama ile aynı #FAFAFA — açılış kesintisiz akar
+  if (!i18nReady) return <View style={{ flex: 1, backgroundColor: '#FAFAFA' }} />;
 
   return (
     <SafeAreaProvider>

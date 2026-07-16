@@ -100,7 +100,7 @@ export default function SplashScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: colors.white },        // ← BEYAZ (eskiden siyahtı)
+  safe:    { flex: 1, backgroundColor: colors.background },    // #FAFAFA — native splash + uygulama ile aynı
   center:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
   logoBox: { width: LOGO, height: LOGO, marginBottom: spacing.lg },
   segWrap: { position: 'absolute' },
