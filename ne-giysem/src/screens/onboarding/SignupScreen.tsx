@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
+import { isAppleAvailable, signInWithApple, signInWithGoogle, type SocialResult } from '../../lib/socialAuth';
 import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Signup'>;
@@ -29,6 +30,75 @@ export default function SignupScreen({ navigation }: Props) {
   const [error,    setError]    = useState('');
 
   const setUser = useUserStore((s) => s.setUser);
+  const setOnboarded = useUserStore((s) => s.setOnboarded);
+
+  const [appleReady, setAppleReady] = useState(false);
+  useEffect(() => { isAppleAvailable().then(setAppleReady); }, []);
+
+  // Apple/Google girişi sonrası ortak akış — Signup & Login'de aynı
+  const finishSocial = async (res: SocialResult | null) => {
+    if (!res) return;                       // kullanıcı iptal etti — sessiz
+    const { user, fullName } = res;
+
+    // 1) Profil (trigger ile oluşmuş olmalı)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name, height, age, body_type, skin_tone, hair_color, hair_length, hair_type, avatar_url')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // 2) İsim boşsa ve elimizde varsa YAZ — Apple ismi SADECE ilk yetkilendirmede gelir
+    let name = profile?.name ?? '';
+    if (!name && fullName) {
+      await supabase.from('profiles').update({ name: fullName }).eq('id', user.id);
+      name = fullName;
+    }
+
+    // 3) Store
+    setUser({
+      id: user.id,
+      email: user.email ?? '',
+      name,
+      isPremium: false,
+      createdAt: user.created_at,
+      avatarUrl:   profile?.avatar_url  ?? undefined,
+      height:      profile?.height      ?? undefined,
+      age:         profile?.age         ?? undefined,
+      bodyType:    profile?.body_type   ?? undefined,
+      skinTone:    profile?.skin_tone   ?? undefined,
+      hairColor:   profile?.hair_color  ?? undefined,
+      hairLength:  profile?.hair_length ?? undefined,
+      hairType:    profile?.hair_type   ?? undefined,
+    });
+
+    // 4) Yeni mi, geri dönen mi? — style_profiles kaydı varsa geri dönen
+    const { data: sp } = await supabase
+      .from('style_profiles')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (sp) setOnboarded(true);                       // geri dönen → Main
+    else    navigation.navigate('StyleChoice');       // yeni → onboarding
+  };
+
+  const handleApple = async () => {
+    setLoading(true); setError('');
+    try { await finishSocial(await signInWithApple()); }
+    catch (e: any) {
+      setError(e?.message === 'NO_TOKEN' ? t('auth.socialNoToken') : t('auth.socialError'));
+    }
+    setLoading(false);
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true); setError('');
+    try { await finishSocial(await signInWithGoogle()); }
+    catch (e: any) {
+      setError(e?.message === 'NO_TOKEN' ? t('auth.socialNoToken') : t('auth.socialError'));
+    }
+    setLoading(false);
+  };
 
   const handleSignup = async () => {
     if (!name.trim() || !email || !password) return;
@@ -83,14 +153,16 @@ export default function SignupScreen({ navigation }: Props) {
           <Text style={styles.title}>{t('auth.createAccount')}</Text>
           <Text style={styles.subtitle}>60 saniyede kişisel stiline kavuş</Text>
 
-          {/* Sosyal butonlar — V2 */}
-          <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
-            <Feather name="smartphone" size={16} color={colors.text} />
-            <Text style={styles.socialText}>{t('auth.appleContinue')}</Text>
-          </TouchableOpacity>
+          {/* Sosyal butonlar */}
+          {appleReady && (
+            <TouchableOpacity style={styles.socialBtn} onPress={handleApple} activeOpacity={0.8} disabled={loading}>
+              <Ionicons name="logo-apple" size={18} color={colors.text} />
+              <Text style={styles.socialText}>{t('auth.appleContinue')}</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity style={[styles.socialBtn, styles.socialBtnDisabled]} activeOpacity={1}>
-            <Feather name="globe" size={16} color={colors.text} />
+          <TouchableOpacity style={styles.socialBtn} onPress={handleGoogle} activeOpacity={0.8} disabled={loading}>
+            <Ionicons name="logo-google" size={18} color={colors.text} />
             <Text style={styles.socialText}>{t('auth.googleContinue')}</Text>
           </TouchableOpacity>
 
