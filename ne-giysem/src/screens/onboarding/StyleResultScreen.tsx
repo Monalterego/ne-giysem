@@ -150,6 +150,11 @@ export default function StyleResultScreen({ route, navigation }: Props) {
     <View style={styles.bg}>
       <SafeAreaView style={styles.safe}>
 
+        {/* Geri — koyu zemin + dikey ortalı düzen olduğu için absolute (beyaz ikon) */}
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color={colors.white} />
+        </TouchableOpacity>
+
         <Text style={styles.badge}>{t('style.resultBadge')}</Text>
 
         {/* DNA Kartı */}
@@ -225,6 +230,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: layout.screenPaddingH,
     justifyContent: 'center',
+  },
+  backBtn: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 10,
+    padding: spacing.xs,
   },
 
   // Başlık badge

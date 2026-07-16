@@ -22,6 +22,17 @@ const SEGMENTS = [
   { len: 107.8, angle: -150, midX: 59.8, midY: 59.9,  dur: 284 },
 ];
 
+// Köşe dolguları — stroke-linejoin:round taklidi. Nokta i, segment i başlayınca belirir
+// (segment i, VERTICES[i]'den başlar). Dar açılı köşelerdeki (özellikle tepe) çentiği doldurur.
+const VERTICES = [
+  { x: 13.1,  y: 32.9  },   // sol-üst
+  { x: 59.8,  y: 6.0   },   // tepe
+  { x: 106.6, y: 33.0  },   // sağ-üst
+  { x: 59.9,  y: 113.9 },   // dip
+  { x: 12.9,  y: 86.8  },   // sol-alt
+  { x: 106.5, y: 86.8  },   // sağ-alt
+];
+
 export default function SplashScreen({ navigation }: Props) {
   // Her segment için bir ilerleme değeri (0 → 1)
   const progress = useRef(SEGMENTS.map(() => new Animated.Value(0))).current;
@@ -88,6 +99,24 @@ export default function SplashScreen({ navigation }: Props) {
               />
             </View>
           ))}
+
+          {/* Köşe noktaları — çizgilerin ÜSTÜNDE, kalem köşeye varınca belirir */}
+          {VERTICES.map((v, i) => (
+            <Animated.View
+              key={`dot${i}`}
+              style={[
+                styles.vertexDot,
+                {
+                  left: v.x - STROKE / 2,
+                  top:  v.y - STROKE / 2,
+                  opacity: progress[i].interpolate({
+                    inputRange:  [0, 0.02, 1],
+                    outputRange: [0, 1, 1],
+                  }),
+                },
+              ]}
+            />
+          ))}
         </View>
 
         <Animated.Text style={[styles.title, { opacity: textFade }]}>SESTINA</Animated.Text>
@@ -112,6 +141,13 @@ const styles = StyleSheet.create({
     borderRadius: STROKE / 2,        // yuvarlak uçlar
     backgroundColor: colors.black,   // ← SİYAH çizgi (eskiden beyazdı)
   },
+  vertexDot: {
+    position: 'absolute',
+    width: STROKE,
+    height: STROKE,
+    borderRadius: STROKE / 2,
+    backgroundColor: colors.black,
+  },
   title: {
     fontSize: 48,
     fontFamily: fonts.heading,
@@ -119,11 +155,13 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
     fontWeight: '400',
     marginBottom: 16,
+    marginRight: -8,                 // letterSpacing'in son harften sonraki fazlasını düş → gerçek ortalama
   },
   subtitle: {
     fontSize: 10,
     fontFamily: fonts.body,
     color: colors.textSecondary,     // ← eskiden textTertiary (beyazımsı)
     letterSpacing: 4,
+    marginRight: -4,                 // = -letterSpacing
   },
 });

@@ -110,7 +110,7 @@ const stepperStyles = StyleSheet.create({
 
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
-export default function PhysicalProfileScreen(_: Props) {
+export default function PhysicalProfileScreen({ navigation }: Props) {
   const user                = useUserStore((s: UserState) => s.user);
   const setOnboarded        = useUserStore((s: UserState) => s.setOnboarded);
   const setPhysicalProfile  = useUserStore((s: UserState) => s.setPhysicalProfile);
@@ -186,6 +186,9 @@ export default function PhysicalProfileScreen(_: Props) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <Feather name="arrow-left" size={20} color={colors.text} />
+      </TouchableOpacity>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -335,6 +338,11 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.white,
+  },
+  backBtn: {
+    paddingTop: spacing.lg,
+    paddingLeft: spacing.md,
+    alignSelf: 'flex-start',
   },
   container: {
     paddingHorizontal: layout.screenPaddingH,
