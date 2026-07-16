@@ -27,14 +27,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -42,6 +37,23 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {
+                "name": "GoogleUtilities",
+                "modular_headers": true
+              },
+              {
+                "name": "RecaptchaInterop",
+                "modular_headers": true
+              }
+            ]
+          }
+        }
+      ],
       [
         "expo-image-picker",
         {
