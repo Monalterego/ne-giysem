@@ -15,8 +15,8 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
-import { useWardrobeStore } from '../../store/useWardrobeStore';
-import type { WornEntry } from '../../store/useWardrobeStore';
+import { useWardrobeStore, toDateStr } from '../../store/useWardrobeStore';
+import type { WornEntry, PlannedEntry } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -129,7 +129,8 @@ export default function HomeScreen({ navigation }: Props) {
   const weather        = useWardrobeStore((s) => s.weather);
   const weatherLoading = useWardrobeStore((s) => s.weatherLoading);
   const fetchWeather   = useWardrobeStore((s) => s.fetchWeather);
-  const fetchWornHistory = useWardrobeStore((s) => s.fetchWornHistory);
+  const fetchWornHistory  = useWardrobeStore((s) => s.fetchWornHistory);
+  const fetchPlannedRange = useWardrobeStore((s) => s.fetchPlannedRange);
 
   useEffect(() => {
     if (user?.id) fetchItems(user.id);
@@ -180,6 +181,7 @@ export default function HomeScreen({ navigation }: Props) {
     [weekStart],
   );
   const [weekEntries, setWeekEntries] = useState<WornEntry[]>([]);
+  const [plannedWeek, setPlannedWeek] = useState<PlannedEntry[]>([]);
   useEffect(() => {
     if (!user?.id) return;
     const from = new Date(weekStart);
@@ -187,13 +189,17 @@ export default function HomeScreen({ navigation }: Props) {
     to.setDate(to.getDate() + 6);
     to.setHours(23, 59, 59, 999);
     let cancelled = false;
+    // Giyilen + planlanan paralel çekilir (ikisi de hafif, bir haftalık aralık — bloke etmez)
     fetchWornHistory(user.id, from, to).then((d) => {
       if (!cancelled) setWeekEntries(d);
+    });
+    fetchPlannedRange(user.id, from, to).then((d) => {
+      if (!cancelled) setPlannedWeek(d);
     });
     return () => { cancelled = true; };
   }, [user?.id, weekStart]);
 
-  // Yerel tarih anahtarıyla gün→giriş eşlemesi
+  // Yerel tarih anahtarıyla gün→giyilen eşlemesi
   const weekByDate = useMemo(() => {
     const m = new Map<string, WornEntry[]>();
     for (const e of weekEntries) {
@@ -204,8 +210,15 @@ export default function HomeScreen({ navigation }: Props) {
     return m;
   }, [weekEntries]);
 
-  // Bir günün ilk kombininin ilk çözülebilir parçasının thumbnail'i
-  const weekThumb = (dayEntries: WornEntry[]): string | null => {
+  // Planlananları güne göre grupla — plannedFor 'YYYY-MM-DD' string (padlı), YEREL kalır
+  const plannedByDate = useMemo(() => {
+    const m = new Map<string, PlannedEntry[]>();
+    for (const p of plannedWeek) m.set(p.plannedFor, [...(m.get(p.plannedFor) ?? []), p]);
+    return m;
+  }, [plannedWeek]);
+
+  // Bir günün ilk kombininin ilk çözülebilir parçasının thumbnail'i (giyilen veya planlanan)
+  const weekThumb = (dayEntries: { items: string[] }[]): string | null => {
     for (const e of dayEntries) {
       for (const id of e.items) {
         const found = items.find((i) => i.id === id);
@@ -287,14 +300,19 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('Calendar')}
           activeOpacity={0.9}
         >
-          {weekEntries.length === 0 ? (
+          {weekEntries.length === 0 && plannedWeek.length === 0 ? (
             <Text style={styles.weekEmpty}>{t('calendar.homeCardEmpty')}</Text>
           ) : (
             <View style={styles.weekRow}>
               {weekDays.map((date) => {
                 const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-                const dayEntries = weekByDate.get(key);
-                const thumb = dayEntries ? weekThumb(dayEntries) : null;
+                const wornEntries = weekByDate.get(key);
+                const wornThumb   = wornEntries ? weekThumb(wornEntries) : null;
+                // Giyilen yoksa planlanana bak — GEÇMİŞ DOLU, GELECEK SOLUK
+                const plannedItems = plannedByDate.get(toDateStr(date));
+                const plannedThumb = !wornThumb && plannedItems?.length ? weekThumb(plannedItems) : null;
+                const thumb     = wornThumb ?? plannedThumb;
+                const isPlanned = !wornThumb && !!plannedThumb;
                 const wdIdx = (date.getDay() + 6) % 7;
                 const today = new Date();
                 const isToday =
@@ -304,9 +322,9 @@ export default function HomeScreen({ navigation }: Props) {
                 return (
                   <View key={key} style={styles.weekDay}>
                     <Text style={styles.weekDayLabel}>{t(`calendar.wd${wdIdx}`)}</Text>
-                    <View style={[styles.weekThumbWrap, isToday && styles.weekThumbToday]}>
+                    <View style={[styles.weekThumbWrap, isToday && styles.weekThumbToday, isPlanned && styles.weekPlanned]}>
                       {thumb ? (
-                        <Image source={{ uri: thumb }} style={styles.weekThumb} resizeMode="cover" />
+                        <Image source={{ uri: thumb }} style={[styles.weekThumb, isPlanned && { opacity: 0.45 }]} resizeMode="cover" />
                       ) : null}
                       {thumb ? (
                         <View style={styles.weekNumBackdrop}>
@@ -649,6 +667,11 @@ const styles = StyleSheet.create({
   weekThumbToday: {
     borderColor: colors.accent,
     borderWidth: 2,
+  },
+  weekPlanned: {
+    borderStyle: 'dashed',
+    borderColor: colors.textSecondary,
+    borderWidth: 1.5,
   },
   weekThumb: {
     ...StyleSheet.absoluteFillObject,

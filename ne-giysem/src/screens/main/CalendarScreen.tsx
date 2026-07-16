@@ -219,7 +219,11 @@ export default function CalendarScreen({ navigation }: Props) {
                   ]}
                 >
                   {thumb ? (
-                    <Image source={{ uri: thumb }} style={styles.dayThumb} resizeMode="cover" />
+                    <Image
+                      source={{ uri: thumb }}
+                      style={[styles.dayThumb, plannedOnly && { opacity: 0.45 }]}
+                      resizeMode="cover"
+                    />
                   ) : null}
                   {thumb && !selected ? (
                     <View style={styles.dayNumBackdrop}>
