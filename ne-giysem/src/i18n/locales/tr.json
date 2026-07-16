@@ -97,7 +97,8 @@
     "modelCreateError": "Manken görüntüsü oluşturulamadı. Lütfen tekrar dene.",
     "noItemsForOccasion": "Bu okazyona uygun parçaların yok. Başka bir okazyon dene ya da dolabına parça ekle.",
     "combosFound": "Bu okazyon için %{count} uyumlu kombin bulundu. Dolabına bu tarza uygun birkaç parça eklersen daha fazla öneri çıkar.",
-    "plan": "Planla"
+    "plan": "Planla",
+    "tryOnNote": "Bu işlem birkaç dakika sürebilir, ekranı açık tutman yeterli."
   },
   "wardrobe": {
     "title": "Dolabım",

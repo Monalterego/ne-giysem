@@ -97,7 +97,8 @@
     "modelCreateError": "Couldn't create the model image. Please try again.",
     "noItemsForOccasion": "You don't have pieces for this occasion. Try another occasion or add items to your wardrobe.",
     "combosFound": "%{count} matching outfits found for this occasion. Add a few pieces in this style to get more suggestions.",
-    "plan": "Plan"
+    "plan": "Plan",
+    "tryOnNote": "This may take a few minutes — just keep the screen open."
   },
   "wardrobe": {
     "title": "My Wardrobe",

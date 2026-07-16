@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   View,
   Text,
   StyleSheet,
@@ -14,7 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { MainTabParamList } from '../../navigation/types';
@@ -42,6 +43,9 @@ const LOADING_MSGS = [
   'combos.dressingCombo',
   'combos.finalTouches',
 ] as const;
+
+// Bekleme animasyonunda sırayla beliren parça ikonları (MaterialCommunityIcons adları — sabit, çeviri değil)
+const GARMENTS = ['tshirt-crew', 'shoe-heel', 'sunglasses', 'hat-fedora'] as const;
 
 function comboKey(combo: Combo): string {
   return combo.items.map((i) => i.id).sort().join('|');
@@ -177,6 +181,9 @@ function ModelModal({
   const spinValue = useRef(new Animated.Value(0)).current;
   const fadeValue = useRef(new Animated.Value(1)).current;
   const [msgIdx, setMsgIdx] = useState(0);
+  const [garmentIdx, setGarmentIdx] = useState(0);
+  const garmentFade = useRef(new Animated.Value(1)).current;
+  const garmentRise = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!isLoading) {
@@ -184,6 +191,9 @@ function ModelModal({
       spinValue.setValue(0);
       setMsgIdx(0);
       fadeValue.setValue(1);
+      setGarmentIdx(0);
+      garmentFade.setValue(1);
+      garmentRise.setValue(0);
       return;
     }
 
@@ -200,7 +210,25 @@ function ModelModal({
       });
     }, 2200);
 
-    return () => clearInterval(interval);
+    // Parça değişimi — halkanın ortasında "look kuruluyor" (daha hızlı, paralel)
+    const garmentInterval = setInterval(() => {
+      Animated.parallel([
+        Animated.timing(garmentFade, { toValue: 0, duration: 220, useNativeDriver: true }),
+        Animated.timing(garmentRise, { toValue: -8, duration: 220, useNativeDriver: true }),
+      ]).start(() => {
+        setGarmentIdx((p) => (p + 1) % GARMENTS.length);
+        garmentRise.setValue(8);          // alttan gelsin
+        Animated.parallel([
+          Animated.timing(garmentFade, { toValue: 1, duration: 260, useNativeDriver: true }),
+          Animated.timing(garmentRise, { toValue: 0, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        ]).start();
+      });
+    }, 1100);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(garmentInterval);
+    };
   }, [isLoading]);
 
   const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
@@ -231,7 +259,9 @@ function ModelModal({
             {/* Dönen halka + ikon */}
             <View style={modalStyles.spinnerWrap}>
               <Animated.View style={[modalStyles.spinRing, { transform: [{ rotate: spin }] }]} />
-              <Feather name="shopping-bag" size={36} color={colors.text} />
+              <Animated.View style={{ opacity: garmentFade, transform: [{ translateY: garmentRise }] }}>
+                <MaterialCommunityIcons name={GARMENTS[garmentIdx]} size={38} color={colors.text} />
+              </Animated.View>
             </View>
 
             <Text style={modalStyles.loadingTitle}>{t('combos.preparingCombo')}</Text>
@@ -252,7 +282,7 @@ function ModelModal({
             </View>
 
             <Text style={modalStyles.loadingNote}>
-              Bu işlem birkaç dakika sürebilir, ekranı açık tutman yeterli.
+              {t('combos.tryOnNote')}
             </Text>
           </View>
         ) : (
