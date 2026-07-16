@@ -53,7 +53,7 @@ export default function SplashScreen({ navigation }: Props) {
       ]),
     ]).start();
 
-    const timer = setTimeout(() => navigation.replace('Signup'), 2200);
+    const timer = setTimeout(() => navigation.replace('Signup'), 3000);
     return () => clearTimeout(timer);
   }, []);
 
