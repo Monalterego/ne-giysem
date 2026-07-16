@@ -46,7 +46,9 @@
     "backArrow": "← Back",
     "profileUpdateError": "Couldn't update profile: ",
     "createAccount": "Create Account",
-    "appleContinue": "Continue with Apple"
+    "appleContinue": "Continue with Apple",
+    "socialError": "Couldn't sign in. Please try again.",
+    "socialNoToken": "Verification failed. Please try again."
   },
   "home": {
     "greetingMorning": "Good morning",

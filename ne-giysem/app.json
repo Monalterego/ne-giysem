@@ -9,6 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Bulunduğun yerin hava durumuna göre kombin önermek için konum izni gerekiyor.",
         "ITSAppUsesNonExemptEncryption": false
@@ -64,7 +65,14 @@
           "backgroundColor": "#FAFAFA"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.155277061002-dnr34ehc7tm7p8bug5ua7v3sqpk9g8re"
+        }
+      ]
     ],
     "runtimeVersion": {
       "policy": "appVersion"

@@ -46,7 +46,9 @@
     "backArrow": "← Geri",
     "profileUpdateError": "Profil güncellenemedi: ",
     "createAccount": "Hesap Oluştur",
-    "appleContinue": "Apple ile devam et"
+    "appleContinue": "Apple ile devam et",
+    "socialError": "Giriş yapılamadı. Lütfen tekrar dene.",
+    "socialNoToken": "Kimlik doğrulanamadı. Lütfen tekrar dene."
   },
   "home": {
     "greetingMorning": "Günaydın",
