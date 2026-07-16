@@ -95,7 +95,9 @@ export default function SignupScreen({ navigation }: Props) {
     setLoading(true); setError('');
     try { await finishSocial(await signInWithGoogle()); }
     catch (e: any) {
-      setError(e?.message === 'NO_TOKEN' ? t('auth.socialNoToken') : t('auth.socialError'));
+      // GEÇİCİ TEŞHİS — Supabase'in gerçek hatasını göster (sonra geri alınacak)
+      console.log('[GOOGLE DEBUG]', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+      setError('DEBUG: ' + (e?.message ?? JSON.stringify(e)).slice(0, 200));
     }
     setLoading(false);
   };
