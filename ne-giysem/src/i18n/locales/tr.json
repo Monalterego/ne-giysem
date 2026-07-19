@@ -100,7 +100,8 @@
     "noItemsForOccasion": "Bu okazyona uygun parçaların yok. Başka bir okazyon dene ya da dolabına parça ekle.",
     "combosFound": "Bu okazyon için %{count} uyumlu kombin bulundu. Dolabına bu tarza uygun birkaç parça eklersen daha fazla öneri çıkar.",
     "plan": "Planla",
-    "tryOnNote": "Bu işlem birkaç dakika sürebilir, ekranı açık tutman yeterli."
+    "tryOnNote": "Bu işlem birkaç dakika sürebilir, ekranı açık tutman yeterli.",
+    "limitBody": "Ücretsiz planda %{count} sanal deneme hakkın var. Premium'a geçerek daha fazlasını kullan."
   },
   "wardrobe": {
     "title": "Dolabım",

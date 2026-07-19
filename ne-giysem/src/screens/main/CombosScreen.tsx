@@ -333,8 +333,7 @@ function PremiumModal({
         <View style={premiumStyles.card}>
           <Text style={premiumStyles.title}>{t('combos.limitReached')}</Text>
           <Text style={premiumStyles.body}>
-            Ücretsiz planda {FREE_RENDER_LIMIT} sanal manken hakkın var.{'\n'}
-            Premium'a geçerek sınırsız kullan.
+            {t('combos.limitBody', { count: FREE_RENDER_LIMIT })}
           </Text>
           <TouchableOpacity style={premiumStyles.premiumBtn} onPress={onClose} activeOpacity={0.85}>
             <Text style={premiumStyles.premiumBtnText}>{t('combos.goPremium')}</Text>

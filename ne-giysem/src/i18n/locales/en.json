@@ -100,7 +100,8 @@
     "noItemsForOccasion": "You don't have pieces for this occasion. Try another occasion or add items to your wardrobe.",
     "combosFound": "%{count} matching outfits found for this occasion. Add a few pieces in this style to get more suggestions.",
     "plan": "Plan",
-    "tryOnNote": "This may take a few minutes — just keep the screen open."
+    "tryOnNote": "This may take a few minutes — just keep the screen open.",
+    "limitBody": "Your free plan includes %{count} virtual try-ons. Upgrade to Premium for more."
   },
   "wardrobe": {
     "title": "My Wardrobe",
