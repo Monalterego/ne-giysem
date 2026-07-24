@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -70,8 +71,29 @@ export default function UploadScreen({ navigation }: Props) {
     if (result.canceled || !result.assets?.[0]) return;
 
     const asset = result.assets[0];
-    const uri   = asset.uri;
-    const base64Input = asset.base64;
+
+    // ⚠️ HEIC → JPEG + küçültme.
+    //    iPhone galerisi HEIC verir, poof.bg kabul etmez (sadece PNG/JPG/WEBP).
+    //    Ayrıca 12MP base64 ~8MB → yükleme timeout. 1400px + JPEG ile ~400KB'a iner.
+    let uri = asset.uri;
+    let base64Input: string | null | undefined = null;
+    try {
+      const normalized = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 1400 } }],   // yükseklik oranla ölçeklenir
+        {
+          compress: 0.85,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        },
+      );
+      uri = normalized.uri;
+      base64Input = normalized.base64;
+    } catch {
+      // Normalizasyon başarısız → picker'ın kendi çıktısına düş (kamera yolu zaten JPEG)
+      base64Input = asset.base64;
+    }
+
     if (!base64Input) {
       Alert.alert(t('combos.errorTitle'), t('errors.imageReadFailed'));
       return;
