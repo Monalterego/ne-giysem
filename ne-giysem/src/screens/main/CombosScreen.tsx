@@ -30,6 +30,7 @@ import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+import { friendlyError, isModelImageError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 import { catLabel } from '../../constants/categories';
 
@@ -599,10 +600,12 @@ export default function CombosScreen() {
       setModelImageUrl(upErr ? finalUrl : uploadedUrl);
     } catch (err) {
       setModelModalVisible(false);
-      Alert.alert(
-        t('combos.errorTitle'),
-        err instanceof Error ? err.message : t('combos.modelCreateError'),
-      );
+      // ⚠️ Bozuk manken kalıcı: bir kez kaydedilirse her denemede aynı hata gelir.
+      //    Pose hatasında cache'i temizle ki sonraki denemede YENİ manken üretilsin.
+      if (isModelImageError(err) && user?.id) {
+        await supabase.from('profiles').update({ mannequin_url: null }).eq('id', user.id);
+      }
+      Alert.alert(t('combos.errorTitle'), friendlyError(err));
     } finally {
       setGeneratingComboId(null);
       setModelLoading(false);

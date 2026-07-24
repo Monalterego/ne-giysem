@@ -101,7 +101,9 @@
     "combosFound": "%{count} matching outfits found for this occasion. Add a few pieces in this style to get more suggestions.",
     "plan": "Plan",
     "tryOnNote": "This may take a few minutes — just keep the screen open.",
-    "limitBody": "Your free plan includes %{count} virtual try-ons. Upgrade to Premium for more."
+    "limitBody": "Your free plan includes %{count} virtual try-ons. Upgrade to Premium for more.",
+    "tryOnBusy": "Virtual try-on is busy right now. Please try again shortly.",
+    "tryOnPoseFailed": "Couldn't create the model. If your profile photo isn't full-body, remove it and try again."
   },
   "wardrobe": {
     "title": "My Wardrobe",
@@ -481,7 +483,11 @@
     "imageReadFailed": "Couldn't read the image, please try again.",
     "imageProcessFailed": "Couldn't process the image. Please try again.",
     "productImageFailed": "Couldn't fetch the product image. Please try again.",
-    "bgRemoveFailed": "Couldn't remove the background. Please try again."
+    "bgRemoveFailed": "Couldn't remove the background. Please try again.",
+    "networkFailed": "Connection problem. Check your internet and try again.",
+    "imageFormatUnsupported": "This photo format isn't supported. Try taking a photo with the camera.",
+    "imageTooLarge": "Photo is too large. Please try another one.",
+    "genericRetry": "Something went wrong. Please try again."
   },
   "scan": {
     "preparingImage": "Preparing image…",
@@ -516,7 +522,8 @@
     "tip3": "• Make sure there's enough light",
     "bgCleaned": "BG Removed",
     "bgCleanedWeb": "BG Removed (Web Mode)",
-    "reselect": "Reselect"
+    "reselect": "Reselect",
+    "photoTip": "Tip: Lay the item flat so the whole piece is visible."
   },
   "fabric": {
     "pamuk": "Cotton",

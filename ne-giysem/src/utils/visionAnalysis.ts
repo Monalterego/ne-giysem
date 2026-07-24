@@ -52,6 +52,20 @@ function buildPrompt(): string {
 
   return `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndür, başka hiçbir metin yazma.
 
+⚠️ FOTOĞRAF GERÇEK KULLANICI FOTOĞRAFI OLABİLİR — ürün görseli gibi düzgün olmayabilir:
+yatakta/masada serili, katlanmış, buruşuk, açısı bozuk olabilir. Kıyafetin TAM formunu
+düşün, sadece görünen silüete bakma.
+
+KATEGORİ KARARI — önce şuna karar ver, sonra diğer alanları doldur:
+• Bel bandı + İKİ ayrı paça/bacak görüyorsan → "alt" (şort, pantolon, tayt). Kısa ve düz
+  serilmiş şort, kare bir kumaş parçası gibi görünebilir — yanılma.
+• Tek parça, üst gövde + belden aşağı devam ediyor → "elbise_tulum" (tulum/elbise).
+  Tulum yatakta serilince paçalar katlanıp üst gibi görünebilir — bel hizasına ve
+  paça varlığına bak.
+• Kol/yaka var + belde bitiyor, paça YOK → "ust"
+• Tek parça belden aşağı, paça YOK, etek gibi açılıyor → "alt" (etek) veya "elbise_tulum"
+  (üst gövdesi varsa elbise)
+
 ⚠️ EN KRİTİK 3 ALAN (bunları mutlaka doğru yap — kombinlerin doğruluğu bunlara bağlı):
 1. category + subcategory TUTARLI olmalı (tek parça belden aşağı devam eden giysi = elbise_tulum, üst değil)
 2. Elbise BOYU: eteğin nerede bittiğine bak → diz ÜSTÜ = mini, baldır/diz-altı = midi, ayak bileği/yere kadar = maxi
@@ -138,7 +152,7 @@ function parseVisionResponse(text: string): VisionResult {
 
 export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
   const requestBody = {
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
     messages: [
       {

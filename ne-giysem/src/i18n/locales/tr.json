@@ -101,7 +101,9 @@
     "combosFound": "Bu okazyon için %{count} uyumlu kombin bulundu. Dolabına bu tarza uygun birkaç parça eklersen daha fazla öneri çıkar.",
     "plan": "Planla",
     "tryOnNote": "Bu işlem birkaç dakika sürebilir, ekranı açık tutman yeterli.",
-    "limitBody": "Ücretsiz planda %{count} sanal deneme hakkın var. Premium'a geçerek daha fazlasını kullan."
+    "limitBody": "Ücretsiz planda %{count} sanal deneme hakkın var. Premium'a geçerek daha fazlasını kullan.",
+    "tryOnBusy": "Sanal deneme şu an yoğun. Birazdan tekrar dene.",
+    "tryOnPoseFailed": "Manken oluşturulamadı. Profil fotoğrafın tam boy değilse kaldırıp tekrar dene."
   },
   "wardrobe": {
     "title": "Dolabım",
@@ -481,7 +483,11 @@
     "imageReadFailed": "Görsel okunamadı, lütfen tekrar dene.",
     "imageProcessFailed": "Görsel işlenemedi. Lütfen tekrar dene.",
     "productImageFailed": "Ürün görseli alınamadı. Lütfen tekrar dene.",
-    "bgRemoveFailed": "Arkaplan silinemedi. Lütfen tekrar dene."
+    "bgRemoveFailed": "Arkaplan silinemedi. Lütfen tekrar dene.",
+    "networkFailed": "Bağlantı sorunu. İnternetini kontrol edip tekrar dene.",
+    "imageFormatUnsupported": "Bu fotoğraf formatı desteklenmiyor. Kamerayla çekmeyi deneyebilirsin.",
+    "imageTooLarge": "Fotoğraf çok büyük. Lütfen başka bir fotoğraf dene.",
+    "genericRetry": "Bir şeyler ters gitti. Lütfen tekrar dene."
   },
   "scan": {
     "preparingImage": "Görsel hazırlanıyor…",
@@ -516,7 +522,8 @@
     "tip3": "• Yeterli ışık olduğundan emin ol",
     "bgCleaned": "BG Temizlendi",
     "bgCleanedWeb": "BG Temizlendi (Web Modu)",
-    "reselect": "Yeniden Seç"
+    "reselect": "Yeniden Seç",
+    "photoTip": "İpucu: Kıyafeti düz serip tamamı görünecek şekilde çek."
   },
   "fabric": {
     "pamuk": "Pamuk",

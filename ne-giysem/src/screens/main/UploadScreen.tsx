@@ -16,6 +16,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
@@ -88,8 +89,8 @@ export default function UploadScreen({ navigation }: Props) {
         const processed = await removeBackground(base64Input);
         setProcessedBase64(processed);
       }
-    } catch (err: any) {
-      Alert.alert(t('combos.errorTitle'), err.message ?? t('errors.bgRemoveFailed'));
+    } catch (err) {
+      Alert.alert(t('combos.errorTitle'), friendlyError(err));
       setOriginalUri(null);
     } finally {
       setLoading(false);
@@ -143,6 +144,8 @@ export default function UploadScreen({ navigation }: Props) {
               <Text style={styles.pickCardSub}>{t('upload.gallerySub')}</Text>
             </View>
           </TouchableOpacity>
+
+          <Text style={styles.photoTip}>{t('upload.photoTip')}</Text>
 
           <View style={styles.tipBox}>
             <Text style={styles.tipTitle}>{t('upload.tipTitle')}</Text>
@@ -265,6 +268,12 @@ const styles = StyleSheet.create({
   pickCardSub: {
     ...typography.bodySmall,
     color: colors.textSecondary,
+  },
+  photoTip: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
   tipBox: {
     marginTop: spacing.lg,
