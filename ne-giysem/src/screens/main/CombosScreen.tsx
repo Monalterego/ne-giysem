@@ -172,12 +172,14 @@ function ModelModal({
   imageUrl,
   hasExtras,
   isLoading,
+  isFirstTryOn,
   onClose,
 }: {
   visible: boolean;
   imageUrl: string | null;
   hasExtras: boolean;
   isLoading: boolean;
+  isFirstTryOn: boolean;
   onClose: () => void;
 }) {
   const insets    = useSafeAreaInsets();
@@ -287,6 +289,9 @@ function ModelModal({
             <Text style={modalStyles.loadingNote}>
               {t('combos.tryOnNote')}
             </Text>
+            {isFirstTryOn && (
+              <Text style={modalStyles.firstNote}>{t('combos.firstTryOnNote')}</Text>
+            )}
           </View>
         ) : (
           /* ── Sonuç ekranı ── */
@@ -426,6 +431,7 @@ export default function CombosScreen() {
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
   const [planTarget,           setPlanTarget]            = useState<Combo | null>(null);
+  const [isFirstTryOn,         setIsFirstTryOn]          = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -528,6 +534,9 @@ export default function CombosScreen() {
       // 1. Manken kaynağını çöz: avatarUrl → kayıtlı manken → yeni üretim
       const savedMannequinUrl = (profile?.mannequin_url ?? null) as string | null;
       let modelSource: string | null = avatarUrl ?? null;
+
+      // Avatar da yok, kayıtlı manken de yoksa → ilk üretim (uzun sürer, kullanıcıya haber ver)
+      setIsFirstTryOn(!avatarUrl && !savedMannequinUrl);
 
       // Kayıtlı manken varsa canlı mı doğrula (FASHN CDN çıktıları 72 saatte silinir — ölü URL 403 verir)
       if (!modelSource && savedMannequinUrl) {
@@ -862,6 +871,7 @@ export default function CombosScreen() {
         imageUrl={modelImageUrl}
         hasExtras={modelHasExtras}
         isLoading={modelLoading}
+        isFirstTryOn={isFirstTryOn}
         onClose={() => { setModelModalVisible(false); setModelLoading(false); setModelImageUrl(null); }}
       />
       <PremiumModal
@@ -1361,6 +1371,14 @@ const modalStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     marginTop: spacing.md,
+  },
+  firstNote: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 20,
+    lineHeight: 17,
   },
 
   // Parça lightbox

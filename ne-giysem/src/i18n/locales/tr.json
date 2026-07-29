@@ -103,7 +103,8 @@
     "tryOnNote": "Bu işlem birkaç dakika sürebilir, ekranı açık tutman yeterli.",
     "limitBody": "Ücretsiz planda %{count} sanal deneme hakkın var. Premium'a geçerek daha fazlasını kullan.",
     "tryOnBusy": "Sanal deneme şu an yoğun. Birazdan tekrar dene.",
-    "tryOnPoseFailed": "Manken oluşturulamadı. Profil fotoğrafın tam boy değilse kaldırıp tekrar dene."
+    "tryOnPoseFailed": "Manken oluşturulamadı. Profil fotoğrafın tam boy değilse kaldırıp tekrar dene.",
+    "firstTryOnNote": "İlk deneme biraz uzun sürebilir — mankenin bir kez hazırlanıyor."
   },
   "wardrobe": {
     "title": "Dolabım",
@@ -253,7 +254,8 @@
     "editProfile": "Profilimi Düzenle",
     "nameUpdateError": "İsim güncellenemedi. Tekrar dene.",
     "photoUploadError": "Fotoğraf yüklenemedi. Lütfen tekrar dene.",
-    "nameEmpty": "İsim boş bırakılamaz."
+    "nameEmpty": "İsim boş bırakılamaz.",
+    "avatarTip": "Sanal deneme için: tam boy, düz duruş, sade arka plan."
   },
   "style": {
     "choiceTitle": "Stilini Tanıyalım",

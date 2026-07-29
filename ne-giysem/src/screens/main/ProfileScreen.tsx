@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -126,25 +127,28 @@ export default function ProfileScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.8,
+      quality: 0.9,
     });
     if (result.canceled || !result.assets[0]) return;
 
     const asset = result.assets[0];
     setUploadingAvatar(true);
     try {
-      const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const path = `${user.id}/avatar.${ext}`;
+      // HEIC → JPEG. iPhone galerisi HEIC verir; FASHN okuyamaz, RN gösteremez.
+      const normalized = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      const path = `${user.id}/avatar.jpg`;
 
-      const fetchRes    = await fetch(asset.uri);
+      const fetchRes    = await fetch(normalized.uri);
       const arrayBuffer = await fetchRes.arrayBuffer();
       const bytes       = new Uint8Array(arrayBuffer);
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, bytes, { contentType: `image/${ext}`, upsert: true });
+        .upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
@@ -230,9 +234,7 @@ export default function ProfileScreen() {
                 {user?.avatarUrl ? t('profile.changePhoto') : t('profile.addPhoto')}
               </Text>
             </TouchableOpacity>
-            <Text style={styles.avatarPickerHint}>
-              📸 En iyi sonuç için: boydan (tam vücut), tek başına, düz dururken, sade arka planlı bir fotoğraf yükle.
-            </Text>
+            <Text style={styles.avatarPickerHint}>{t('profile.avatarTip')}</Text>
           </View>
         </View>
 

@@ -103,7 +103,8 @@
     "tryOnNote": "This may take a few minutes — just keep the screen open.",
     "limitBody": "Your free plan includes %{count} virtual try-ons. Upgrade to Premium for more.",
     "tryOnBusy": "Virtual try-on is busy right now. Please try again shortly.",
-    "tryOnPoseFailed": "Couldn't create the model. If your profile photo isn't full-body, remove it and try again."
+    "tryOnPoseFailed": "Couldn't create the model. If your profile photo isn't full-body, remove it and try again.",
+    "firstTryOnNote": "The first try-on takes longer — your model is being created once."
   },
   "wardrobe": {
     "title": "My Wardrobe",
@@ -253,7 +254,8 @@
     "editProfile": "Edit My Profile",
     "nameUpdateError": "Couldn't update name. Try again.",
     "photoUploadError": "Couldn't upload photo. Please try again.",
-    "nameEmpty": "Name can't be empty."
+    "nameEmpty": "Name can't be empty.",
+    "avatarTip": "For virtual try-on: full body, standing straight, plain background."
   },
   "style": {
     "choiceTitle": "Let's Discover Your Style",
