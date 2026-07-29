@@ -5,13 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Image,
   ActivityIndicator,
   Alert,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -244,7 +244,7 @@ export default function ScanScreen({ navigation }: Props) {
       {loading && (
         <View style={styles.loadingOverlay}>
           {loadingUri && (
-            <Image source={{ uri: loadingUri }} style={styles.loadingPreview} resizeMode="contain" />
+            <Image source={{ uri: loadingUri }} style={styles.loadingPreview} contentFit="contain" />
           )}
           <View style={styles.loadingBox}>
             <ActivityIndicator color={colors.textSecondary} size="large" />

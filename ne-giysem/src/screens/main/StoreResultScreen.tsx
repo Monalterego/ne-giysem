@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Modal,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ScanStackParamList } from '../../navigation/types';
@@ -119,7 +119,9 @@ function WardrobeComboCard({ items, onItemPress }: { items: WardrobeItem[]; onIt
             <Image
               source={{ uri: item.processedImageUrl }}
               style={styles.comboImg}
-              resizeMode="contain"
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={150}
             />
             <Text style={styles.comboImgLabel}>
               {catLabel(item.category)}
@@ -214,7 +216,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
 
         {/* Taranan ürün görseli */}
         <View style={styles.productImageWrap}>
-          <Image source={{ uri: scannedUri }} style={styles.productImage} resizeMode="contain" />
+          <Image source={{ uri: scannedUri }} style={styles.productImage} contentFit="contain" />
           <View style={styles.productBadge}>
             <Text style={styles.productBadgeText}>{t('storeResult.scannedProduct')}</Text>
           </View>
@@ -284,7 +286,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
           <View style={styles.lightboxContainer}>
             {selectedLightboxItem?.processedImageUrl && (
-              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} resizeMode="contain" />
+              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
             <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />

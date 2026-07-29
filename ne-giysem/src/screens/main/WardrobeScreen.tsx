@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
-  Image,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -285,7 +285,9 @@ export default function WardrobeScreen({ navigation }: Props) {
         <Image
           source={{ uri: item.processedImageUrl }}
           style={styles.gridImage}
-          resizeMode="contain"
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          transition={150}
         />
         {!selectionMode && (
           <TouchableOpacity
@@ -322,7 +324,9 @@ export default function WardrobeScreen({ navigation }: Props) {
         <Image
           source={{ uri: item.processedImageUrl }}
           style={styles.listImage}
-          resizeMode="contain"
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          transition={150}
         />
         <View style={styles.listInfo}>
           <Text style={styles.listCategory}>

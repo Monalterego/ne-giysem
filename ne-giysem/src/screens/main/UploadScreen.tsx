@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
@@ -181,7 +181,7 @@ export default function UploadScreen({ navigation }: Props) {
       {/* Yükleniyor */}
       {loading && originalUri && (
         <View style={styles.loadingContainer}>
-          <Image source={{ uri: originalUri }} style={styles.previewImage} resizeMode="contain" />
+          <Image source={{ uri: originalUri }} style={styles.previewImage} contentFit="contain" />
           <View style={styles.loadingOverlay}>
             <ActivityIndicator color={colors.accent} size="large" />
             <Text style={styles.loadingText}>{t('scan.removingBg')}</Text>
@@ -196,7 +196,7 @@ export default function UploadScreen({ navigation }: Props) {
             <Image
               source={{ uri: `data:image/png;base64,${processedBase64}` }}
               style={styles.previewImage}
-              resizeMode="contain"
+              contentFit="contain"
             />
             <View style={styles.badge}>
               <Feather name="check" size={12} color={colors.white} />

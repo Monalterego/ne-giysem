@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Image,
   PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -76,8 +76,9 @@ const MoodboardCard = React.memo(function MoodboardCard({
         <Image
           source={{ uri: imageUri }}
           style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          fadeDuration={150}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
           onError={() => setFailed(true)}
         />
       ) : (

@@ -8,8 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -220,7 +220,7 @@ export default function ProfileScreen() {
               {uploadingAvatar ? (
                 <ActivityIndicator color={colors.textSecondary} />
               ) : user?.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} resizeMode="contain" />
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
               ) : (
                 <Feather name="user" size={48} color={colors.border} />
               )}

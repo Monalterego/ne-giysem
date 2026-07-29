@@ -5,10 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Modal,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -222,7 +222,9 @@ export default function CalendarScreen({ navigation }: Props) {
                     <Image
                       source={{ uri: thumb }}
                       style={[styles.dayThumb, plannedOnly && { opacity: 0.45 }]}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      transition={150}
                     />
                   ) : null}
                   {thumb && !selected ? (
@@ -266,7 +268,9 @@ export default function CalendarScreen({ navigation }: Props) {
                           <Image
                             source={{ uri: item.processedImageUrl }}
                             style={styles.comboImg}
-                            resizeMode="contain"
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
+                            transition={150}
                           />
                         </TouchableOpacity>
                       ))}
@@ -315,7 +319,9 @@ export default function CalendarScreen({ navigation }: Props) {
                           <Image
                             source={{ uri: item.processedImageUrl }}
                             style={styles.comboImg}
-                            resizeMode="contain"
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
+                            transition={150}
                           />
                         </TouchableOpacity>
                       ))}
@@ -335,7 +341,7 @@ export default function CalendarScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
           <View style={styles.lightboxContainer}>
             {selectedLightboxItem?.processedImageUrl && (
-              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} resizeMode="contain" />
+              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
             <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />

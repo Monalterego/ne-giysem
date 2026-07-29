@@ -7,13 +7,13 @@ import {
   StyleSheet,
   FlatList,
   ScrollView,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Modal,
   Share,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -90,7 +90,9 @@ const ComboCard = React.memo(function ComboCard({
             <Image
               source={{ uri: item.processedImageUrl }}
               style={styles.itemImage}
-              resizeMode="contain"
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={150}
             />
             <Text style={styles.itemLabel}>{catLabel(item.category)}</Text>
           </TouchableOpacity>
@@ -296,7 +298,9 @@ function ModelModal({
               <Image
                 source={{ uri: imageUrl }}
                 style={modalStyles.image}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={150}
               />
               {hasExtras && (
                 <Text style={modalStyles.modelNote}>
@@ -816,7 +820,7 @@ export default function CombosScreen() {
         <TouchableOpacity style={modalStyles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
           <View style={modalStyles.lightboxContainer}>
             {selectedLightboxItem?.processedImageUrl && (
-              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={modalStyles.lightboxImage} resizeMode="contain" />
+              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={modalStyles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
             <TouchableOpacity style={modalStyles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />

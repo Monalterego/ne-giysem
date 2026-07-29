@@ -4,11 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
@@ -176,28 +177,33 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       const uuid = uuidv4();
       const basePath = `${user.id}/${uuid}`;
 
+      // Depolama boyutunu düşür — 1400px PNG ~3MB, 1000px ~1MB. Şeffaflık korunur (PNG kalır).
+      let uploadBase64 = processedBase64;
+      try {
+        const shrunk = await ImageManipulator.manipulateAsync(
+          `data:image/png;base64,${processedBase64}`,
+          [{ resize: { width: 1000 } }],
+          { format: ImageManipulator.SaveFormat.PNG, base64: true },
+        );
+        if (shrunk.base64) uploadBase64 = shrunk.base64;
+      } catch {
+        // küçültme başarısızsa orijinali kullan
+      }
+
       // base64 → Uint8Array (native-uyumlu, atob/Blob yok)
-      const bytes = base64Decode(processedBase64);
+      const bytes = base64Decode(uploadBase64);
 
-      // Orijinal → processedBase64'ü kullan (MVP: original kaybolmaz, remove.bg PNG yeterli)
-      const { error: origError } = await supabase.storage
-        .from('wardrobe-items')
-        .upload(`${basePath}_original.png`, bytes, { contentType: 'image/png', upsert: true });
-      if (origError) throw new Error(origError.message);
-
-      // Remove.bg çıktısını Storage'a yükle
+      // Tek yükleme — original ve processed aynı veri olduğu için iki kopya gereksizdi
       const { error: procError } = await supabase.storage
         .from('wardrobe-items')
         .upload(`${basePath}.png`, bytes, { contentType: 'image/png', upsert: true });
       if (procError) throw new Error(procError.message);
 
-      // Public URL'leri al
-      const { data: { publicUrl: originalImageUrl } } = supabase.storage
-        .from('wardrobe-items')
-        .getPublicUrl(`${basePath}_original.png`);
-      const { data: { publicUrl: processedImageUrl } } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('wardrobe-items')
         .getPublicUrl(`${basePath}.png`);
+      const originalImageUrl  = publicUrl;
+      const processedImageUrl = publicUrl;
 
       // wardrobe_items tablosuna kaydet
       const now = new Date().toISOString();
@@ -305,7 +311,9 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
                 : `data:image/png;base64,${processedBase64}`,
             }}
             style={styles.image}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={150}
           />
         </View>
 
