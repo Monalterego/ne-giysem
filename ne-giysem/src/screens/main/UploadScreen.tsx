@@ -194,7 +194,7 @@ export default function UploadScreen({ navigation }: Props) {
         <View style={styles.resultContainer}>
           <View style={styles.imageWrapper}>
             <Image
-              source={{ uri: `data:image/png;base64,${processedBase64}` }}
+              source={{ uri: `data:image/jpeg;base64,${processedBase64}` }}
               style={styles.previewImage}
               contentFit="contain"
             />

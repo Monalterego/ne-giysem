@@ -56,6 +56,17 @@ function buildPrompt(): string {
 yatakta/masada serili, katlanmış, buruşuk, açısı bozuk olabilir. Kıyafetin TAM formunu
 düşün, sadece görünen silüete bakma.
 
+• ASKIDA duran kıyafet olabilir. Askı, hem üstlere hem alt giyimlere takılır — askının
+  varlığı kategori belirtmez. Askının kıyafetin NERESİNE tutunduğuna bak:
+  omuzlardan tutunuyorsa üst/elbise, bel bandından klipslerle tutunuyorsa ALT (etek/pantolon).
+
+ZORUNLU KONTROL — kategori kararından önce şu iki soruyu cevapla:
+1) YAKA var mı? 2) KOL veya kol yeri (kolsuz üstlerde omuz açıklığı) var mı?
+   İkisi de YOKSA → bu bir ÜST DEĞİLDİR. Belden aşağı giyilen bir parça (etek/pantolon/şort)
+   ya da elbise olma olasılığı çok yüksek.
+• Fırfırlı/katmanlı, yukarıdan aşağı genişleyen, yakası ve kolu olmayan parça → ETEK ("alt").
+• Bel bandı / lastik / kemer tokası görüyorsan → ALT (ya da elbise, üst gövde de varsa).
+
 KATEGORİ KARARI — önce şuna karar ver, sonra diğer alanları doldur:
 • Bel bandı + İKİ ayrı paça/bacak görüyorsan → "alt" (şort, pantolon, tayt). Kısa ve düz
   serilmiş şort, kare bir kumaş parçası gibi görünebilir — yanılma.

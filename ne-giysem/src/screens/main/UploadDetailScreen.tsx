@@ -181,9 +181,9 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       let uploadBase64 = processedBase64;
       try {
         const shrunk = await ImageManipulator.manipulateAsync(
-          `data:image/png;base64,${processedBase64}`,
+          `data:image/jpeg;base64,${processedBase64}`,
           [{ resize: { width: 1000 } }],
-          { format: ImageManipulator.SaveFormat.PNG, base64: true },
+          { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG, base64: true },
         );
         if (shrunk.base64) uploadBase64 = shrunk.base64;
       } catch {
@@ -196,12 +196,12 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       // Tek yükleme — original ve processed aynı veri olduğu için iki kopya gereksizdi
       const { error: procError } = await supabase.storage
         .from('wardrobe-items')
-        .upload(`${basePath}.png`, bytes, { contentType: 'image/png', upsert: true });
+        .upload(`${basePath}.jpg`, bytes, { contentType: 'image/jpeg', upsert: true });
       if (procError) throw new Error(procError.message);
 
       const { data: { publicUrl } } = supabase.storage
         .from('wardrobe-items')
-        .getPublicUrl(`${basePath}.png`);
+        .getPublicUrl(`${basePath}.jpg`);
       const originalImageUrl  = publicUrl;
       const processedImageUrl = publicUrl;
 
@@ -308,7 +308,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             source={{
               uri: isEditMode
                 ? existingItem!.processedImageUrl
-                : `data:image/png;base64,${processedBase64}`,
+                : `data:image/jpeg;base64,${processedBase64}`,
             }}
             style={styles.image}
             contentFit="contain"

@@ -33,8 +33,9 @@ serve(async (req) => {
     const binary = Uint8Array.from(atob(image_b64), (c) => c.charCodeAt(0));
     const form = new FormData();
     form.append('image_file', new Blob([binary], { type: 'image/jpeg' }), 'image.jpg');
-    form.append('format', 'png');
-    form.append('channels', 'rgba');
+    form.append('format', 'jpg');          // alpha yok → arka plan düz renk
+    form.append('bg_color', 'FFFFFF');     // beyaz zemin (garanti için)
+    // channels satırı KALDIRILDI — rgba şeffaflık istiyordu, FASHN'ı bozan buydu
 
     const res = await fetch(POOF_URL, {
       method: 'POST',

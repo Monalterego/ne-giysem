@@ -29,7 +29,7 @@ type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
 
 // VisionResult'ı lokal motor için WardrobeItem şekline dönüştürür
 function visionToWardrobeItem(v: VisionResult, processedBase64: string): WardrobeItem {
-  const uri = `data:image/png;base64,${processedBase64}`;
+  const uri = `data:image/jpeg;base64,${processedBase64}`;
   return {
     id: 'scanned',
     userId: '',
@@ -178,7 +178,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
     setSmartAnalyzing(false);
   }, [visionResult, items, weather]);
 
-  const scannedUri = `data:image/png;base64,${processedBase64}`;
+  const scannedUri = `data:image/jpeg;base64,${processedBase64}`;
 
   // Parça fotoğrafı büyütme (lightbox) — Combos ekranıyla aynı desen
   const [lightboxItemId, setLightboxItemId] = useState<string | null>(null);
