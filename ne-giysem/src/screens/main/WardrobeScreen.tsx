@@ -283,7 +283,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         delayLongPress={350}
       >
         <Image
-          source={{ uri: item.processedImageUrl }}
+          source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
           style={styles.gridImage}
           contentFit="contain"
           cachePolicy="memory-disk"
@@ -322,7 +322,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         delayLongPress={350}
       >
         <Image
-          source={{ uri: item.processedImageUrl }}
+          source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
           style={styles.listImage}
           contentFit="contain"
           cachePolicy="memory-disk"

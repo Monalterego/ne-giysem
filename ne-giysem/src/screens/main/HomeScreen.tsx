@@ -70,7 +70,7 @@ function TodayComboCard({ combo, onItemPress }: { combo: Combo; onItemPress: (it
             activeOpacity={0.85}
           >
             <Image
-              source={{ uri: item.processedImageUrl }}
+              source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
               style={styles.comboImage}
               contentFit="contain"
               cachePolicy="memory-disk"
@@ -224,7 +224,7 @@ export default function HomeScreen({ navigation }: Props) {
     for (const e of dayEntries) {
       for (const id of e.items) {
         const found = items.find((i) => i.id === id);
-        if (found?.processedImageUrl) return found.processedImageUrl;
+        if (found) return found.thumbUrl ?? found.processedImageUrl;
       }
     }
     return null;
@@ -356,7 +356,7 @@ export default function HomeScreen({ navigation }: Props) {
               {preview.map((item) => (
                 <View key={item.id} style={styles.previewItem}>
                   <Image
-                    source={{ uri: item.processedImageUrl }}
+                    source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
                     style={styles.previewImage}
                     contentFit="contain"
                     cachePolicy="memory-disk"

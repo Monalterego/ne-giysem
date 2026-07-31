@@ -117,7 +117,7 @@ function WardrobeComboCard({ items, onItemPress }: { items: WardrobeItem[]; onIt
             activeOpacity={0.85}
           >
             <Image
-              source={{ uri: item.processedImageUrl }}
+              source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
               style={styles.comboImg}
               contentFit="contain"
               cachePolicy="memory-disk"

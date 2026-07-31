@@ -109,7 +109,7 @@ export default function CalendarScreen({ navigation }: Props) {
   const firstThumbOf = (list: { items: string[] }[]): string | null => {
     for (const e of list) {
       const resolved = resolveItems(e.items);
-      if (resolved.length && resolved[0].processedImageUrl) return resolved[0].processedImageUrl;
+      if (resolved.length && resolved[0].processedImageUrl) return resolved[0].thumbUrl ?? resolved[0].processedImageUrl;
     }
     return null;
   };
@@ -266,7 +266,7 @@ export default function CalendarScreen({ navigation }: Props) {
                           activeOpacity={0.85}
                         >
                           <Image
-                            source={{ uri: item.processedImageUrl }}
+                            source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
                             style={styles.comboImg}
                             contentFit="contain"
                             cachePolicy="memory-disk"
@@ -317,7 +317,7 @@ export default function CalendarScreen({ navigation }: Props) {
                           activeOpacity={0.85}
                         >
                           <Image
-                            source={{ uri: item.processedImageUrl }}
+                            source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
                             style={styles.comboImg}
                             contentFit="contain"
                             cachePolicy="memory-disk"

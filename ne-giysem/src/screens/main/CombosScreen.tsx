@@ -88,7 +88,7 @@ const ComboCard = React.memo(function ComboCard({
             activeOpacity={0.82}
           >
             <Image
-              source={{ uri: item.processedImageUrl }}
+              source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
               style={styles.itemImage}
               contentFit="contain"
               cachePolicy="memory-disk"

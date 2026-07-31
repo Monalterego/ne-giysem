@@ -32,6 +32,8 @@ export interface WardrobeItem {
   userId: string;
   originalImageUrl: string;
   processedImageUrl: string;
+  /** 400px küçük kopya — liste/grid gösterimlerinde kullanılır. Eski kayıtlarda yok. */
+  thumbUrl?: string;
   category: ClothingCategory;
   subCategory?: string;
   colors: string[];

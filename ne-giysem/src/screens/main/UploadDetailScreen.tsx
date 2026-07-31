@@ -205,6 +205,33 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       const originalImageUrl  = publicUrl;
       const processedImageUrl = publicUrl;
 
+      // ── Thumbnail (400px) — liste ekranlarında kullanılır, egress'i ~10x düşürür
+      let thumbUrl: string | null = null;
+      try {
+        const thumb = await ImageManipulator.manipulateAsync(
+          `data:image/jpeg;base64,${processedBase64}`,
+          [{ resize: { width: 400 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+        );
+        if (thumb.base64) {
+          const thumbBytes = base64Decode(thumb.base64);
+          const { error: thumbErr } = await supabase.storage
+            .from('wardrobe-items')
+            .upload(`${basePath}_thumb.jpg`, thumbBytes, {
+              contentType: 'image/jpeg',
+              upsert: true,
+            });
+          if (!thumbErr) {
+            const { data } = supabase.storage
+              .from('wardrobe-items')
+              .getPublicUrl(`${basePath}_thumb.jpg`);
+            thumbUrl = data.publicUrl;
+          }
+        }
+      } catch {
+        // thumbnail üretilemezse sorun değil — ekranlar asıl görsele düşer
+      }
+
       // wardrobe_items tablosuna kaydet
       const now = new Date().toISOString();
       const { error: dbError } = await supabase.from('wardrobe_items').insert({
@@ -224,6 +251,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         signals:             aiDetails?.signals    ?? [],
         image_url:           originalImageUrl,
         processed_image_url: processedImageUrl,
+        thumb_url:           thumbUrl,
         created_at:          now,
       });
       if (dbError) throw new Error(dbError.message);
@@ -246,6 +274,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         signals:      aiDetails?.signals ?? [],
         originalImageUrl,
         processedImageUrl,
+        thumbUrl: thumbUrl ?? undefined,
         createdAt: now,
       });
 
