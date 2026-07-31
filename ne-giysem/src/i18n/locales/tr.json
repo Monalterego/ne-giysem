@@ -255,7 +255,9 @@
     "nameUpdateError": "İsim güncellenemedi. Tekrar dene.",
     "photoUploadError": "Fotoğraf yüklenemedi. Lütfen tekrar dene.",
     "nameEmpty": "İsim boş bırakılamaz.",
-    "avatarTip": "Sanal deneme için: tam boy, düz duruş, sade arka plan."
+    "avatarTip": "Sanal deneme için: tam boy, düz duruş, sade arka plan.",
+    "changeStyle": "Stilini Yeniden Belirle →",
+    "changeStyleConfirm": "Stil testini baştan çözeceksin. Mevcut stil profilin güncellenecek."
   },
   "style": {
     "choiceTitle": "Stilini Tanıyalım",
@@ -464,7 +466,7 @@
     "home": "Ana Sayfa",
     "wardrobe": "Dolap",
     "combos": "Kombin",
-    "scan": "Tara",
+    "scan": "Uyar mı?",
     "profile": "Profil"
   },
   "occasion": {
@@ -497,8 +499,8 @@
     "urlPlaceholder": "https://www.zara.com/...",
     "readingProduct": "Ürün sayfası okunuyor…",
     "comparingWardrobe": "Dolabınla karşılaştırılıyor",
-    "title": "Mağaza Tarama",
-    "subtitle": "Mağazadaki ürünü fotoğrafla, dolabınla uyumunu gör",
+    "title": "Bunu alayım mı?",
+    "subtitle": "Mağazadaki ürünü fotoğrafla — dolabınla uyar mı, görelim",
     "cameraTitle": "Mağazada Fotoğrafla",
     "cameraDesc": "Beğendiğin ürünün fotoğrafını çek, dolabınla anında karşılaştır",
     "takePhoto": "Fotoğraf Çek",

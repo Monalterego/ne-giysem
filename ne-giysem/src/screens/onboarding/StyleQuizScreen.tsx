@@ -26,6 +26,8 @@ type GroupName = 'Zamansız' | 'Feminen' | 'Edgy' | 'Günlük & Rahat' | 'Diğer
 
 interface StyleOption { label: string; scores: { style: string; pts: number }[]; }
 interface GroupOption { label: string; group: GroupName; }
+// Geri dönebilmek için her cevabın kaydı — puanları geri almakta kullanılır
+type AnswerRecord = { phase: 'group' | 'style'; index: number; optionIndex: number };
 interface GroupQuestion { question: string; options: GroupOption[]; }
 interface StyleQuestion { question: string; options: StyleOption[]; }
 
@@ -243,6 +245,7 @@ export default function StyleQuizScreen({ navigation }: Props) {
   const [activeGroup,    setActiveGroup]    = useState<GroupName | null>(null);
   const [currentIndex,   setCurrentIndex]   = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [answers,        setAnswers]        = useState<AnswerRecord[]>([]);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const styleQs   = activeGroup ? STYLE_QUESTIONS[activeGroup] : [];
@@ -265,6 +268,7 @@ export default function StyleQuizScreen({ navigation }: Props) {
       const ng  = { ...groupScores };
       ng[opt.group] = (ng[opt.group] ?? 0) + 3;
       setGroupScores(ng);
+      setAnswers((prev) => [...prev, { phase: 'group', index: currentIndex, optionIndex }]);
 
       setTimeout(() => {
         if (currentIndex < GROUP_QUESTIONS.length - 1) {
@@ -289,6 +293,7 @@ export default function StyleQuizScreen({ navigation }: Props) {
       const ns  = { ...styleScores };
       for (const s of opt.scores) ns[s.style] = (ns[s.style] ?? 0) + s.pts;
       setStyleScores(ns);
+      setAnswers((prev) => [...prev, { phase: 'style', index: currentIndex, optionIndex }]);
 
       const qs = activeGroup ? STYLE_QUESTIONS[activeGroup] : [];
       setTimeout(() => {
@@ -303,6 +308,52 @@ export default function StyleQuizScreen({ navigation }: Props) {
           navigation.navigate('StyleResult', { selectedStyles: final });
         }
       }, 380);
+    }
+  };
+
+  // Önceki soruya dön — son cevabın puanını geri alarak (yoksa cevap iki kez sayılır)
+  const handleBack = () => {
+    const last = answers[answers.length - 1];
+    if (!last) { navigation.goBack(); return; }   // hiç cevap yok → ekrandan çık
+
+    // Son cevabın puanını GERİ AL
+    if (last.phase === 'group') {
+      const q   = GROUP_QUESTIONS[last.index];
+      const opt = q.options[last.optionIndex];
+      setGroupScores((prev) => {
+        const n = { ...prev };
+        n[opt.group] = (n[opt.group] ?? 0) - 3;
+        if (n[opt.group] <= 0) delete n[opt.group];
+        return n;
+      });
+    } else {
+      const qs  = activeGroup ? STYLE_QUESTIONS[activeGroup] : [];
+      const q   = qs[last.index];
+      const opt = q?.options[last.optionIndex];
+      if (opt) {
+        setStyleScores((prev) => {
+          const n = { ...prev };
+          for (const s of opt.scores) {
+            n[s.style] = (n[s.style] ?? 0) - s.pts;
+            if (n[s.style] <= 0) delete n[s.style];
+          }
+          return n;
+        });
+      }
+    }
+
+    setAnswers((prev) => prev.slice(0, -1));
+    setSelectedOption(null);
+
+    // Konum: style fazının ilk sorusundaysak GROUP fazının SON sorusuna dön
+    if (last.phase === 'style' && last.index === 0) {
+      advanceWithFade(() => {
+        setPhase('group');
+        setActiveGroup(null);
+        setCurrentIndex(GROUP_QUESTIONS.length - 1);
+      });
+    } else {
+      advanceWithFade(() => setCurrentIndex(last.index));
     }
   };
 
@@ -322,7 +373,12 @@ export default function StyleQuizScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.backBtn}
+        onPress={handleBack}
+        disabled={selectedOption !== null}
+        activeOpacity={0.7}
+      >
         <Feather name="arrow-left" size={20} color={colors.text} />
       </TouchableOpacity>
 

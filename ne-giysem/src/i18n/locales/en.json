@@ -255,7 +255,9 @@
     "nameUpdateError": "Couldn't update name. Try again.",
     "photoUploadError": "Couldn't upload photo. Please try again.",
     "nameEmpty": "Name can't be empty.",
-    "avatarTip": "For virtual try-on: full body, standing straight, plain background."
+    "avatarTip": "For virtual try-on: full body, standing straight, plain background.",
+    "changeStyle": "Redo Style Quiz →",
+    "changeStyleConfirm": "You'll retake the style quiz. Your current style profile will be updated."
   },
   "style": {
     "choiceTitle": "Let's Discover Your Style",
@@ -464,7 +466,7 @@
     "home": "Home",
     "wardrobe": "Wardrobe",
     "combos": "Outfits",
-    "scan": "Scan",
+    "scan": "Match?",
     "profile": "Profile"
   },
   "occasion": {
@@ -497,8 +499,8 @@
     "urlPlaceholder": "https://www.zara.com/...",
     "readingProduct": "Reading product page…",
     "comparingWardrobe": "Comparing with your wardrobe",
-    "title": "Store Scan",
-    "subtitle": "Snap a product in-store and see how it fits your wardrobe",
+    "title": "Should I buy this?",
+    "subtitle": "Snap an item in-store — let's see if it fits your wardrobe",
     "cameraTitle": "Snap In-Store",
     "cameraDesc": "Photograph an item you like and instantly compare it with your wardrobe",
     "takePhoto": "Take Photo",

@@ -271,6 +271,28 @@ export default function ProfileScreen() {
                   {i < styleEntries.length - 1 && <View style={styles.dnaSeparator} />}
                 </View>
               ))}
+              <TouchableOpacity
+                style={styles.changeStyleBtn}
+                onPress={() => {
+                  Alert.alert(
+                    t('profile.changeStyle'),
+                    t('profile.changeStyleConfirm'),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      {
+                        text: t('common.done'),
+                        onPress: () => {
+                          setTargetOnboardingScreen('StyleChoice');
+                          setOnboarded(false);
+                        },
+                      },
+                    ],
+                  );
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.changeStyleText}>{t('profile.changeStyle')}</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -611,6 +633,16 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginVertical: spacing.md,
+  },
+  changeStyleBtn: {
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+    alignSelf: 'center',
+  },
+  changeStyleText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
   },
 
   // Hesap — liste item

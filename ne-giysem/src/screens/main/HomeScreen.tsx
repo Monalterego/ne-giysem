@@ -245,9 +245,13 @@ export default function HomeScreen({ navigation }: Props) {
             </Text>
             <Text style={styles.greetingSub}>{t('home.greetingSub')}</Text>
           </View>
-          <View style={styles.avatar}>
+          <TouchableOpacity
+            style={styles.avatar}
+            onPress={() => (navigation as any).navigate('Profile')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
         <View style={styles.separator} />
 
