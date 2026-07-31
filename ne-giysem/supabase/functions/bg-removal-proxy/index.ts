@@ -34,8 +34,8 @@ serve(async (req) => {
     const form = new FormData();
     form.append('image_file', new Blob([binary], { type: 'image/jpeg' }), 'image.jpg');
     form.append('format', 'jpg');          // alpha yok → arka plan düz renk
-    form.append('bg_color', 'FFFFFF');     // beyaz zemin (garanti için)
-    // channels satırı KALDIRILDI — rgba şeffaflık istiyordu, FASHN'ı bozan buydu
+    form.append('channels', 'rgb');        // opaque, şeffaflık yok — FASHN'ı bozan buydu
+    form.append('bg_color', '#ffffff');    // beyaz zemin (rgb ile birlikte çalışır, # şart)
 
     const res = await fetch(POOF_URL, {
       method: 'POST',
