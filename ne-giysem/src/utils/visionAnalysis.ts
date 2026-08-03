@@ -84,18 +84,21 @@ KATEGORİ KARARI — önce şuna karar ver, sonra diğer alanları doldur:
 2. Elbise BOYU: eteğin nerede bittiğine bak → diz ÜSTÜ = mini, baldır/diz-altı = midi, ayak bileği/yere kadar = maxi
 3. Parlak/özel KUMAŞ: yüzey parlıyorsa ASLA "pamuk" deme
 4. "signals" — motorun okuduğu tek alan. Eksik sinyal = yanlış kombin.
+   • SPOR ÇANTASI ("spor_cantasi") seçtiysen signals'a "athletic" EKLE — motor spor
+     parçalarını sadece spor okazyonunda kullanır. Normal bir omuz/tote çantasına
+     athletic EKLEME.
 
 {
   "category": "ust" | "alt" | "elbise_tulum" | "dis" | "ayakkabi" | "canta" | "aksesuar",
   "subcategory": aşağıdaki değerlerden biri (category ile TUTARLI olmalı):
-    ust için → "tisort" | "bluz" | "gomlek" | "kazak" | "triko" | "hirka" | "yelek" | "sweatshirt" | "hoodie" | "body"
-    alt için → "pantolon" | "jean" | "etek" | "sort" | "tayt"
-    elbise_tulum için → "mini_elbise" | "midi_elbise" | "maxi_elbise" | "tulum"
+    ust için → "tisort" | "bluz" | "gomlek" | "kazak" | "triko" | "hirka" | "yelek" | "sweatshirt" | "hoodie" | "body" | "crop_top" | "atlet" | "bustiyer" | "tunik" | "polo"
+    alt için → "pantolon" | "jean" | "etek" | "sort" | "tayt" | "kargo" | "palazzo" | "culotte" | "kapri" | "jogger" | "deri_pantolon"
+    elbise_tulum için → "mini_elbise" | "midi_elbise" | "maxi_elbise" | "tulum" | "salopet" | "sort_tulum" | "gomlek_elbise" | "triko_elbise"
       (mini=diz üstü, midi=baldır/diz-altı, maxi=ayak bileği/yere kadar)
-    dis için → "ceket" | "blazer" | "mont" | "kaban" | "trenchkot" | "yagmurluk"
-    ayakkabi için → "sneaker" | "loafer" | "bot" | "cizme" | "topuklu" | "sandalet" | "terlik" | "babet"
-    canta için → "omuz_cantasi" | "clutch" | "tote" | "bel_cantasi" | "sirt_cantasi" | "mini_canta"
-    aksesuar için → "kolye" | "kupe" | "bileklik" | "yuzuk" | "fular" | "kaskol" | "bandana" | "kemer" | "sapka" | "gozluk",
+    dis için → "ceket" | "blazer" | "mont" | "kaban" | "trenchkot" | "yagmurluk" | "deri_ceket" | "jean_ceket" | "puffer" | "parka" | "panco" | "bomber"
+    ayakkabi için → "sneaker" | "loafer" | "bot" | "cizme" | "topuklu" | "sandalet" | "terlik" | "babet" | "takunya" | "dolgu_topuk" | "stiletto" | "oxford" | "espadril" | "platform" | "bilek_bot"
+    canta için → "omuz_cantasi" | "clutch" | "tote" | "bel_cantasi" | "sirt_cantasi" | "mini_canta" | "spor_cantasi" | "capraz_canta" | "el_cantasi" | "hasir_canta" | "bucket" | "abiye_canta" | "baget"
+    aksesuar için → "kolye" | "kupe" | "bileklik" | "yuzuk" | "fular" | "kaskol" | "bandana" | "kemer" | "sapka" | "gozluk" | "saat" | "bros" | "toka" | "eldiven" | "bere" | "atki",
   ${nameInstruction},
   "fit": kesim — "slim" | "regular" | "oversized" | "crop" | "midi" | "maxi" | "mini",
   "neckline": yaka tipi, SADECE ust ve elbise_tulum için — "yuvarlak" | "v yaka" | "polo" | "balikci" | "kayik" | "halter" | "dik yaka" | null,
