@@ -47,6 +47,14 @@ const SEASON_MAP: Record<string, Season> = {
   kis: 'winter',
 };
 
+/** base64'ün ilk baytlarından görsel formatını tespit eder (magic bytes). */
+function detectMediaType(b64: string): 'image/jpeg' | 'image/png' | 'image/webp' {
+  if (b64.startsWith('/9j/'))  return 'image/jpeg';   // FFD8FF
+  if (b64.startsWith('iVBOR')) return 'image/png';    // 89504E47
+  if (b64.startsWith('UklGR')) return 'image/webp';   // RIFF
+  return 'image/jpeg';                                 // varsayılan (pipeline artık JPEG)
+}
+
 function buildPrompt(): string {
   const locale = getLocale();
   // SADECE "name" dile duyarlı — diğer tüm alanlar sabit Türkçe token (motor/DB okuyor)
@@ -189,7 +197,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
         content: [
           {
             type: 'image',
-            source: { type: 'base64', media_type: 'image/png', data: base64 },
+            source: { type: 'base64', media_type: detectMediaType(base64), data: base64 },
           },
           { type: 'text', text: buildPrompt() },
         ],
@@ -202,7 +210,7 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
       ...m,
       content: Array.isArray(m.content)
         ? m.content.map((c: any) =>
-            c.type === 'image' ? { ...c, source: { ...c.source, data: `[png base64 ${base64.length} chars]` } } : c,
+            c.type === 'image' ? { ...c, source: { ...c.source, data: `[${detectMediaType(base64)} ${base64.length} chars]` } } : c,
           )
         : m.content,
     })),
