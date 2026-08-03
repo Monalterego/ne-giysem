@@ -402,6 +402,7 @@ export default function CombosScreen() {
   const focusKey       = route.params?.focusComboKey;
   const focusOccasion  = route.params?.occasion as Occasion | undefined;
   const focusConsumed  = useRef(false);
+  const listRef        = useRef<FlatList<any>>(null);
   const items          = useWardrobeStore((s) => s.items);
   const isLoading      = useWardrobeStore((s) => s.isLoading);
   const fetchItems     = useWardrobeStore((s) => s.fetchItems);
@@ -465,6 +466,13 @@ export default function CombosScreen() {
     setLocalCombos(applyFocus(combos));
     setVisibleCount(PAGE_SIZE);
   }, [items, activeOccasion, user?.id, weather]);
+
+  // Okazyon değişince listeyi en üste al — kaydırılmış konumda kalmasın.
+  // animated: false → yeni veri zaten yükleniyor, animasyonlu kaydırma tuhaf görünür.
+  // Liste boşken FlatList render edilmiyor, listRef null olur — ?. bunu güvenli kılıyor.
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [activeOccasion]);
 
   const handleLoadMore = () => {
     setVisibleCount((v) => v + PAGE_SIZE);
@@ -780,6 +788,7 @@ export default function CombosScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={localCombos.slice(0, visibleCount)}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
