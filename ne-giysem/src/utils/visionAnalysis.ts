@@ -52,7 +52,10 @@ function buildPrompt(): string {
     ? `"name": short Zara/H&M-style product name IN ENGLISH. If there's a special fabric/cut, put it in the name — e.g. "Satin strapless maxi dress", "Sequined mini dress", "Low-rise wide-leg jeans"`
     : `"name": Zara/HM tarzı kısa ürün adı. ÖZEL kumaş/kesim varsa isme YAZ — örn. "Saten straplez maxi elbise", "Payetli mini elbise", "Düşük bel geniş paça jean"`;
 
-  return `Bu kıyafet görselini analiz et. YALNIZCA geçerli JSON döndür, başka hiçbir metin yazma.
+  return `Bu kıyafet görselini analiz et.
+
+⚠️ ÇIKTI KURALI: SADECE geçerli JSON döndür. Açıklama, markdown code fence (\`\`\`), önsöz
+veya sonsöz YAZMA. Yanıtın ilk karakteri "{" ve son karakteri "}" olmalı.
 
 ⚠️ FOTOĞRAF GERÇEK KULLANICI FOTOĞRAFI OLABİLİR — ürün görseli gibi düzgün olmayabilir:
 yatakta/masada serili, katlanmış, buruşuk, açısı bozuk olabilir. Kıyafetin TAM formunu
@@ -171,7 +174,13 @@ function parseVisionResponse(text: string): VisionResult {
 export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
   const requestBody = {
     model: 'claude-sonnet-5',
-    max_tokens: 1024,
+    // Sonnet 5'te adaptive thinking varsayılan AÇIK ve max_tokens düşünme + yanıtın
+    // ORTAK tavanı — 1024 ile JSON yarıda kesilebilir. Tavanı yükseltmek maliyet
+    // getirmez (sadece üst sınır), kullanılmayan token faturalanmaz.
+    max_tokens: 4096,
+    // effort top-level DEĞİL, output_config içinde. Vision = yapılandırılmış
+    // sınıflandırma; ağır düşünme gerekmiyor, düşünme tokenleri output faturalanıyor.
+    output_config: { effort: 'low' },
     messages: [
       {
         role: 'user',
@@ -183,8 +192,6 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
           { type: 'text', text: buildPrompt() },
         ],
       },
-      // Prefill: JSON disiplinini garantiler; yanıt '{' ile devam eder
-      { role: 'assistant', content: '{' },
     ],
   };
   console.log('[visionAnalysis] request body:', JSON.stringify({
@@ -212,14 +219,23 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
 
     if (!res.ok) {
       const body = await res.text();
-      throw new Error('HTTP ' + res.status + ' — ' + body.slice(0, 200));
+      throw new Error('HTTP ' + res.status + ' — ' + body.slice(0, 400));
     }
 
     const json = await res.json();
     const text: string = (json as any)?.content?.[0]?.text ?? '';
     if (!text) throw new Error('Claude API boş yanıt döndürdü.');
-    // Prefill '{' + yanıt continuation = tam JSON
-    return parseVisionResponse('{' + text);
+
+    // Prefill kalktı → model tam JSON döndürür. Yine de savunmacı temizlik:
+    // markdown fence veya açıklama metni gelirse ilk { ... son } arasını al.
+    let cleaned = text.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    }
+    const first = cleaned.indexOf('{');
+    const last  = cleaned.lastIndexOf('}');
+    if (first !== -1 && last > first) cleaned = cleaned.slice(first, last + 1);
+    return parseVisionResponse(cleaned);
   };
 
   try {
