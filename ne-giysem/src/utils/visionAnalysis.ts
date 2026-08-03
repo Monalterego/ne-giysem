@@ -19,6 +19,8 @@ export interface VisionResult {
   signals?: string[];
   /** true → analiz başarısız, alanlar güvenilmez. Kullanıcı elle doldurmalı. */
   failed?: boolean;
+  /** GEÇİCİ: teşhis için ham hata mesajı. Sorun çözülünce kaldırılacak. */
+  debugError?: string;
 }
 
 /** Motorun tanıdığı kanonik sinyaller. Vision bunun dışında bir şey dönerse yok sayılır. */
@@ -246,8 +248,12 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
       return await attemptRequest();
     } catch (secondErr) {
       console.warn('[vision] analiz başarısız, varsayılan dönülüyor', secondErr);
+      // GEÇİCİ: iki denemenin de ham hata mesajı — cihazda göstermek için
+      const dbg = [firstErr, secondErr]
+        .map((e) => (e instanceof Error ? e.message : String(e)))
+        .join(' || ');
       // 'upper' sadece tip uyumu için — failed:true ile "bu değere güvenme" işaretleniyor
-      return { category: 'upper', colors: [], seasons: [], failed: true };
+      return { category: 'upper', colors: [], seasons: [], failed: true, debugError: dbg };
     }
   }
 }
