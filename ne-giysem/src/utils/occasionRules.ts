@@ -30,8 +30,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 0,
     maxAccessories:          0,
     minAccessories:          0,
-    hardExcluded:           ['topuklu', 'clutch', 'maxi_elbise', 'midi_elbise', 'mini_elbise', 'gomlek', 'blazer'],
-    encouraged:             ['tayt', 'sort', 'tisort', 'hoodie', 'sweatshirt', 'sneaker'],
+    hardExcluded:           ['topuklu', 'clutch', 'maxi_elbise', 'midi_elbise', 'mini_elbise', 'gomlek', 'blazer', 'stiletto', 'dolgu_topuk', 'platform', 'takunya', 'abiye_canta', 'baget', 'el_cantasi', 'bustiyer', 'gomlek_elbise', 'triko_elbise', 'salopet', 'deri_pantolon', 'deri_ceket', 'panco', 'bros'],
+    encouraged:             ['tayt', 'sort', 'tisort', 'hoodie', 'sweatshirt', 'sneaker', 'atlet', 'jogger', 'spor_cantasi'],
   },
   gunluk: {
     targetFormality:        [2, 6],
@@ -48,8 +48,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 1,
     maxAccessories:          2,
     minAccessories:          0,
-    hardExcluded:           ['topuklu', 'maxi_elbise', 'clutch'],
-    encouraged:             ['pantolon', 'sneaker', 'loafer', 'bluz', 'tisort', 'bot'],
+    hardExcluded:           ['topuklu', 'maxi_elbise', 'clutch', 'stiletto', 'platform', 'abiye_canta', 'bustiyer'],
+    encouraged:             ['pantolon', 'sneaker', 'loafer', 'bluz', 'tisort', 'bot', 'capraz_canta', 'sirt_cantasi'],
   },
   tatil: {
     targetFormality:        [1, 5],
@@ -57,8 +57,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 2,
     maxAccessories:          3,
     minAccessories:          0,
-    hardExcluded:           ['blazer', 'topuklu', 'bot', 'mont', 'kaban', 'sweatshirt', 'hoodie', 'tayt', 'cizme', 'trenchkot'],
-    encouraged:             ['sort', 'sandalet', 'sapka', 'gomlek', 'bluz', 'mini_elbise', 'tote'],
+    hardExcluded:           ['blazer', 'topuklu', 'bot', 'mont', 'kaban', 'sweatshirt', 'hoodie', 'tayt', 'cizme', 'trenchkot', 'bilek_bot', 'puffer', 'parka', 'deri_ceket', 'stiletto', 'oxford', 'bere', 'eldiven', 'atki', 'jogger'],
+    encouraged:             ['sort', 'sandalet', 'sapka', 'gomlek', 'bluz', 'mini_elbise', 'tote', 'espadril', 'hasir_canta', 'kapri', 'sort_tulum'],
   },
   brunch: {
     targetFormality:        [4, 7],
@@ -67,7 +67,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxAccessories:          2,
     minAccessories:          1,
     hardExcluded:           [],
-    encouraged:             ['midi_elbise', 'etek', 'bluz', 'loafer', 'sandalet'],
+    encouraged:             ['midi_elbise', 'etek', 'bluz', 'loafer', 'sandalet', 'gomlek_elbise', 'capraz_canta'],
   },
   is: {
     targetFormality:        [5, 9],
@@ -75,8 +75,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 1,
     maxAccessories:          2,
     minAccessories:          1,
-    hardExcluded:           ['maxi_elbise', 'mini_elbise', 'sort', 'tayt', 'terlik', 'sapka', 'sweatshirt', 'hoodie'],
-    encouraged:             ['blazer', 'gomlek', 'pantolon', 'topuklu', 'loafer'],
+    hardExcluded:           ['maxi_elbise', 'mini_elbise', 'sort', 'tayt', 'terlik', 'sapka', 'sweatshirt', 'hoodie', 'crop_top', 'atlet', 'bustiyer', 'jogger', 'kargo', 'spor_cantasi', 'sort_tulum', 'salopet', 'bere', 'platform', 'espadril'],
+    encouraged:             ['blazer', 'gomlek', 'pantolon', 'topuklu', 'loafer', 'oxford', 'el_cantasi', 'gomlek_elbise', 'saat'],
   },
   date: {
     targetFormality:        [5, 8],
@@ -84,8 +84,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 1,
     maxAccessories:          3,
     minAccessories:          1,
-    hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka'],
-    encouraged:             ['midi_elbise', 'mini_elbise', 'topuklu', 'sandalet', 'etek', 'bluz'],
+    hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka', 'jogger', 'kargo', 'spor_cantasi', 'bere'],
+    encouraged:             ['midi_elbise', 'mini_elbise', 'topuklu', 'sandalet', 'etek', 'bluz', 'stiletto', 'capraz_canta'],
   },
   gece: {
     targetFormality:        [5, 9],
@@ -93,8 +93,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 1,
     maxAccessories:          3,
     minAccessories:          1,
-    hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka', 'sneaker'],
-    encouraged:             ['mini_elbise', 'midi_elbise', 'topuklu', 'bot', 'clutch', 'etek'],
+    hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka', 'sneaker', 'jogger', 'kargo', 'spor_cantasi', 'espadril', 'hasir_canta', 'bere', 'polo'],
+    encouraged:             ['mini_elbise', 'midi_elbise', 'topuklu', 'bot', 'clutch', 'etek', 'stiletto', 'abiye_canta', 'baget'],
   },
   davet: {
     targetFormality:        [7, 10],
@@ -102,8 +102,8 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 2,
     maxAccessories:          3,
     minAccessories:          2,
-    hardExcluded:           ['sneaker', 'hoodie', 'sweatshirt', 'tayt', 'sort', 'jean', 'terlik', 'sapka', 'bandana', 'gozluk', 'tisort'],
-    encouraged:             ['maxi_elbise', 'midi_elbise', 'topuklu', 'clutch'],
+    hardExcluded:           ['sneaker', 'hoodie', 'sweatshirt', 'tayt', 'sort', 'jean', 'terlik', 'sapka', 'bandana', 'gozluk', 'tisort', 'crop_top', 'atlet', 'bustiyer', 'jogger', 'kargo', 'polo', 'spor_cantasi', 'hasir_canta', 'espadril', 'sirt_cantasi', 'bere', 'atki', 'jean_ceket', 'puffer', 'parka', 'bomber', 'salopet', 'sort_tulum'],
+    encouraged:             ['maxi_elbise', 'midi_elbise', 'topuklu', 'clutch', 'abiye_canta', 'stiletto', 'bros'],
   },
 };
 
