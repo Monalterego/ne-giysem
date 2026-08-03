@@ -170,7 +170,7 @@ function parseVisionResponse(text: string): VisionResult {
 
 export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
   const requestBody = {
-    model: 'claude-sonnet-4-5-20250929',
+    model: 'claude-sonnet-5',
     max_tokens: 1024,
     messages: [
       {
