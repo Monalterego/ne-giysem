@@ -580,7 +580,7 @@ export default function CombosScreen() {
       }
 
       // 2. Kombin cache kontrolü
-      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}.png`;
+      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}.jpg`;
       const { data: { publicUrl: cachedUrl } } = supabase.storage
         .from('mannequin-cache')
         .getPublicUrl(cacheKey);
@@ -607,7 +607,7 @@ export default function CombosScreen() {
 
       const { error: upErr } = await supabase.storage
         .from('mannequin-cache')
-        .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/png' });
+        .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/jpeg' });
 
       if (upErr) console.warn('cache upload başarısız:', upErr.message);
 

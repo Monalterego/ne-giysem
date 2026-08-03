@@ -257,9 +257,17 @@ export async function layeredTryOn(
     current = await runFashn('tryon-v1.6', {
       model_image:        current,
       garment_image:      g.processedImageUrl,
-      garment_photo_type: 'flat-lay',
+      // 'flat-lay' sadece düz serili/ghost manken görselleri için; kullanıcılar
+      // askıda/yatakta/mankende çekiyor → 'auto' otomatik tespit etsin
+      garment_photo_type: 'auto',
       category,
       mode:               'quality',
+      // false → orijinal kıyafet düzgün kaldırılır (alt parça binme sorunu)
+      segmentation_free:  false,
+      // varsayılan seed sabit 42; rastgele seed her üretimde farklı varyasyon dener
+      seed:               Math.floor(Math.random() * 4294967295),
+      // jpeg: tüketici try-on için daha hızlı yanıt + ~8x küçük (cached egress)
+      output_format:      'jpeg',
     });
 
     console.log(`[fashn] katman çıktı (${label}):`, current);
