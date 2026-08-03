@@ -556,6 +556,7 @@
     "hint": "The more accurate the info, the better your outfit suggestions ✨",
     "aiAnalyzing": "AI analyzing…",
     "aiFilled": "Filled by AI · you can change it",
+    "aiFailed": "Couldn't auto-detect — please pick the category",
     "fit": "Fit",
     "neckline": "Neckline",
     "sleeve": "Sleeve",

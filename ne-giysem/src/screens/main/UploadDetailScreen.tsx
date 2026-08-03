@@ -98,6 +98,8 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const [saving,      setSaving]      = useState(false);
   const [analyzing,   setAnalyzing]   = useState(!isEditMode);
   const [aiDetected,  setAiDetected]  = useState(false);
+  // Vision analizi başarısız — hiçbir alan otomatik doldurulmadı, kullanıcı elle seçmeli
+  const [aiFailed,    setAiFailed]    = useState(false);
 
   // AI'nın seçtiği kategori — "AI seçti" rozeti ve riskli-sınır onayı için
   const aiCategoryRef     = useRef<string | null>(null);
@@ -110,25 +112,31 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
     analyzeClothingImage(processedBase64)
       .then((result) => {
         if (cancelled) return;
-        aiCategoryRef.current = result.category;
-        setCategory(result.category);
-        if (result.subcategory) setSubCategory(result.subcategory);
-        if (result.seasons.length > 0) setSeasons(result.seasons);
-        if (result.colors.length > 0) setItemColors(result.colors);
-        if (result.fabric) setFabric(result.fabric as Fabric);
-        if (result.pattern) setItemPattern(result.pattern);
-        setAiDetails({
-          itemName:     result.itemName,
-          fit:          result.fit,
-          neckline:     result.neckline,
-          sleeveLength: result.sleeveLength,
-          details:      result.details,
-          signals:      result.signals,
-        });
+        if (result.failed) {
+          // Analiz başarısız — HİÇBİR alanı otomatik doldurma, kullanıcı kendi seçsin
+          setAiFailed(true);
+        } else {
+          aiCategoryRef.current = result.category;
+          setCategory(result.category);
+          if (result.subcategory) setSubCategory(result.subcategory);
+          if (result.seasons.length > 0) setSeasons(result.seasons);
+          if (result.colors.length > 0) setItemColors(result.colors);
+          if (result.fabric) setFabric(result.fabric as Fabric);
+          if (result.pattern) setItemPattern(result.pattern);
+          setAiDetails({
+            itemName:     result.itemName,
+            fit:          result.fit,
+            neckline:     result.neckline,
+            sleeveLength: result.sleeveLength,
+            details:      result.details,
+            signals:      result.signals,
+          });
+        }
         setAiDetected(true);
       })
       .catch(() => {
-        // Sessizce devam — kullanıcı manuel doldurabilir
+        // Beklenmedik hata — burada da sessiz kalma, kullanıcıya "sen seç" de
+        if (!cancelled) { setAiFailed(true); setAiDetected(true); }
       })
       .finally(() => {
         if (!cancelled) setAnalyzing(false);
@@ -355,8 +363,10 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         )}
         {!analyzing && aiDetected && (
           <View style={[styles.aiBanner, styles.aiBannerDone]}>
-            <Feather name="zap" size={14} color={colors.text} />
-            <Text style={styles.aiBannerText}>{t('uploadDetail.aiFilled')}</Text>
+            <Feather name={aiFailed ? 'alert-circle' : 'zap'} size={14} color={aiFailed ? colors.error : colors.text} />
+            <Text style={[styles.aiBannerText, aiFailed && styles.aiBannerWarn]}>
+              {aiFailed ? t('uploadDetail.aiFailed') : t('uploadDetail.aiFilled')}
+            </Text>
           </View>
         )}
 
@@ -693,6 +703,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     color: colors.text,
     flex: 1,
+  },
+  aiBannerWarn: {
+    color: colors.error,
   },
   // ─── AI Detay Kartı ──────────────────────────────────────────────────────────
   detailCard: {

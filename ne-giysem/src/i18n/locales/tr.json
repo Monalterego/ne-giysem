@@ -556,6 +556,7 @@
     "hint": "Bilgiler ne kadar doğruysa, kombin önerileri o kadar isabetli olur ✨",
     "aiAnalyzing": "AI analiz ediyor…",
     "aiFilled": "AI tarafından dolduruldu · değiştirebilirsin",
+    "aiFailed": "Otomatik tanıyamadık — kategoriyi sen seç",
     "fit": "Kesim",
     "neckline": "Yaka",
     "sleeve": "Kol",

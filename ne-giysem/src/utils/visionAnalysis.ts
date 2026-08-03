@@ -17,6 +17,8 @@ export interface VisionResult {
   sleeveLength?: string;
   details?: string[];
   signals?: string[];
+  /** true → analiz başarısız, alanlar güvenilmez. Kullanıcı elle doldurmalı. */
+  failed?: boolean;
 }
 
 /** Motorun tanıdığı kanonik sinyaller. Vision bunun dışında bir şey dönerse yok sayılır. */
@@ -147,6 +149,8 @@ function parseVisionResponse(text: string): VisionResult {
 
   return {
     category: mappedCategory ?? 'upper',
+    // Model geçerli bir kategori döndüremediyse sonuç güvenilmez — sessizce 'upper' sayma
+    ...(mappedCategory ? {} : { failed: true }),
     subcategory:  typeof raw.subcategory === 'string' ? raw.subcategory : undefined,
     colors,
     pattern:      typeof raw.pattern  === 'string' ? raw.pattern  : undefined,
@@ -223,7 +227,8 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
       return await attemptRequest();
     } catch (secondErr) {
       console.warn('[vision] analiz başarısız, varsayılan dönülüyor', secondErr);
-      return { category: 'upper', colors: [], seasons: [] };
+      // 'upper' sadece tip uyumu için — failed:true ile "bu değere güvenme" işaretleniyor
+      return { category: 'upper', colors: [], seasons: [], failed: true };
     }
   }
 }
