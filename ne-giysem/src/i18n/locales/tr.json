@@ -104,7 +104,9 @@
     "limitBody": "Ücretsiz planda %{count} sanal deneme hakkın var. Premium'a geçerek daha fazlasını kullan.",
     "tryOnBusy": "Sanal deneme şu an yoğun. Birazdan tekrar dene.",
     "tryOnPoseFailed": "Manken oluşturulamadı. Profil fotoğrafın tam boy değilse kaldırıp tekrar dene.",
-    "firstTryOnNote": "İlk deneme biraz uzun sürebilir — mankenin bir kez hazırlanıyor."
+    "firstTryOnNote": "İlk deneme biraz uzun sürebilir — mankenin bir kez hazırlanıyor.",
+    "needShoesTitle": "Bu okazyon için uygun ayakkabı yok",
+    "needShoesBody": "Dolabına %{items} eklersen bu okazyon için kombin önerileri çıkar."
   },
   "wardrobe": {
     "title": "Dolabım",

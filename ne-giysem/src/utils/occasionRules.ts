@@ -19,6 +19,9 @@ export interface OccasionRule {
   hardExcluded: string[];
   /** İdeal subCategory'ler — encCoverage skoru + aksesuar önceliği/filtre muafiyetinde aktif kullanılır */
   encouraged: string[];
+  /** Bu okazyon için dolapta EN AZ BİRİ bulunması gereken ayakkabı alt kategorileri.
+   *  Yoksa hiç kombin üretilmez — zorlama öneri yerine yapıcı boş durum gösterilir. */
+  requiredShoes?: string[];
 }
 
 // ─── Okasyon kuralları tablosu ────────────────────────────────────────────────
@@ -30,8 +33,9 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 0,
     maxAccessories:          0,
     minAccessories:          0,
-    hardExcluded:           ['topuklu', 'clutch', 'maxi_elbise', 'midi_elbise', 'mini_elbise', 'gomlek', 'blazer', 'stiletto', 'dolgu_topuk', 'platform', 'takunya', 'abiye_canta', 'baget', 'el_cantasi', 'bustiyer', 'gomlek_elbise', 'triko_elbise', 'salopet', 'deri_pantolon', 'deri_ceket', 'panco', 'bros'],
+    hardExcluded:           ['topuklu', 'clutch', 'maxi_elbise', 'midi_elbise', 'mini_elbise', 'gomlek', 'blazer', 'stiletto', 'dolgu_topuk', 'platform', 'takunya', 'abiye_canta', 'baget', 'el_cantasi', 'bustiyer', 'gomlek_elbise', 'triko_elbise', 'salopet', 'deri_pantolon', 'deri_ceket', 'panco', 'bros', 'jean', 'etek', 'pantolon', 'bluz', 'kazak', 'triko', 'hirka', 'tunik', 'polo', 'sandalet', 'babet', 'loafer', 'oxford', 'bot', 'cizme', 'bilek_bot', 'espadril', 'terlik', 'omuz_cantasi', 'tote', 'hasir_canta', 'kolye', 'kupe', 'fular', 'kaskol'],
     encouraged:             ['tayt', 'sort', 'tisort', 'hoodie', 'sweatshirt', 'sneaker', 'atlet', 'jogger', 'spor_cantasi'],
+    requiredShoes:          ['sneaker'],
   },
   gunluk: {
     targetFormality:        [2, 6],
@@ -77,6 +81,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     minAccessories:          1,
     hardExcluded:           ['maxi_elbise', 'mini_elbise', 'sort', 'tayt', 'terlik', 'sapka', 'sweatshirt', 'hoodie', 'crop_top', 'atlet', 'bustiyer', 'jogger', 'kargo', 'spor_cantasi', 'sort_tulum', 'salopet', 'bere', 'platform', 'espadril'],
     encouraged:             ['blazer', 'gomlek', 'pantolon', 'topuklu', 'loafer', 'oxford', 'el_cantasi', 'gomlek_elbise', 'saat'],
+    requiredShoes:          ['loafer', 'oxford', 'babet', 'topuklu', 'sneaker'],
   },
   date: {
     targetFormality:        [5, 8],
@@ -95,6 +100,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     minAccessories:          1,
     hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka', 'sneaker', 'jogger', 'kargo', 'spor_cantasi', 'espadril', 'hasir_canta', 'bere', 'polo'],
     encouraged:             ['mini_elbise', 'midi_elbise', 'topuklu', 'bot', 'clutch', 'etek', 'stiletto', 'abiye_canta', 'baget'],
+    requiredShoes:          ['topuklu', 'stiletto', 'dolgu_topuk', 'babet'],
   },
   davet: {
     targetFormality:        [7, 10],
@@ -104,6 +110,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     minAccessories:          2,
     hardExcluded:           ['sneaker', 'hoodie', 'sweatshirt', 'tayt', 'sort', 'jean', 'terlik', 'sapka', 'bandana', 'gozluk', 'tisort', 'crop_top', 'atlet', 'bustiyer', 'jogger', 'kargo', 'polo', 'spor_cantasi', 'hasir_canta', 'espadril', 'sirt_cantasi', 'bere', 'atki', 'jean_ceket', 'puffer', 'parka', 'bomber', 'salopet', 'sort_tulum'],
     encouraged:             ['maxi_elbise', 'midi_elbise', 'topuklu', 'clutch', 'abiye_canta', 'stiletto', 'bros'],
+    requiredShoes:          ['topuklu', 'stiletto', 'dolgu_topuk', 'babet'],
   },
 };
 
@@ -156,6 +163,21 @@ export function getFormalityFit(item: WardrobeItem, occasion: OccasionId): numbe
   if (f >= min && f <= max) return 1.0;
   const dist = f < min ? min - f : f - max;
   return Math.max(0, Math.min(1, 1 - dist * 0.18));
+}
+
+/** Dolapta bu okazyon için gerekli ayakkabı var mı? */
+export function hasRequiredShoes(
+  items: { category: string; subCategory?: string }[],
+  occasion: OccasionId,
+): boolean {
+  const req = OCCASION_RULES[occasion]?.requiredShoes;
+  if (!req || !req.length) return true;
+  return items.some((i) => i.category === 'shoes' && i.subCategory && req.includes(i.subCategory));
+}
+
+/** Eksik ayakkabı türlerinin etiketleri (kullanıcıya "şunu ekle" demek için). */
+export function requiredShoeLabels(occasion: OccasionId): string[] {
+  return OCCASION_RULES[occasion]?.requiredShoes ?? [];
 }
 
 // ─── Manuel test bloğu ───────────────────────────────────────────────────────

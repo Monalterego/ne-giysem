@@ -32,7 +32,8 @@ import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { friendlyError, isModelImageError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
-import { catLabel } from '../../constants/categories';
+import { catLabel, subcatLabel } from '../../constants/categories';
+import { requiredShoeLabels, hasRequiredShoes } from '../../utils/occasionRules';
 
 const FREE_RENDER_LIMIT = 3;
 const FEW_COMBOS = 4;
@@ -675,6 +676,14 @@ export default function CombosScreen() {
 
   const combos  = localCombos;
   const missing = useMemo(() => missingCategories(items), [items]);
+  // Bu okazyonun zorunlu ayakkabısı dolapta yoksa motor [] döner — boş durumda
+  // "şu ayakkabıyı ekle" diyebilmek için gerekli türleri hesapla
+  const missingShoes = useMemo(
+    () => (activeOccasion !== 'all' && !hasRequiredShoes(items, activeOccasion)
+      ? requiredShoeLabels(activeOccasion)
+      : []),
+    [items, activeOccasion],
+  );
 
   if (isLoading) {
     return (
@@ -753,6 +762,23 @@ export default function CombosScreen() {
               >
                 <Feather name="plus" size={16} color={colors.background} />
                 <Text style={styles.emptyCtaText}>{t('combos.addFirstItem')}</Text>
+              </TouchableOpacity>
+            </>
+          ) : missingShoes.length > 0 ? (
+            // Bu okazyonun zorunlu ayakkabısı yok — motor bilinçli olarak kombin üretmedi
+            <>
+              <Feather name="layers" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
+              <Text style={styles.emptyTitle}>{t('combos.needShoesTitle')}</Text>
+              <Text style={styles.emptySubtitle}>
+                {t('combos.needShoesBody', { items: missingShoes.map(subcatLabel).join(', ') })}
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyCtaSecondary}
+                onPress={() => navigation.navigate('Scan')}
+                activeOpacity={0.85}
+              >
+                <Feather name="plus" size={16} color={colors.text} />
+                <Text style={styles.emptyCtaSecondaryText}>{t('combos.addItemShort')}</Text>
               </TouchableOpacity>
             </>
           ) : (

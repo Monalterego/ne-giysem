@@ -3,7 +3,7 @@ import { OCCASIONS } from '../constants/occasions';
 import type { OccasionId } from '../constants/occasions';
 import { itemColorScore, outfitColorScore } from './colorTheory';
 import { isNeutral } from './colorUtils';
-import { isItemAllowed, getFormalityFit, OCCASION_RULES } from './occasionRules';
+import { isItemAllowed, getFormalityFit, OCCASION_RULES, hasRequiredShoes } from './occasionRules';
 import { registerFit, registerCoherence } from './registerTheory';
 import { getVisualWeight, isStatement, getFormality } from './itemTraits';
 import { proportionScore } from './proportionTheory';
@@ -304,6 +304,12 @@ export function generateCombos(
   styleProfile?: StyleProfile,
   pinItemId?: string,
 ): Combo[] {
+  // Okazyonun zorunlu ayakkabısı dolapta yoksa hiç kombin üretme — zorlama öneri
+  // yerine ekranda yapıcı boş durum gösterilir ("Dolabına sneaker eklersen...")
+  if (occasion !== 'all' && !hasRequiredShoes(items, occasion as OccasionId)) {
+    return [];
+  }
+
   // Stil vektörü — Pass 2 yumuşak modülasyonu için; profil yoksa nötr (tüm eksenler 0)
   const sv = computeStyleVector(styleProfile);
 
@@ -476,9 +482,10 @@ export function generateCombos(
     .sort((a, b) => b.score - a.score);
   const selected = selectDiverse(results, maxCombos).sort((a, b) => b.score - a.score);
   if (selected.length === 0) return selected;
-  // Göreceli kalite eşiği: en iyi skorun %78'i, ama mutlak taban 60
+  // Göreceli kalite eşiği: en iyi skorun %78'i, ama mutlak taban 68
+  // (65 altı "Kabul Edilebilir" bile sayılmıyor — 60 tabanı zayıf kombinleri geçiriyordu)
   const best = selected[0].score;
-  const threshold = Math.max(best * 0.78, 60);
+  const threshold = Math.max(best * 0.78, 68);
   const quality = selected.filter((c) => c.score >= threshold);
   // Hiç kaliteli kalmadıysa (uç durum) en iyi 2'yi yine döndür (boş ekran olmasın)
   return quality.length > 0 ? quality : selected.slice(0, 2);

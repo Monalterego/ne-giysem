@@ -104,7 +104,9 @@
     "limitBody": "Your free plan includes %{count} virtual try-ons. Upgrade to Premium for more.",
     "tryOnBusy": "Virtual try-on is busy right now. Please try again shortly.",
     "tryOnPoseFailed": "Couldn't create the model. If your profile photo isn't full-body, remove it and try again.",
-    "firstTryOnNote": "The first try-on takes longer — your model is being created once."
+    "firstTryOnNote": "The first try-on takes longer — your model is being created once.",
+    "needShoesTitle": "No suitable shoes for this occasion",
+    "needShoesBody": "Add %{items} to your wardrobe and outfit suggestions will appear."
   },
   "wardrobe": {
     "title": "My Wardrobe",
