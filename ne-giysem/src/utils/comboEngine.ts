@@ -487,8 +487,9 @@ export function generateCombos(
   const best = selected[0].score;
   const threshold = Math.max(best * 0.78, 68);
   const quality = selected.filter((c) => c.score >= threshold);
-  // Hiç kaliteli kalmadıysa (uç durum) en iyi 2'yi yine döndür (boş ekran olmasın)
-  return quality.length > 0 ? quality : selected.slice(0, 2);
+  // Eşiğin altındakiler elenir — hiç kalmazsa boş dönülür. Zorlama öneri göstermek
+  // yerine CombosScreen yapıcı boş durumu gösterir.
+  return quality;
 }
 
 // Dolabın kombin üretmek için hangi kategorilerde eksik olduğunu döner

@@ -100,8 +100,6 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const [aiDetected,  setAiDetected]  = useState(false);
   // Vision analizi başarısız — hiçbir alan otomatik doldurulmadı, kullanıcı elle seçmeli
   const [aiFailed,    setAiFailed]    = useState(false);
-  // GEÇİCİ: vision hatasının ham mesajı — teşhis bitince kaldırılacak
-  const [debugMsg,    setDebugMsg]    = useState<string | null>(null);
 
   // AI'nın seçtiği kategori — "AI seçti" rozeti ve riskli-sınır onayı için
   const aiCategoryRef     = useRef<string | null>(null);
@@ -117,7 +115,6 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         if (result.failed) {
           // Analiz başarısız — HİÇBİR alanı otomatik doldurma, kullanıcı kendi seçsin
           setAiFailed(true);
-          setDebugMsg(result.debugError ?? 'sebep yok');   // GEÇİCİ
         } else {
           aiCategoryRef.current = result.category;
           setCategory(result.category);
@@ -137,13 +134,9 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         }
         setAiDetected(true);
       })
-      .catch((err) => {
+      .catch(() => {
         // Beklenmedik hata — burada da sessiz kalma, kullanıcıya "sen seç" de
-        if (!cancelled) {
-          setAiFailed(true); setAiDetected(true);
-          // GEÇİCİ: analiz sonrası (alan doldurma) hatasını da göster
-          setDebugMsg('then-hata: ' + (err instanceof Error ? err.message : String(err)));
-        }
+        if (!cancelled) { setAiFailed(true); setAiDetected(true); }
       })
       .finally(() => {
         if (!cancelled) setAnalyzing(false);
@@ -375,15 +368,6 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
               {aiFailed ? t('uploadDetail.aiFailed') : t('uploadDetail.aiFilled')}
             </Text>
           </View>
-        )}
-        {/* GEÇİCİ: teşhis satırı — sebep bulunup düzeltilince kaldırılacak */}
-        {debugMsg && (
-          <Text
-            selectable
-            style={{ fontSize: 10, color: colors.error, paddingHorizontal: 16, marginTop: 4 }}
-          >
-            DEBUG: {debugMsg}
-          </Text>
         )}
 
         {/* AI Detay Kartı — yeni ekleme ve detay içeren düzenleme modunda göster */}
