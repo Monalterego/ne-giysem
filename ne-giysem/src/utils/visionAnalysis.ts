@@ -79,6 +79,12 @@ ZORUNLU KONTROL — kategori kararından önce şu iki soruyu cevapla:
    ya da elbise olma olasılığı çok yüksek.
 • Fırfırlı/katmanlı, yukarıdan aşağı genişleyen, yakası ve kolu olmayan parça → ETEK ("alt").
 • Bel bandı / lastik / kemer tokası görüyorsan → ALT (ya da elbise, üst gövde de varsa).
+• CROP / KISA BOY ÜST: Göbek hizasında biten, bel altına inmeyen üst → "crop_top".
+  Normal boy tişört ile karıştırma — crop top going-out parçasıdır, spor değil.
+• DENIM (KOT) parçalar: kumaşı kot/denim olan şort, etek, ceket için fabric alanına
+  "denim" YAZ. Kot şort spor kıyafeti değildir — bunu kumaştan anlıyoruz.
+• Alt kategori seçerken kumaşa da bak: denim şort → "sort" + fabric "denim";
+  polyester/örme spor şortu → "sort" + fabric "polyester" veya "pamuk".
 
 KATEGORİ KARARI — önce şuna karar ver, sonra diğer alanları doldur:
 • Bel bandı + İKİ ayrı paça/bacak görüyorsan → "alt" (şort, pantolon, tayt). Kısa ve düz
