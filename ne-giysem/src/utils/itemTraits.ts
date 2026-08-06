@@ -91,7 +91,7 @@ const LEGACY_NAME_FABRIC: Array<[string, string]> = [
 ];
 
 // resolveSignals'tan ÖNCE tanımlı — resolveSignals kumaş güvenlik ağı için bunu çağırır.
-function resolveFabric(item: WardrobeItem): string {
+export function resolveFabric(item: WardrobeItem): string {
   const f = item.fabric ?? '';
   if (f && f !== 'unknown' && f !== 'bilmiyorum') {
     // Türkçe fabric değerini kanonik İngilizceye çevir; bilinmeyense olduğu gibi dön

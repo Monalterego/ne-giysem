@@ -1,6 +1,6 @@
 import type { WardrobeItem } from '../types';
 import type { OccasionId } from '../constants/occasions';
-import { getFormality, resolveSignals } from './itemTraits';
+import { getFormality, resolveSignals, resolveFabric } from './itemTraits';
 
 // ─── Tip tanımı ───────────────────────────────────────────────────────────────
 
@@ -22,6 +22,10 @@ export interface OccasionRule {
   /** Bu okazyon için dolapta EN AZ BİRİ bulunması gereken ayakkabı alt kategorileri.
    *  Yoksa hiç kombin üretilmez — zorlama öneri yerine yapıcı boş durum gösterilir. */
   requiredShoes?: string[];
+  /** Bu okazyonda yasak kumaşlar. Alt kategori yetmediğinde devreye girer —
+   *  örn. 'sort' hem jersey spor şortu hem kot şort olabilir; kumaş ayırır.
+   *  DEĞERLER KANONİK İNGİLİZCE (resolveFabric çıktısı): denim | leather | satin | silk | velvet ... */
+  hardExcludedFabrics?: string[];
 }
 
 // ─── Okasyon kuralları tablosu ────────────────────────────────────────────────
@@ -33,9 +37,10 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     maxStatementAccessories: 0,
     maxAccessories:          0,
     minAccessories:          0,
-    hardExcluded:           ['topuklu', 'clutch', 'maxi_elbise', 'midi_elbise', 'mini_elbise', 'gomlek', 'blazer', 'stiletto', 'dolgu_topuk', 'platform', 'takunya', 'abiye_canta', 'baget', 'el_cantasi', 'bustiyer', 'gomlek_elbise', 'triko_elbise', 'salopet', 'deri_pantolon', 'deri_ceket', 'panco', 'bros', 'jean', 'etek', 'pantolon', 'bluz', 'kazak', 'triko', 'hirka', 'tunik', 'polo', 'sandalet', 'babet', 'loafer', 'oxford', 'bot', 'cizme', 'bilek_bot', 'espadril', 'terlik', 'omuz_cantasi', 'tote', 'hasir_canta', 'kolye', 'kupe', 'fular', 'kaskol'],
+    hardExcluded:           ['topuklu', 'clutch', 'maxi_elbise', 'midi_elbise', 'mini_elbise', 'gomlek', 'blazer', 'stiletto', 'dolgu_topuk', 'platform', 'takunya', 'abiye_canta', 'baget', 'el_cantasi', 'bustiyer', 'gomlek_elbise', 'triko_elbise', 'salopet', 'deri_pantolon', 'deri_ceket', 'panco', 'bros', 'jean', 'etek', 'pantolon', 'bluz', 'kazak', 'triko', 'hirka', 'tunik', 'polo', 'sandalet', 'babet', 'loafer', 'oxford', 'bot', 'cizme', 'bilek_bot', 'espadril', 'terlik', 'omuz_cantasi', 'tote', 'hasir_canta', 'kolye', 'kupe', 'fular', 'kaskol', 'crop_top'],
     encouraged:             ['tayt', 'sort', 'tisort', 'hoodie', 'sweatshirt', 'sneaker', 'atlet', 'jogger', 'spor_cantasi'],
     requiredShoes:          ['sneaker'],
+    hardExcludedFabrics:    ['denim', 'leather', 'satin', 'silk', 'velvet'],
   },
   gunluk: {
     targetFormality:        [2, 6],
@@ -101,6 +106,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     hardExcluded:           ['sort', 'tayt', 'terlik', 'sweatshirt', 'hoodie', 'sapka', 'sneaker', 'jogger', 'kargo', 'spor_cantasi', 'espadril', 'hasir_canta', 'bere', 'polo'],
     encouraged:             ['mini_elbise', 'midi_elbise', 'topuklu', 'bot', 'clutch', 'etek', 'stiletto', 'abiye_canta', 'baget'],
     requiredShoes:          ['topuklu', 'stiletto', 'dolgu_topuk', 'babet'],
+    hardExcludedFabrics:    ['denim'],
   },
   davet: {
     targetFormality:        [7, 10],
@@ -111,6 +117,7 @@ export const OCCASION_RULES: Record<OccasionId, OccasionRule> = {
     hardExcluded:           ['sneaker', 'hoodie', 'sweatshirt', 'tayt', 'sort', 'jean', 'terlik', 'sapka', 'bandana', 'gozluk', 'tisort', 'crop_top', 'atlet', 'bustiyer', 'jogger', 'kargo', 'polo', 'spor_cantasi', 'hasir_canta', 'espadril', 'sirt_cantasi', 'bere', 'atki', 'jean_ceket', 'puffer', 'parka', 'bomber', 'salopet', 'sort_tulum'],
     encouraged:             ['maxi_elbise', 'midi_elbise', 'topuklu', 'clutch', 'abiye_canta', 'stiletto', 'bros'],
     requiredShoes:          ['topuklu', 'stiletto', 'dolgu_topuk', 'babet'],
+    hardExcludedFabrics:    ['denim'],
   },
 };
 
@@ -131,9 +138,19 @@ const ATHLETIC_SIGNAL = 'athletic';
  * Geri kalan her şey getFormalityFit ile yumuşak cezalanır, elenmez.
  */
 export function isItemAllowed(item: WardrobeItem, occasion: OccasionId): boolean {
+  const rule = OCCASION_RULES[occasion];
+  // Kumaş bazlı yasak (alt kategori yetmediğinde) — subCategory kontrolünden ÖNCE,
+  // çünkü alt kategorisi olmayan parçalar da kumaşa göre elenmeli.
+  // resolveFabric kanonik İngilizce döner ('kot'/'denim' → 'denim'); bilinmiyorsa ''
+  // döner ve hiçbir yasakla eşleşmez → bilinmeyen kumaş yüzünden parça kaybolmaz.
+  const badFabrics = rule.hardExcludedFabrics;
+  if (badFabrics?.length) {
+    const f = resolveFabric(item);
+    if (f && badFabrics.includes(f)) return false;
+  }
   const sub = item.subCategory;
   if (!sub) return true;
-  if (OCCASION_RULES[occasion].hardExcluded.includes(sub)) return false;
+  if (rule.hardExcluded.includes(sub)) return false;
   const sg = resolveSignals(item);
   // Gündüz okazyonlarında, gece-sinyali taşıyan elbiseleri ele
   if (DAYTIME_OCCASIONS.includes(occasion) && item.category === 'dress_jumpsuit') {
