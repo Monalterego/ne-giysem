@@ -476,6 +476,7 @@ export function generateCombos(
         occasion,
         label,
         reasoning,
+        encCoverage,
         createdAt: now,
       } as Combo;
     })
@@ -486,7 +487,18 @@ export function generateCombos(
   // (65 altı "Kabul Edilebilir" bile sayılmıyor — 60 tabanı zayıf kombinleri geçiriyordu)
   const best = selected[0].score;
   const threshold = Math.max(best * 0.78, 68);
-  const quality = selected.filter((c) => c.score >= threshold);
+  // Kombin okazyona AİT olmalı: çekirdek parçaların yeterli oranı o okazyon için
+  // teşvik edilen türden olsun. "Yasak değil" yeterli değil.
+  // NOT: 3'lü çekirdek (üst+alt+ayakkabı) için 1/3 = 0.333 < 0.34 → 2/3 gerekir;
+  //      2'li çekirdek (elbise+ayakkabı) için 1/2 = 0.5 → 1 parça yeterli.
+  //      "1/3 yeterli olsun" istenirse bu değer 0.33 yapılmalı.
+  const MIN_ENC = 0.34;
+  // 'all' sekmesinde okazyon yok — encouraged listesi gunluk'tan geliyor (ruleKey fallback).
+  // Aidiyet kuralını burada uygulamak elbise/topuklu gibi kombinleri haksız eler.
+  const enforceEnc = occasion !== 'all';
+  const quality = selected.filter(
+    (c) => c.score >= threshold && (!enforceEnc || (c.encCoverage ?? 1) >= MIN_ENC),
+  );
   // Eşiğin altındakiler elenir — hiç kalmazsa boş dönülür. Zorlama öneri göstermek
   // yerine CombosScreen yapıcı boş durumu gösterir.
   return quality;

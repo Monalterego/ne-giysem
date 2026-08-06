@@ -84,5 +84,7 @@ export interface Combo {
   occasion?: string;
   label: string;
   reasoning?: string;
+  /** Çekirdek parçaların kaçta kaçı bu okazyon için "encouraged" — okazyona aidiyet eşiği için */
+  encCoverage?: number;
   createdAt: string;
 }
