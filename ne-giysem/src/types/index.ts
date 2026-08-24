@@ -68,6 +68,7 @@ export interface User {
   createdAt: string;
   // Fiziki profil (onboarding sırasında doldurulur)
   height?: number;
+  weight?: number;
   age?: number;
   bodyType?: string;
   skinTone?: string;

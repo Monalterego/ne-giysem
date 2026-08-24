@@ -140,6 +140,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
   ], [locale]);
 
   const [height,     setHeight]     = useState(165);
+  const [weight,     setWeight]     = useState(60);
   const [age,        setAge]        = useState(25);
   const [bodyType,   setBodyType]   = useState<string | null>(null);
   const [skinTone,   setSkinTone]   = useState<string | null>(null);
@@ -155,6 +156,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
         .from('profiles')
         .update({
           height,
+          weight,
           age,
           body_type:   bodyType,
           skin_tone:   skinTone,
@@ -170,6 +172,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
       }
       setPhysicalProfile({
         height,
+        weight,
         age,
         bodyType:   bodyType   ?? undefined,
         skinTone:   skinTone   ?? undefined,
@@ -205,6 +208,17 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
             unit="cm"
             onDecrement={() => setHeight((v) => Math.max(150, v - 1))}
             onIncrement={() => setHeight((v) => Math.min(195, v + 1))}
+          />
+        </View>
+
+        {/* ── Kilo ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t('physicalProfile.weight')}</Text>
+          <NumberStepper
+            value={weight}
+            unit="kg"
+            onDecrement={() => setWeight((v) => Math.max(40, v - 1))}
+            onIncrement={() => setWeight((v) => Math.min(150, v + 1))}
           />
         </View>
 

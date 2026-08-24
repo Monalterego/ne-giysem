@@ -512,7 +512,7 @@ export default function CombosScreen() {
     // Fiziksel profil + render sayısı + kayıtlı manken URL'i
     const { data: profile } = await supabase
       .from('profiles')
-      .select('height, age, body_type, skin_tone, hair_color, hair_length, hair_type, virtual_model_renders, mannequin_url')
+      .select('height, weight, age, body_type, skin_tone, hair_color, hair_length, hair_type, virtual_model_renders, mannequin_url')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -532,6 +532,7 @@ export default function CombosScreen() {
     try {
       const physProfile: PhysicalProfile = {
         height:     (profile?.height      ?? 165) as number,
+        weight:     (profile?.weight      ?? undefined) as number | undefined,
         age:        (profile?.age         ?? 25)  as number,
         bodyType:   (profile?.body_type   ?? null) as string | null,
         skinTone:   (profile?.skin_tone   ?? null) as string | null,

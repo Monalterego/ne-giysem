@@ -49,6 +49,7 @@ const BODY_TYPE_MAP: Record<string, string> = {
 
 export interface PhysicalProfile {
   height:     number;
+  weight?:    number;
   age:        number;
   bodyType:   string | null;
   skinTone:   string | null;
@@ -172,6 +173,7 @@ export function profileToPrompt(profile: PhysicalProfile): string {
 
   return (
     `Full-body studio photograph of a woman, ${profile.age} years old, ${profile.height} cm, ` +
+    (profile.weight ? `${profile.weight} kg, ` : '') +
     `${body} body type, ${skin} skin tone, ${hLen} ${hType} ${hColor} hair, ` +
     `standing in a neutral front-facing pose, arms relaxed at sides, ` +
     `wearing simple plain seamless nude/beige fitted underwear (sports bra and briefs), ` +

@@ -332,6 +332,7 @@
     "title": "Your Physical Profile",
     "subtitle": "So outfits fit you better",
     "height": "HEIGHT",
+    "weight": "WEIGHT",
     "age": "AGE",
     "bodyType": "BODY TYPE",
     "skinTone": "SKIN TONE",

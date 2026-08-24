@@ -11,7 +11,7 @@ export interface UserState {
   locale: 'tr' | 'en';
   setUser: (user: User | null) => void;
   setStyleProfile: (profile: StyleProfile) => void;
-  setPhysicalProfile: (fields: Partial<Pick<User, 'height' | 'age' | 'bodyType' | 'skinTone' | 'hairColor' | 'hairLength' | 'hairType'>>) => void;
+  setPhysicalProfile: (fields: Partial<Pick<User, 'height' | 'weight' | 'age' | 'bodyType' | 'skinTone' | 'hairColor' | 'hairLength' | 'hairType'>>) => void;
   setAvatarUrl: (url: string) => void;
   setOnboarded: (value: boolean) => void;
   setTargetOnboardingScreen: (screen: keyof OnboardingStackParamList | null) => void;

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -78,6 +79,8 @@ export default function SignupScreen({ navigation }: Props) {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // Klavye açık kalırsa StyleChoice'ta input olmadığı için kendiliğinden kapanmaz
+    Keyboard.dismiss();
     if (sp) setOnboarded(true);                       // geri dönen → Main
     else    navigation.navigate('StyleChoice');       // yeni → onboarding
   };
@@ -133,6 +136,7 @@ export default function SignupScreen({ navigation }: Props) {
         isPremium: false,
         createdAt: data.user.created_at,
       });
+      Keyboard.dismiss();
       navigation.navigate('StyleChoice');
     }
     setLoading(false);

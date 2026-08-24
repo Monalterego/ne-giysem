@@ -86,13 +86,14 @@ export default function ProfileScreen() {
     if (!user || user.height != null) return;
     supabase
       .from('profiles')
-      .select('height, age, body_type, skin_tone, hair_color, hair_length, hair_type')
+      .select('height, weight, age, body_type, skin_tone, hair_color, hair_length, hair_type')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data?.height != null) {
           setPhysicalProfile({
             height:     data.height      ?? undefined,
+            weight:     data.weight      ?? undefined,
             age:        data.age         ?? undefined,
             bodyType:   data.body_type   ?? undefined,
             skinTone:   data.skin_tone   ?? undefined,
@@ -152,7 +153,9 @@ export default function ProfileScreen() {
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
+      // Cache-buster: dosya adı sabit (upsert) ama URL değişmeli — yoksa expo-image
+      // disk cache'ten eski görseli gösterir, kullanıcı fotoğrafını güncelleyemez.
+      const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`;
 
       const { error: updateError } = await supabase
         .from('profiles')

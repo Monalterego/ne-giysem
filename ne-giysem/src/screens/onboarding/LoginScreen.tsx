@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -77,6 +78,8 @@ export default function LoginScreen({ navigation }: Props) {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // Klavye açık kalırsa StyleChoice'ta input olmadığı için kendiliğinden kapanmaz
+    Keyboard.dismiss();
     if (sp) setOnboarded(true);                       // geri dönen → Main
     else    navigation.navigate('StyleChoice');       // yeni → onboarding
   };
