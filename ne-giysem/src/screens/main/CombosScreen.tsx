@@ -582,7 +582,14 @@ export default function CombosScreen() {
       }
 
       // 2. Kombin cache kontrolü
-      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}.jpg`;
+      // Manken sürümü: avatar değişince (?v=timestamp) yeni anahtar üretilir, böylece
+      // eski yüzlü cache HIT vermez. Yapay manken kullanılıyorsa sabit 'm' — o zaten
+      // profil verisinden türetiliyor ve mannequin_url değişmedikçe aynı kalıyor.
+      const modelVersion = avatarUrl
+        ? (avatarUrl.split('?v=')[1] ?? 'a')
+        : 'm';
+
+      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}_${modelVersion}.jpg`;
       const { data: { publicUrl: cachedUrl } } = supabase.storage
         .from('mannequin-cache')
         .getPublicUrl(cacheKey);
