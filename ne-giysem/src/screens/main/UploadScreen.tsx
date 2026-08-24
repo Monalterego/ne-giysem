@@ -19,6 +19,7 @@ import { colors, fonts, typography, spacing, radius, shadows, layout } from '../
 import { supabase } from '../../lib/supabase';
 import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
+import PhotoGuideModal from '../../components/PhotoGuideModal';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
@@ -48,6 +49,7 @@ export default function UploadScreen({ navigation }: Props) {
   const [originalUri, setOriginalUri] = useState<string | null>(null);
   const [processedBase64, setProcessedBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [guideVisible, setGuideVisible] = useState(false);
 
   const pick = async (source: 'camera' | 'gallery') => {
     let result: ImagePicker.ImagePickerResult;
@@ -168,6 +170,9 @@ export default function UploadScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <Text style={styles.photoTip}>{t('upload.photoTip')}</Text>
+          <TouchableOpacity onPress={() => setGuideVisible(true)} activeOpacity={0.7}>
+            <Text style={styles.guideLink}>{t('upload.photoGuideLink')}</Text>
+          </TouchableOpacity>
 
           <View style={styles.tipBox}>
             <Text style={styles.tipTitle}>{t('upload.tipTitle')}</Text>
@@ -220,6 +225,17 @@ export default function UploadScreen({ navigation }: Props) {
           </View>
         </View>
       )}
+
+      <PhotoGuideModal
+        visible={guideVisible}
+        onClose={() => setGuideVisible(false)}
+        title={t('upload.photoGuideTitle')}
+        intro={t('upload.photoGuideIntro')}
+        dos={[t('upload.guideDoFlat'), t('upload.guideDoPlain'),
+              t('upload.guideDoLight'), t('upload.guideDoSingle')]}
+        donts={[t('upload.guideDontCrumpled'), t('upload.guideDontOverlap'),
+                t('upload.guideDontDark'), t('upload.guideDontCrop')]}
+      />
     </SafeAreaView>
   );
 }
@@ -296,6 +312,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.sm,
+  },
+  guideLink: {
+    ...typography.bodySmall,
+    color: colors.text,
+    textDecorationLine: 'underline',
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
   tipBox: {
     marginTop: spacing.lg,

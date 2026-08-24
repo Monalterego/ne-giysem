@@ -21,6 +21,7 @@ import { t } from '../../i18n';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
+import PhotoGuideModal from '../../components/PhotoGuideModal';
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -118,6 +119,7 @@ export default function ProfileScreen() {
   ];
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [guideVisible,    setGuideVisible]    = useState(false);
 
   const handlePickAvatar = async () => {
     if (!user) return;
@@ -238,6 +240,9 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
             <Text style={styles.avatarPickerHint}>{t('profile.avatarTip')}</Text>
+            <TouchableOpacity onPress={() => setGuideVisible(true)} activeOpacity={0.7}>
+              <Text style={styles.guideLink}>{t('profile.photoGuideLink')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -470,6 +475,17 @@ export default function ProfileScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <PhotoGuideModal
+        visible={guideVisible}
+        onClose={() => setGuideVisible(false)}
+        title={t('profile.photoGuideTitle')}
+        intro={t('profile.photoGuideIntro')}
+        dos={[t('profile.guideDoFull'), t('profile.guideDoPose'),
+              t('profile.guideDoPlain'), t('profile.guideDoFitted')]}
+        donts={[t('profile.guideDontBaggy'), t('profile.guideDontBusy'),
+                t('profile.guideDontAngle'), t('profile.guideDontDark')]}
+      />
     </SafeAreaView>
   );
 }
@@ -742,6 +758,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: spacing.sm,
+  },
+  guideLink: {
+    ...typography.bodySmall,
+    color: colors.text,
+    textDecorationLine: 'underline',
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
   avatarPickerBtn: {
     ...typography.caption,
