@@ -46,7 +46,7 @@ export function tempToSeason(temp: number, date: Date = new Date(), lat?: number
  * Parçanın seasons dizisini güvenli parse eder.
  * Supabase bazen JSON string olarak döndürebilir — her iki formata da toleranslı.
  */
-function parseSeasons(item: WardrobeItem): string[] {
+export function parseSeasons(item: WardrobeItem): string[] {
   const raw = item.seasons as unknown;
   if (Array.isArray(raw)) return raw as string[];
   if (typeof raw === 'string') {

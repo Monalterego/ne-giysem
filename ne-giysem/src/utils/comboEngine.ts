@@ -8,7 +8,7 @@ import { registerFit, registerCoherence } from './registerTheory';
 import { getVisualWeight, isStatement, getFormality } from './itemTraits';
 import { proportionScore } from './proportionTheory';
 import { buildReasoning, buildTitle } from './reasoning';
-import { seasonFit } from './seasonTheory';
+import { seasonFit, tempToSeason, parseSeasons } from './seasonTheory';
 import type { WeatherData } from './weatherService';
 import { computeStyleVector } from './styleVector';
 import { supabase } from '../lib/supabase';
@@ -103,11 +103,26 @@ interface ComposedOutfit {
 // core üzerine sırayla çanta → dış giyim → aksesuar ekler; puan bütçesi + tek-odak kuralına uyar
 function composeOutfit(
   core: WardrobeItem[],
-  pools: { bags: WardrobeItem[]; outers: WardrobeItem[]; accessories: WardrobeItem[] },
+  allPools: { bags: WardrobeItem[]; outers: WardrobeItem[]; accessories: WardrobeItem[] },
   occasion: Occasion,
   usagePenalty?: { bags: Map<string, number>; outers: Map<string, number>; accessories?: Map<string, number> },
   weather?: WeatherData,
 ): ComposedOutfit {
+  // Tamamlayıcılarda mevsim kapısı: çanta/dış giyim/aksesuar aktif mevsim dışındaysa aday olmaz
+  // (Ekim'de hasır tote, keten blazer sızıyordu). Etiketsiz parça serbest; weather yoksa kapı yok.
+  // Çekirdek parçalar burada filtrelenmez — onlar seasonFit cezasıyla yönetilir.
+  const active = weather ? tempToSeason(weather.temp, new Date(), weather.lat) : null;
+  const inSeason = (i: WardrobeItem) => {
+    if (!active) return true;
+    const s = parseSeasons(i);
+    return s.length === 0 || s.includes(active);
+  };
+  const pools = {
+    bags:        allPools.bags.filter(inSeason),
+    outers:      allPools.outers.filter(inSeason),
+    accessories: allPools.accessories.filter(inSeason),
+  };
+
   const ruleKey: OccasionId = occasion === 'all' ? 'gunluk' : occasion as OccasionId;
   const rule = OCCASION_RULES[ruleKey];
   const outfitItems = [...core];

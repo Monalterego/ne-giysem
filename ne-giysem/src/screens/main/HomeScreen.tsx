@@ -288,7 +288,7 @@ export default function HomeScreen({ navigation }: Props) {
               <View style={styles.weatherLeft}>
                 <WeatherIcon description={weather.description} />
                 <View style={{ marginLeft: spacing.sm }}>
-                  <Text style={styles.weatherCity}>İstanbul</Text>
+                  <Text style={styles.weatherCity}>{weather.city ?? 'İstanbul'}</Text>
                   <Text style={styles.weatherTemp}>{weather.temp}°C · {weather.description}</Text>
                 </View>
               </View>
