@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -138,6 +139,17 @@ export default function HomeScreen({ navigation }: Props) {
     if (user?.id) fetchItems(user.id);
     fetchWeather();
   }, [user?.id]);
+
+  // Uygulama ön plana gelince hava durumunu tazele (kullanıcı şehir değiştirmiş olabilir).
+  // 30 dk eşiği: konum + OpenWeather çağrısını her ön plana gelişte tekrarlamamak için.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') return;
+      const last = useWardrobeStore.getState().weatherFetchedAt;
+      if (!last || Date.now() - last > 30 * 60 * 1000) fetchWeather();
+    });
+    return () => sub.remove();
+  }, []);
 
   const daySeed = new Date().toISOString().slice(0, 10); // "2026-06-03" — güne sabit
 

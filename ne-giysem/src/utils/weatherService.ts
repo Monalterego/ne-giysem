@@ -19,6 +19,8 @@ export interface WeatherData {
   description: string;
   icon: string;
   recommendation: string;
+  /** Enlem — güney yarımkürede ilkbahar/sonbahar ters çevrilir (seasonTheory) */
+  lat?: number;
 }
 
 // i18n anahtarı döndürür; t() ekranda çağrılır (dil değişince güncellensin — service'te t() DONAR)
@@ -65,5 +67,7 @@ export async function fetchWeather(lat?: number, lon?: number): Promise<WeatherD
     description,
     icon: iconToEmoji(iconCode),
     recommendation: getRecommendation(temp),
+    // İstanbul fallback'inde de enlem dolsun diye API'nin döndürdüğü koordinat tercih edilir
+    lat: ((json as any).coord?.lat as number | undefined) ?? lat,
   };
 }

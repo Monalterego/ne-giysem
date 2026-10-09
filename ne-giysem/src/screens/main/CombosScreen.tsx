@@ -413,7 +413,8 @@ export default function CombosScreen() {
   const planCombo      = useWardrobeStore((s) => s.planCombo);
   const weather        = useWardrobeStore((s) => s.weather);
   const user           = useUserStore((s) => s.user);
-  const { cache: comboCache, setCache, clearCache } = useComboStore();
+  const setCache       = useComboStore((s) => s.setCache);
+  const clearCache     = useComboStore((s) => s.clearCache);
 
   const PAGE_SIZE = 6;
 
@@ -460,7 +461,9 @@ export default function CombosScreen() {
   // Lokal kombin üretimi — senkron, sıfır network; weather değişince yeniden hesaplanır
   useEffect(() => {
     if (!items.length || !user) { setLocalCombos([]); return; }
-    const cached = comboCache[activeOccasion];
+    // Store'dan taze oku: render closure'daki comboCache, aynı commit'te üstteki clearCache()'i görmez
+    // (hava/parça değişince eski kombinler cache'ten dönüyordu)
+    const cached = useComboStore.getState().cache[activeOccasion];
     if (cached) { setLocalCombos(applyFocus(cached)); setVisibleCount(PAGE_SIZE); return; }
     const combos = generateCombos(items, 24, activeOccasion, weather ?? undefined, user?.styleProfile ?? undefined);
     setCache(activeOccasion, combos);

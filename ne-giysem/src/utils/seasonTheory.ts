@@ -27,11 +27,19 @@ const LIGHT_FABRICS = new Set([
 
 // ─── Fonksiyonlar ─────────────────────────────────────────────────────────────
 
-/** İstanbul iklimine göre anlık sıcaklıktan aktif mevsim tahmini */
-export function tempToSeason(temp: number): Season {
+/**
+ * Anlık sıcaklıktan aktif mevsim tahmini.
+ * 12-19°C ara mevsimde ilkbahar/sonbahar ayrımı aya göre yapılır —
+ * aksi halde ['spring','summer'] etiketli yazlıklar Ekim'de ceza almıyordu.
+ */
+export function tempToSeason(temp: number, date: Date = new Date(), lat?: number): Season {
   if (temp < 12) return 'winter';
   if (temp > 19) return 'summer';
-  return 'spring'; // 12-19 → ara mevsim; spring/fall aynı kova
+  // Kuzey yarımküre: Ağu-Oca arası sonbahar yönü. Güney yarımkürede (lat<0) ters.
+  const m = date.getMonth();               // 0=Ocak
+  const autumnNorth = m >= 7 || m === 0;    // Ağu-Ara + Oca
+  const isAutumn = (lat !== undefined && lat < 0) ? !autumnNorth : autumnNorth;
+  return isAutumn ? 'fall' : 'spring';
 }
 
 /**
@@ -54,7 +62,7 @@ function parseSeasons(item: WardrobeItem): string[] {
 export function seasonFit(item: WardrobeItem, weather?: WeatherData): number {
   if (!weather) return 1.0;
 
-  const active  = tempToSeason(weather.temp);
+  const active  = tempToSeason(weather.temp, new Date(), weather.lat);
   const seasons = parseSeasons(item);
   let fit = 1.0;
 

@@ -33,6 +33,8 @@ interface WardrobeState {
   wornComboKeys: Set<string>;
   weather: WeatherData | null;
   weatherLoading: boolean;
+  /** Son başarılı hava durumu çekimi (ms) — ön plana gelişte tazelik kontrolü için */
+  weatherFetchedAt: number | null;
   setItems: (items: WardrobeItem[]) => void;
   addItem: (item: WardrobeItem) => void;
   removeItem: (id: string) => void;
@@ -92,6 +94,7 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
   wornComboKeys: new Set<string>(),
   weather: null,
   weatherLoading: false,
+  weatherFetchedAt: null,
   setItems: (items) => set({ items }),
   addItem: (item) => set((state) => ({ items: [item, ...state.items] })),
   removeItem: (id) => set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
@@ -123,7 +126,7 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
     try {
       const coords = await getCoords();
       const data = await fetchWeatherApi(coords?.lat, coords?.lon);
-      set({ weather: data });
+      set({ weather: data, weatherFetchedAt: Date.now() });
     } catch {
       // hava durumu başarısız olursa sessizce geç
     } finally {
