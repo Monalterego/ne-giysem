@@ -299,7 +299,7 @@ export default function HomeScreen({ navigation }: Props) {
             <View style={styles.weatherLeft}>
               <Feather name="thermometer" size={18} color={colors.textSecondary} />
               <View style={{ marginLeft: spacing.sm }}>
-                <Text style={styles.weatherCity}>İstanbul</Text>
+                {/* Şehir verisi yok — sabit şehir gösterilmez */}
                 <Text style={styles.weatherTemp}>{t('home.weatherUnavailable')}</Text>
               </View>
             </View>
