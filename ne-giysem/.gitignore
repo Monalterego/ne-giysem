@@ -40,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# fotoğraf rehberi orijinal görselleri (optimize edilmiş .jpg'ler repoda)
+assets/guide/_src/

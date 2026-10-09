@@ -311,6 +311,11 @@
     "guideDontBusy": "Keep out busy backgrounds, other people in frame, and mirror reflections.",
     "guideDontAngle": "Don't shoot from the side, above or below — extreme angles distort the proportions.",
     "guideDontDark": "Don't shoot in dim light or harsh shadow.",
+    "exampleDo": "Like this",
+    "exampleBaggy": "Baggy clothes",
+    "exampleBusy": "Busy background",
+    "exampleAngle": "Half body, angled",
+    "exampleDark": "Dark lighting",
     "changeStyle": "Redo Style Quiz →",
     "changeStyleConfirm": "You'll retake the style quiz. Your current style profile will be updated."
   },

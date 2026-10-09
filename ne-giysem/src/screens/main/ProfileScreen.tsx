@@ -485,6 +485,14 @@ export default function ProfileScreen() {
               t('profile.guideDoPlain'), t('profile.guideDoFitted')]}
         donts={[t('profile.guideDontBaggy'), t('profile.guideDontBusy'),
                 t('profile.guideDontAngle'), t('profile.guideDontDark')]}
+        // Statik require — Metro dinamik yolu çözemez
+        examples={[
+          { source: require('../../../assets/guide/avatar_do.jpg'),         ok: true,  label: t('profile.exampleDo') },
+          { source: require('../../../assets/guide/avatar_dont_baggy.jpg'), ok: false, label: t('profile.exampleBaggy') },
+          { source: require('../../../assets/guide/avatar_dont_busy.jpg'),  ok: false, label: t('profile.exampleBusy') },
+          { source: require('../../../assets/guide/avatar_dont_angle.jpg'), ok: false, label: t('profile.exampleAngle') },
+          { source: require('../../../assets/guide/avatar_dont_dark.jpg'),  ok: false, label: t('profile.exampleDark') },
+        ]}
       />
     </SafeAreaView>
   );

@@ -311,6 +311,11 @@
     "guideDontBusy": "Kalabalık arka plan, kadraja giren başka kişiler ya da ayna yansıması olmasın.",
     "guideDontAngle": "Yandan, yukarıdan veya aşağıdan çekme — uç açılar oranları bozuyor.",
     "guideDontDark": "Loş ışıkta ve sert gölge altında çekme.",
+    "exampleDo": "Böyle",
+    "exampleBaggy": "Bol kıyafet",
+    "exampleBusy": "Kalabalık arka plan",
+    "exampleAngle": "Yarım boy, yan açı",
+    "exampleDark": "Karanlık ortam",
     "changeStyle": "Stilini Yeniden Belirle →",
     "changeStyleConfirm": "Stil testini baştan çözeceksin. Mevcut stil profilin güncellenecek."
   },
