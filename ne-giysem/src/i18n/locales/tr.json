@@ -599,6 +599,15 @@
     "guideDontOverlap": "Parçaları üst üste koyma, aynı karede birden fazla kıyafet olmasın.",
     "guideDontDark": "Loş ışıkta ve sert gölge altında çekme.",
     "guideDontCrop": "Kenarları kırpma — kıyafetin tamamı karede olsun.",
+    "guideDoLegs": "Pantolon, şort, tulum: paçaları ayrık ve uzanmış ser, bel bandı görünsün",
+    "guideDontFolded": "Katlanmış paça — şort ya da üst sanılabilir",
+    "exampleTop": "Üst: düz ser",
+    "exampleBottom": "Alt: paçalar ayrık",
+    "exampleDress": "Elbise: tam boy",
+    "exampleFolded": "Katlanmış",
+    "exampleCrumpled": "Buruşuk, desenli zemin",
+    "exampleOverlap": "Üst üste",
+    "exampleDark": "Loş, kesik kadraj",
     "photoTip": "İpucu: Kıyafeti düz serip tamamı görünecek şekilde çek."
   },
   "fabric": {

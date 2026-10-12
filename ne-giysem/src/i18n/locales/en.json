@@ -599,6 +599,15 @@
     "guideDontOverlap": "Don't stack items or fit more than one garment in the frame.",
     "guideDontDark": "Don't shoot in dim light or harsh shadow.",
     "guideDontCrop": "Don't crop the edges — keep the whole item in frame.",
+    "guideDoLegs": "Pants, shorts, jumpsuits: legs apart and fully extended, waistband visible",
+    "guideDontFolded": "Folded legs — may be mistaken for shorts or a top",
+    "exampleTop": "Top: lay flat",
+    "exampleBottom": "Bottoms: legs apart",
+    "exampleDress": "Dress: full length",
+    "exampleFolded": "Folded",
+    "exampleCrumpled": "Crumpled, busy surface",
+    "exampleOverlap": "Piled up",
+    "exampleDark": "Dim, cut off",
     "photoTip": "Tip: Lay the item flat so the whole piece is visible."
   },
   "fabric": {

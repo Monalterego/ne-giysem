@@ -231,10 +231,21 @@ export default function UploadScreen({ navigation }: Props) {
         onClose={() => setGuideVisible(false)}
         title={t('upload.photoGuideTitle')}
         intro={t('upload.photoGuideIntro')}
-        dos={[t('upload.guideDoFlat'), t('upload.guideDoPlain'),
+        dos={[t('upload.guideDoFlat'), t('upload.guideDoLegs'), t('upload.guideDoPlain'),
               t('upload.guideDoLight'), t('upload.guideDoSingle')]}
-        donts={[t('upload.guideDontCrumpled'), t('upload.guideDontOverlap'),
+        // Katlanmış paça en sık vision hatası (tulum/şort → "üst") — listenin başında
+        donts={[t('upload.guideDontFolded'), t('upload.guideDontCrumpled'), t('upload.guideDontOverlap'),
                 t('upload.guideDontDark'), t('upload.guideDontCrop')]}
+        // Statik require — Metro dinamik yolu çözemez
+        examples={[
+          { source: require('../../../assets/guide/garment_do_top.jpg'),        ok: true,  label: t('upload.exampleTop') },
+          { source: require('../../../assets/guide/garment_do_bottom.jpg'),     ok: true,  label: t('upload.exampleBottom') },
+          { source: require('../../../assets/guide/garment_do_dress.jpg'),      ok: true,  label: t('upload.exampleDress') },
+          { source: require('../../../assets/guide/garment_dont_folded.jpg'),   ok: false, label: t('upload.exampleFolded') },
+          { source: require('../../../assets/guide/garment_dont_crumpled.jpg'), ok: false, label: t('upload.exampleCrumpled') },
+          { source: require('../../../assets/guide/garment_dont_overlap.jpg'),  ok: false, label: t('upload.exampleOverlap') },
+          { source: require('../../../assets/guide/garment_dont_dark.jpg'),     ok: false, label: t('upload.exampleDark') },
+        ]}
       />
     </SafeAreaView>
   );
