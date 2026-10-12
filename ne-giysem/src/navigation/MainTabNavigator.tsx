@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Image } from 'expo-image';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/theme';
 import { t } from '../i18n';
@@ -63,10 +64,14 @@ export default function MainTabNavigator() {
         options={{
           tabBarLabel: t('nav.combos'),
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'sparkles' : 'sparkles-outline'}
-              size={size}
-              color={color}
+            // Özel "kombin seti" ikonu (PNG + tint — react-native-svg native build ister)
+            <Image
+              source={focused
+                ? require('../../assets/icons/combo_active.png')
+                : require('../../assets/icons/combo.png')}
+              style={{ width: size, height: size }}
+              tintColor={color}
+              contentFit="contain"
             />
           ),
         }}
