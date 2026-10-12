@@ -70,6 +70,10 @@
   },
   "combos": {
     "title": "Outfits",
+    "favorites": "Favorites",
+    "favoritesEmpty": "No favorite outfits yet. Tap the heart on an outfit you love.",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites",
     "tryOn": "Try On",
     "modelPreparing": "Preparing model...",
     "worn": "✓ Worn",
@@ -272,6 +276,7 @@
   },
   "profile": {
     "physicalInfo": "MY PHYSICAL INFO",
+    "myFavorites": "My Favorite Outfits",
     "account": "ACCOUNT",
     "seeOnYourself": "SEE OUTFITS ON YOURSELF",
     "editPhysical": "Edit physical info →",

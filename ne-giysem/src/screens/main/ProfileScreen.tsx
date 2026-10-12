@@ -13,8 +13,10 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
+import { useFavoritesStore } from '../../store/useFavoritesStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { t } from '../../i18n';
@@ -48,6 +50,14 @@ export default function ProfileScreen() {
   const setUserLocale             = useUserStore((s: UserState) => s.setUserLocale);
   const items    = useWardrobeStore((s) => s.items);
   const setItems = useWardrobeStore((s) => s.setItems);
+  const navigation     = useNavigation<any>();
+  const favoriteCount  = useFavoritesStore((s) => s.favorites.length);
+  const fetchFavorites = useFavoritesStore((s) => s.fetchFavorites);
+
+  // Favori sayısı için — Kombin sekmesi henüz hiç açılmamış olabilir
+  useEffect(() => {
+    if (user?.id) fetchFavorites(user.id);
+  }, [user?.id]);
 
   // İstatistik ertelenmiş hesaplanıyor: render'ı bloke etmesin diye generateCombos
   // ekran çizildikten SONRA (useEffect) çalışır, sonuç state'e yazılır.
@@ -321,6 +331,24 @@ export default function ProfileScreen() {
             <Text style={styles.statValue}>{comboStats ? comboStats.avgScore + '%' : '…'}</Text>
             <Text style={styles.statLabel}>{t('profile.avgFit')}</Text>
           </View>
+        </View>
+
+        {/* 3b ── FAVORİ KOMBİNLERİM ── Kombin sekmesine favoriler açık şekilde gider */}
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.listItem}
+            onPress={() => navigation.navigate('Combos', { occasion: 'favorites' })}
+            activeOpacity={0.7}
+          >
+            <View style={styles.listItemLeft}>
+              <Ionicons name="heart-outline" size={18} color={colors.text} />
+              <Text style={styles.listItemText}>{t('profile.myFavorites')}</Text>
+            </View>
+            <View style={styles.listItemLeft}>
+              {favoriteCount > 0 && <Text style={styles.listItemCount}>{favoriteCount}</Text>}
+              <Feather name="chevron-right" size={16} color={colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* 4 ── FİZİKSEL BİLGİLERİM ── */}
@@ -692,6 +720,15 @@ const styles = StyleSheet.create({
   listItemText: {
     ...typography.body,
     color: colors.text,
+  },
+  listItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  listItemCount: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
 
   // İsim düzenleme

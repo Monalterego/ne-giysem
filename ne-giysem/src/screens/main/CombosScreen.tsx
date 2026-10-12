@@ -15,20 +15,21 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { MainTabParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { useComboStore } from '../../store/useComboStore';
+import { useFavoritesStore } from '../../store/useFavoritesStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
 import { generateVirtualModelImage, getModelImage, comboSignatureForCache } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
-import type { Combo } from '../../types';
+import type { Combo, WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { friendlyError, isModelImageError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
@@ -64,6 +65,8 @@ const ComboCard = React.memo(function ComboCard({
   onVirtualModel,
   onItemPress,
   onPlan,
+  isFavorite,
+  onToggleFavorite,
 }: {
   combo: Combo;
   isWorn: boolean;
@@ -73,6 +76,8 @@ const ComboCard = React.memo(function ComboCard({
   onVirtualModel: (c: Combo) => void;
   onItemPress: (itemId: string, url: string) => void;
   onPlan: (c: Combo) => void;
+  isFavorite: boolean;
+  onToggleFavorite: (c: Combo) => void;
 }) {
   const allItems = [...combo.items, ...(combo.suggestedItems ?? [])];
 
@@ -98,6 +103,20 @@ const ComboCard = React.memo(function ComboCard({
             <Text style={styles.itemLabel}>{catLabel(item.category)}</Text>
           </TouchableOpacity>
         ))}
+        {/* Favori — scoreBadge'in ayna görüntüsü (sol üst); tek renk, kırmızı yok */}
+        <TouchableOpacity
+          style={styles.favBtn}
+          onPress={() => onToggleFavorite(combo)}
+          hitSlop={8}
+          activeOpacity={0.7}
+          accessibilityLabel={isFavorite ? t('combos.removeFavorite') : t('combos.addFavorite')}
+        >
+          <Ionicons
+            name={isFavorite ? 'heart' : 'heart-outline'}
+            size={18}
+            color={isFavorite ? colors.text : colors.textSecondary}
+          />
+        </TouchableOpacity>
         <View style={styles.scoreBadge}>
           <Text style={styles.scoreText}>{combo.score}%</Text>
         </View>
@@ -163,7 +182,8 @@ const ComboCard = React.memo(function ComboCard({
   prev.combo.id      === next.combo.id      &&
   prev.isWorn        === next.isWorn        &&
   prev.isSaving      === next.isSaving      &&
-  prev.isGenerating  === next.isGenerating,
+  prev.isGenerating  === next.isGenerating  &&
+  prev.isFavorite    === next.isFavorite,     // eksik olursa kalp dokununca güncellenmez
 );
 
 // ─── Model sonuç modalı ───────────────────────────────────────────────────────
@@ -401,7 +421,11 @@ export default function CombosScreen() {
   const navigation     = useNavigation<any>();
   const route          = useRoute<RouteProp<MainTabParamList, 'Combos'>>();
   const focusKey       = route.params?.focusComboKey;
-  const focusOccasion  = route.params?.occasion as Occasion | undefined;
+  // 'favorites' bir okazyon değil (kurallar/cache yok) — ayrı state'e ayrılır
+  const paramOccasion  = route.params?.occasion;
+  const focusOccasion  = paramOccasion && paramOccasion !== 'favorites'
+    ? paramOccasion as Occasion
+    : undefined;
   const focusConsumed  = useRef(false);
   const listRef        = useRef<FlatList<any>>(null);
   const items          = useWardrobeStore((s) => s.items);
@@ -415,11 +439,17 @@ export default function CombosScreen() {
   const user           = useUserStore((s) => s.user);
   const setCache       = useComboStore((s) => s.setCache);
   const clearCache     = useComboStore((s) => s.clearCache);
+  const favorites      = useFavoritesStore((s) => s.favorites);
+  const favoriteSigs   = useFavoritesStore((s) => s.favoriteSigs);
+  const fetchFavorites = useFavoritesStore((s) => s.fetchFavorites);
+  const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
 
   const PAGE_SIZE = 6;
 
   const [savingKey,      setSavingKey]      = useState<string | null>(null);
   const [activeOccasion, setActiveOccasion] = useState<Occasion>(focusOccasion ?? 'all');
+  // Favoriler sekmesi: Occasion tipine 'favorites' eklemek kural/ayakkabı/cache tiplerini bozardı
+  const [showFavorites,  setShowFavorites]  = useState(paramOccasion === 'favorites');
   const [localCombos,    setLocalCombos]    = useState<Combo[]>([]);
   const [visibleCount,   setVisibleCount]   = useState(PAGE_SIZE);
 
@@ -440,8 +470,18 @@ export default function CombosScreen() {
     if (user?.id) {
       fetchItems(user.id);
       fetchWornToday(user.id);
+      fetchFavorites(user.id);
     }
   }, [user?.id]);
+
+  // Profil'den "Favori Kombinlerim" ile gelindi — sekme zaten mount'luysa useState initial
+  // çalışmaz, parametreyi burada yakala. Parametre temizlenir ki aynı satıra tekrar
+  // dokunulduğunda (arada başka chip seçilmiş olsa bile) yine tetiklensin.
+  useEffect(() => {
+    if (paramOccasion !== 'favorites') return;
+    setShowFavorites(true);
+    navigation.setParams({ occasion: undefined });
+  }, [paramOccasion]);
 
   // Yeni parça eklenince, kullanıcı veya hava durumu değişince cache'i sıfırla
   useEffect(() => {
@@ -476,7 +516,44 @@ export default function CombosScreen() {
   // Liste boşken FlatList render edilmiyor, listRef null olur — ?. bunu güvenli kılıyor.
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [activeOccasion]);
+    setVisibleCount(PAGE_SIZE);
+  }, [activeOccasion, showFavorites]);
+
+  // Favoriler listesi — generateCombos çağrılmaz; kural/mevsim/skor eşiği uygulanmaz
+  // (favori kullanıcının seçimi). Parçası dolaptan silinmiş favori gizlenir (yarım kombin
+  // gösterilmez); DB kaydı silinmez — zararsız. Sıra store'dan: en yeni en üstte.
+  const favoriteCombos = useMemo<Combo[]>(() => {
+    if (!showFavorites) return [];
+    const byId = new Map(items.map((i) => [i.id, i]));
+    const out: Combo[] = [];
+    for (const f of favorites) {
+      const resolved = f.itemIds.map((id) => byId.get(id));
+      if (!resolved.length || resolved.some((i) => !i)) continue;
+      out.push({
+        id:        `fav_${f.id}`,
+        items:     resolved as WardrobeItem[],
+        score:     f.score,
+        occasion:  f.occasion ?? undefined,
+        label:     '',            // kombin başlığı UI'da gizli
+        createdAt: f.createdAt,
+      });
+    }
+    return out;
+  }, [showFavorites, favorites, items]);
+
+  // Okazyon ref'ten okunur: comparator callback'leri yok saydığından memo'lu kart eski
+  // callback'i tutabilir — callback stabil kalmalı
+  const activeOccasionRef = useRef(activeOccasion);
+  activeOccasionRef.current = activeOccasion;
+  const handleToggleFavoriteCb = useCallback((c: Combo) => {
+    if (!user?.id) return;
+    toggleFavorite(user.id, c, c.occasion ?? activeOccasionRef.current);
+  }, [user?.id, toggleFavorite]);
+
+  const selectOccasion = (occ: Occasion) => {
+    setShowFavorites(false);
+    setActiveOccasion(occ);
+  };
 
   const handleLoadMore = () => {
     setVisibleCount((v) => v + PAGE_SIZE);
@@ -678,22 +755,24 @@ export default function CombosScreen() {
   }, [planTarget, user?.id, planCombo]);
 
   // Lightbox için seçili item — tüm kartlardan ID ile bulunur; devasa string state'e girmez
+  // Ekranda gösterilen liste: favoriler sekmesinde favoriler, aksi halde üretilen kombinler
+  const combos  = showFavorites ? favoriteCombos : localCombos;
+
   const selectedLightboxItem = useMemo(() => {
     if (!lightboxItemId) return null;
-    return localCombos
+    return combos
       .flatMap((c) => [...c.items, ...(c.suggestedItems ?? [])])
       .find((i) => i.id === lightboxItemId) ?? null;
-  }, [lightboxItemId, localCombos]);
+  }, [lightboxItemId, combos]);
 
-  const combos  = localCombos;
   const missing = useMemo(() => missingCategories(items), [items]);
   // Bu okazyonun zorunlu ayakkabısı dolapta yoksa motor [] döner — boş durumda
-  // "şu ayakkabıyı ekle" diyebilmek için gerekli türleri hesapla
+  // "şu ayakkabıyı ekle" diyebilmek için gerekli türleri hesapla. Favorilerde çalışmaz.
   const missingShoes = useMemo(
-    () => (activeOccasion !== 'all' && !hasRequiredShoes(items, activeOccasion)
+    () => (!showFavorites && activeOccasion !== 'all' && !hasRequiredShoes(items, activeOccasion)
       ? requiredShoeLabels(activeOccasion)
       : []),
-    [items, activeOccasion],
+    [items, activeOccasion, showFavorites],
   );
 
   if (isLoading) {
@@ -728,22 +807,34 @@ export default function CombosScreen() {
       >
         <TouchableOpacity
           key="all"
-          style={[styles.chip, activeOccasion === 'all' && styles.chipActive]}
-          onPress={() => setActiveOccasion('all')}
+          style={[styles.chip, !showFavorites && activeOccasion === 'all' && styles.chipActive]}
+          onPress={() => selectOccasion('all')}
           activeOpacity={0.75}
         >
-          <Text style={[styles.chipText, activeOccasion === 'all' && styles.chipTextActive]}>
+          <Text style={[styles.chipText, !showFavorites && activeOccasion === 'all' && styles.chipTextActive]}>
             Tümü
           </Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          key="favorites"
+          style={[styles.chip, showFavorites && styles.chipActive]}
+          onPress={() => setShowFavorites(true)}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="heart" size={12} color={showFavorites ? colors.white : colors.text} />
+          <Text style={[styles.chipText, showFavorites && styles.chipTextActive]}>
+            {t('combos.favorites')}
+          </Text>
+        </TouchableOpacity>
+
         {OCCASIONS.map((occ) => {
-          const active = activeOccasion === occ.id;
+          const active = !showFavorites && activeOccasion === occ.id;
           return (
             <TouchableOpacity
               key={occ.id}
               style={[styles.chip, active && styles.chipActive]}
-              onPress={() => setActiveOccasion(occ.id)}
+              onPress={() => selectOccasion(occ.id)}
               activeOpacity={0.75}
             >
               <Feather name={occ.icon as any} size={12} color={active ? colors.white : colors.text} />
@@ -758,7 +849,13 @@ export default function CombosScreen() {
       {/* İçerik */}
       {combos.length === 0 ? (
         <View style={styles.emptyContainer}>
-          {items.length === 0 ? (
+          {showFavorites ? (
+            // FAVORİLER boş — kalbe dokunmaya yönlendir
+            <>
+              <Ionicons name="heart-outline" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
+              <Text style={styles.emptySubtitle}>{t('combos.favoritesEmpty')}</Text>
+            </>
+          ) : items.length === 0 ? (
             // YENİ KULLANICI — dolap tamamen boş
             <>
               <Feather name="camera" size={44} color={colors.border} style={{ marginBottom: spacing.lg }} />
@@ -826,7 +923,7 @@ export default function CombosScreen() {
       ) : (
         <FlatList
           ref={listRef}
-          data={localCombos.slice(0, visibleCount)}
+          data={combos.slice(0, visibleCount)}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -855,11 +952,13 @@ export default function CombosScreen() {
                 onVirtualModel={handleVirtualCb}
                 onItemPress={handleItemPressCb}
                 onPlan={handlePlanCb}
+                isFavorite={favoriteSigs.has(comboSignatureForCache(item.items))}
+                onToggleFavorite={handleToggleFavoriteCb}
               />
             );
           }}
           ListFooterComponent={
-            visibleCount < localCombos.length ? (
+            visibleCount < combos.length ? (
               <View style={styles.loadMoreContainer}>
                 <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore} activeOpacity={0.85}>
                   <Text style={styles.loadMoreText}>{t('combos.loadMore')}</Text>
@@ -1131,6 +1230,22 @@ const styles = StyleSheet.create({
   itemLabel: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  favBtn: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    // scoreBadge koyu zeminli; kalp siyah olduğu için burada açık zemin
+    // (koyu zeminde siyah dolu kalp görünmezdi). Theme token'ı — hardcode rgba yok.
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
   },
   scoreBadge: {
     position: 'absolute',

@@ -70,6 +70,10 @@
   },
   "combos": {
     "title": "Kombinler",
+    "favorites": "FAVORİLER",
+    "favoritesEmpty": "Henüz favori kombinin yok. Beğendiğin kombindeki kalbe dokun.",
+    "addFavorite": "Favorilere ekle",
+    "removeFavorite": "Favorilerden çıkar",
     "tryOn": "Üzerinde Gör",
     "modelPreparing": "Manken hazırlanıyor...",
     "worn": "✓ Giyildi",
@@ -272,6 +276,7 @@
   },
   "profile": {
     "physicalInfo": "FİZİKSEL BİLGİLERİM",
+    "myFavorites": "Favori Kombinlerim",
     "account": "HESAP",
     "seeOnYourself": "KOMBİNLERİ KENDİNDE GÖR",
     "editPhysical": "Fiziksel bilgileri düzenle →",
