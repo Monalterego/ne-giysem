@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
-import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -32,7 +33,7 @@ function initials(name: string): string {
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
+    .map((w) => upper(w[0] ?? ''))
     .join('');
 }
 
@@ -51,8 +52,11 @@ export default function ProfileScreen() {
   const items    = useWardrobeStore((s) => s.items);
   const setItems = useWardrobeStore((s) => s.setItems);
   const navigation     = useNavigation<any>();
-  const favoriteCount  = useFavoritesStore((s) => s.favorites.length);
+  const favorites      = useFavoritesStore((s) => s.favorites);
   const fetchFavorites = useFavoritesStore((s) => s.fetchFavorites);
+  const resetFavorites = useFavoritesStore((s) => s.reset);
+  // Kombin > Favoriler listesiyle AYNI kural: parçası silinmiş favori sayılmaz
+  const favoriteCount  = useMemo(() => resolveFavorites(favorites, items).length, [favorites, items]);
 
   // Favori sayısı için — Kombin sekmesi henüz hiç açılmamış olabilir
   useEffect(() => {
@@ -213,6 +217,7 @@ export default function ProfileScreen() {
       .catch((err) => console.warn('[ProfileScreen] signOut exception:', err))
       .finally(() => {
         setItems([]);
+        resetFavorites();   // App SIGNED_OUT da sıfırlar; çevrimdışı signOut event üretmezse diye burada da
         logout();
       });
   };
@@ -228,7 +233,7 @@ export default function ProfileScreen() {
 
         {/* 1 ── KOMBİNLERİ KENDİNDE GÖR ── */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>{t('profile.seeOnYourself')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('profile.seeOnYourself'))}</Text>
           <View style={styles.avatarPickerSection}>
             <TouchableOpacity
               style={styles.avatarPickerCircle}
@@ -258,7 +263,7 @@ export default function ProfileScreen() {
 
         {/* 2 ── STİL DNA ── */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>{t('profile.styleDna')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('profile.styleDna'))}</Text>
           {loadingStyles ? (
             <ActivityIndicator color={colors.textTertiary} size="small" />
           ) : styleEntries.length === 0 ? (
@@ -319,17 +324,17 @@ export default function ProfileScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{items.length}</Text>
-            <Text style={styles.statLabel}>{t('profile.item')}</Text>
+            <Text style={styles.statLabel}>{upper(t('profile.item'))}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{comboStats?.count ?? '…'}</Text>
-            <Text style={styles.statLabel}>{t('profile.combo')}</Text>
+            <Text style={styles.statLabel}>{upper(t('profile.combo'))}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{comboStats ? comboStats.avgScore + '%' : '…'}</Text>
-            <Text style={styles.statLabel}>{t('profile.avgFit')}</Text>
+            <Text style={styles.statLabel}>{upper(t('profile.avgFit'))}</Text>
           </View>
         </View>
 
@@ -354,7 +359,7 @@ export default function ProfileScreen() {
         {/* 4 ── FİZİKSEL BİLGİLERİM ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.sectionLabel}>{t('profile.physicalInfo')}</Text>
+            <Text style={styles.sectionLabel}>{upper(t('profile.physicalInfo'))}</Text>
             {hasPhysProfile && (
               <TouchableOpacity
                 onPress={() => {
@@ -397,7 +402,7 @@ export default function ProfileScreen() {
 
         {/* DİL / LANGUAGE */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>{t('settings.language').toUpperCase()}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('settings.language'))}</Text>
           <View style={styles.langRow}>
             <TouchableOpacity
               style={[styles.langBtn, locale === 'tr' && styles.langBtnActive]}
@@ -422,7 +427,7 @@ export default function ProfileScreen() {
 
         {/* 5 ── HESAP ── */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>{t('profile.account')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('profile.account'))}</Text>
 
           {!editingName ? (
             <TouchableOpacity

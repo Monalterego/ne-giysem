@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { comboSignatureForCache } from '../utils/virtualModel';
-import type { Combo } from '../types';
+import type { Combo, WardrobeItem } from '../types';
 
 export interface FavoriteCombo {
   id: string;
@@ -17,6 +17,30 @@ interface FavoritesStore {
   favoriteSigs: Set<string>;        // hızlı "favori mi?" kontrolü
   fetchFavorites: (userId: string) => Promise<void>;
   toggleFavorite: (userId: string, combo: Combo, occasion: string) => Promise<void>;
+  reset: () => void;
+}
+
+/**
+ * Favorileri dolaptaki parçalarla Combo'ya çözer — Kombin > Favoriler listesi ve Profil sayacı
+ * AYNI kuralı kullansın. Parçası dolaptan silinmiş favori atlanır (yarım kombin gösterilmez);
+ * DB kaydı silinmez — zararsız. Sıra korunur (en yeni en üstte).
+ */
+export function resolveFavorites(favorites: FavoriteCombo[], items: WardrobeItem[]): Combo[] {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const out: Combo[] = [];
+  for (const f of favorites) {
+    const resolved = f.itemIds.map((id) => byId.get(id));
+    if (!resolved.length || resolved.some((i) => !i)) continue;
+    out.push({
+      id:        `fav_${f.id}`,
+      items:     resolved as WardrobeItem[],
+      score:     f.score,
+      occasion:  f.occasion ?? undefined,
+      label:     '',            // kombin başlığı UI'da gizli
+      createdAt: f.createdAt,
+    });
+  }
+  return out;
 }
 
 const sigsOf = (list: FavoriteCombo[]) => new Set(list.map((f) => f.signature));
@@ -40,6 +64,9 @@ function mapRow(row: any): FavoriteCombo {
 export const useFavoritesStore = create<FavoritesStore>((set, get) => ({
   favorites: [],
   favoriteSigs: new Set<string>(),
+
+  // Çıkışta çağrılır — yeni kullanıcının fetch'i başarısız olursa öncekinin favorileri görünmesin
+  reset: () => set({ favorites: [], favoriteSigs: new Set<string>() }),
 
   fetchFavorites: async (userId) => {
     const { data, error } = await supabase

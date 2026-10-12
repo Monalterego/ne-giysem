@@ -14,6 +14,7 @@ import type { OnboardingStackParamList, StyleEntry } from '../../navigation/type
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { STYLE_GROUPS, STYLE_DATA_MAP, styleDescOf, groupLabelOf } from '../../constants/styles';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleSelect'>;
 
@@ -162,7 +163,7 @@ export default function StyleSelectScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.badge}>{t('style.selectBadge')}</Text>
+        <Text style={styles.badge}>{upper(t('style.selectBadge'))}</Text>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{t('style.selectTitle')}</Text>
           {entries.length > 0 && (
@@ -178,7 +179,7 @@ export default function StyleSelectScreen({ navigation }: Props) {
         {/* Ağırlık slider — 2+ stil seçilince (liste üstünde, kaydırmadan görünsün) */}
         {entries.length >= 2 && (
           <View style={styles.weightBox}>
-            <Text style={styles.weightTitle}>{t('style.weightTitle')}</Text>
+            <Text style={styles.weightTitle}>{upper(t('style.weightTitle'))}</Text>
             {entries.map((entry) => (
               <View key={entry.name} style={styles.sliderRow}>
                 <View style={styles.sliderHeader}>
@@ -204,7 +205,7 @@ export default function StyleSelectScreen({ navigation }: Props) {
         {STYLE_GROUPS.map((group) => (
           <View key={group.groupName} style={styles.group}>
             <View style={styles.groupHeader}>
-              <Text style={styles.groupName}>{groupLabelOf(group.groupName)}</Text>
+              <Text style={styles.groupName}>{upper(groupLabelOf(group.groupName))}</Text>
             </View>
             {group.styles.map((style) => {
               const entry      = entries.find((e) => e.name === style.name);

@@ -22,6 +22,7 @@ import type { ClothingCategory, WardrobeItem } from '../../types';
 import { CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
 type ViewMode = 'grid' | 'list';
@@ -437,7 +438,7 @@ export default function WardrobeScreen({ navigation }: Props) {
                 activeOpacity={0.75}
               >
                 <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                  {label}
+                  {upper(label)}
                 </Text>
               </TouchableOpacity>
             );

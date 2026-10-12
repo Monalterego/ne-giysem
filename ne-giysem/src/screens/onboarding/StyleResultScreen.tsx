@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { STYLE_DATA_MAP } from '../../constants/styles';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleResult'>;
 
@@ -155,7 +156,7 @@ export default function StyleResultScreen({ route, navigation }: Props) {
           <Feather name="arrow-left" size={20} color={colors.white} />
         </TouchableOpacity>
 
-        <Text style={styles.badge}>{t('style.resultBadge')}</Text>
+        <Text style={styles.badge}>{upper(t('style.resultBadge'))}</Text>
 
         {/* DNA Kartı */}
         <View style={styles.card}>
@@ -174,7 +175,7 @@ export default function StyleResultScreen({ route, navigation }: Props) {
               <View key={i} style={[styles.paletteCircle, { backgroundColor: hex }]} />
             ))}
           </View>
-          <Text style={styles.paletteLabel}>{t('style.paletteLabel')}</Text>
+          <Text style={styles.paletteLabel}>{upper(t('style.paletteLabel'))}</Text>
 
           {/* Trait badge'leri */}
           {!aiLoading && traits.length > 0 && (

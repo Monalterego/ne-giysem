@@ -17,6 +17,7 @@ import { colors, fonts, typography, spacing, radius, shadows, layout } from '../
 import { STYLE_DATA_MAP, styleDescOf } from '../../constants/styles';
 import { STYLE_CARDS, type StyleCardData } from '../../constants/styleCards';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleExplore'>;
 
@@ -261,7 +262,7 @@ export default function StyleExploreScreen({ navigation }: Props) {
 
       {/* Başlık + sayaç */}
       <View style={styles.header}>
-        <Text style={styles.badge}>{t('style.exploreBadge')}</Text>
+        <Text style={styles.badge}>{upper(t('style.exploreBadge'))}</Text>
         <Text style={styles.counter}>{swipeCount + 1} / {MIN_SWIPES}</Text>
       </View>
 

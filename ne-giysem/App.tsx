@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
 import { useUserStore } from './src/store/useUserStore';
+import { useFavoritesStore } from './src/store/useFavoritesStore';
 import { initI18n, getLocale } from './src/i18n';
 import RootNavigator from './src/navigation/RootNavigator';
 
@@ -28,6 +29,8 @@ export default function App() {
       if (event === 'SIGNED_OUT') {
         console.log('[App] SIGNED_OUT → logout()');
         useUserStore.getState().logout();
+        // Mahremiyet: aynı cihazda sonraki kullanıcının fetch'i başarısız olursa öncekinin favorileri görünmesin
+        useFavoritesStore.getState().reset();
         return;
       }
 

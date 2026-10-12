@@ -21,6 +21,7 @@ import { colors, fonts, typography, spacing, radius, shadows, layout } from '../
 import { scrapeProductImage } from '../../utils/urlScraper';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
 
@@ -181,7 +182,7 @@ export default function ScanScreen({ navigation }: Props) {
                 </Text>
               </View>
               <View style={styles.soonBadge}>
-                <Text style={styles.soonText}>{t('scan.soon')}</Text>
+                <Text style={styles.soonText}>{upper(t('scan.soon'))}</Text>
               </View>
             </View>
             <TextInput

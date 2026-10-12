@@ -22,6 +22,7 @@ import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'HomeMain'>;
 
@@ -36,7 +37,7 @@ function getGreetingKey(): string {
 }
 
 function getInitial(name: string, email: string): string {
-  return (name || email).charAt(0).toUpperCase() || '?';
+  return upper((name || email).charAt(0)) || '?';
 }
 
 function getDisplayName(name: string, email: string): string {

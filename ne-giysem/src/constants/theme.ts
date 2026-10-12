@@ -58,7 +58,8 @@ export const typography = {
   h3:        { fontFamily: fonts.bodySemiBold, fontSize: 18,                      lineHeight: 24 },
   body:      { fontFamily: fonts.body,         fontSize: 14,                      lineHeight: 22 },
   bodySmall: { fontFamily: fonts.body,         fontSize: 12,                      lineHeight: 18 },
-  label:     { fontFamily: fonts.bodyMedium,   fontSize: 10, letterSpacing: 2,    textTransform: 'uppercase' as const },
+  // Büyük harf stilde DEĞİL: textTransform iOS'ta Türkçeye uymuyor (AKTIF). Metni utils/text upper() ile sar.
+  label:     { fontFamily: fonts.bodyMedium,   fontSize: 10, letterSpacing: 2 },
   caption:   { fontFamily: fonts.body,         fontSize: 11,                      lineHeight: 16 },
 } as const;
 

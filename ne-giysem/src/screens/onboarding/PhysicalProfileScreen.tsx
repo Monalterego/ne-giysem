@@ -18,6 +18,7 @@ import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PhysicalProfile'>;
 
@@ -68,7 +69,7 @@ function NumberStepper({
 
       <View style={stepperStyles.center}>
         <Text style={stepperStyles.value}>{value}</Text>
-        {unit ? <Text style={stepperStyles.unit}>{unit}</Text> : null}
+        {unit ? <Text style={stepperStyles.unit}>{upper(unit)}</Text> : null}
       </View>
 
       <TouchableOpacity style={stepperStyles.btn} onPress={onIncrement} activeOpacity={0.8}>
@@ -202,7 +203,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Boy ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.height')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.height'))}</Text>
           <NumberStepper
             value={height}
             unit="cm"
@@ -213,7 +214,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Kilo ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.weight')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.weight'))}</Text>
           <NumberStepper
             value={weight}
             unit="kg"
@@ -224,7 +225,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Yaş ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.age')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.age'))}</Text>
           <NumberStepper
             value={age}
             onDecrement={() => setAge((v) => Math.max(16, v - 1))}
@@ -234,7 +235,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Vücut Tipi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.bodyType')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.bodyType'))}</Text>
           {BODY_TYPES.map((item) => (
             <TouchableOpacity
               key={item.key}
@@ -253,7 +254,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Ten Rengi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.skinTone')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.skinTone'))}</Text>
           <View style={styles.circleRowSpread}>
             {SKIN_TONES.map((item) => (
               <TouchableOpacity
@@ -270,7 +271,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Saç Rengi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.hairColor')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.hairColor'))}</Text>
           <View style={styles.circleRowWrap}>
             {HAIR_COLORS.map((item) => (
               <TouchableOpacity
@@ -287,7 +288,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Saç Uzunluğu ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.hairLength')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.hairLength'))}</Text>
           <View style={styles.gridRow}>
             {HAIR_LENGTHS.map((item) => (
               <TouchableOpacity
@@ -306,7 +307,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
         {/* ── Saç Tipi ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('physicalProfile.hairType')}</Text>
+          <Text style={styles.sectionLabel}>{upper(t('physicalProfile.hairType'))}</Text>
           <View style={styles.gridRow}>
             {HAIR_TYPES.map((item) => (
               <TouchableOpacity

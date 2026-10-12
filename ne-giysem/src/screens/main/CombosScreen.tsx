@@ -22,17 +22,18 @@ import type { MainTabParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { useComboStore } from '../../store/useComboStore';
-import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
 import { generateVirtualModelImage, getModelImage, comboSignatureForCache } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
-import type { Combo, WardrobeItem } from '../../types';
+import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { friendlyError, isModelImageError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
+import { upper } from '../../utils/text';
 import { catLabel, subcatLabel } from '../../constants/categories';
 import { requiredShoeLabels, hasRequiredShoes } from '../../utils/occasionRules';
 
@@ -520,26 +521,11 @@ export default function CombosScreen() {
   }, [activeOccasion, showFavorites]);
 
   // Favoriler listesi — generateCombos çağrılmaz; kural/mevsim/skor eşiği uygulanmaz
-  // (favori kullanıcının seçimi). Parçası dolaptan silinmiş favori gizlenir (yarım kombin
-  // gösterilmez); DB kaydı silinmez — zararsız. Sıra store'dan: en yeni en üstte.
-  const favoriteCombos = useMemo<Combo[]>(() => {
-    if (!showFavorites) return [];
-    const byId = new Map(items.map((i) => [i.id, i]));
-    const out: Combo[] = [];
-    for (const f of favorites) {
-      const resolved = f.itemIds.map((id) => byId.get(id));
-      if (!resolved.length || resolved.some((i) => !i)) continue;
-      out.push({
-        id:        `fav_${f.id}`,
-        items:     resolved as WardrobeItem[],
-        score:     f.score,
-        occasion:  f.occasion ?? undefined,
-        label:     '',            // kombin başlığı UI'da gizli
-        createdAt: f.createdAt,
-      });
-    }
-    return out;
-  }, [showFavorites, favorites, items]);
+  // (favori kullanıcının seçimi). Çözümleme kuralı Profil sayacıyla ortak: resolveFavorites.
+  const favoriteCombos = useMemo<Combo[]>(
+    () => (showFavorites ? resolveFavorites(favorites, items) : []),
+    [showFavorites, favorites, items],
+  );
 
   // Okazyon ref'ten okunur: comparator callback'leri yok saydığından memo'lu kart eski
   // callback'i tutabilir — callback stabil kalmalı
@@ -812,7 +798,7 @@ export default function CombosScreen() {
           activeOpacity={0.75}
         >
           <Text style={[styles.chipText, !showFavorites && activeOccasion === 'all' && styles.chipTextActive]}>
-            Tümü
+            {upper('Tümü')}
           </Text>
         </TouchableOpacity>
 
@@ -824,7 +810,7 @@ export default function CombosScreen() {
         >
           <Ionicons name="heart" size={12} color={showFavorites ? colors.white : colors.text} />
           <Text style={[styles.chipText, showFavorites && styles.chipTextActive]}>
-            {t('combos.favorites')}
+            {upper(t('combos.favorites'))}
           </Text>
         </TouchableOpacity>
 
@@ -839,7 +825,7 @@ export default function CombosScreen() {
             >
               <Feather name={occ.icon as any} size={12} color={active ? colors.white : colors.text} />
               <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {occasionLabel(occ.id)}
+                {upper(occasionLabel(occ.id))}
               </Text>
             </TouchableOpacity>
           );
@@ -961,7 +947,7 @@ export default function CombosScreen() {
             visibleCount < combos.length ? (
               <View style={styles.loadMoreContainer}>
                 <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore} activeOpacity={0.85}>
-                  <Text style={styles.loadMoreText}>{t('combos.loadMore')}</Text>
+                  <Text style={styles.loadMoreText}>{upper(t('combos.loadMore'))}</Text>
                 </TouchableOpacity>
               </View>
             ) : null
