@@ -88,3 +88,45 @@ export async function signInWithGoogle(): Promise<SocialResult | null> {
     fullName: gUser?.name ?? null,
   };
 }
+
+/**
+ * Hesabı kalıcı olarak siler (App Store 5.1.1(v) / Google Play).
+ * Kullanıcı Apple onay ekranında vazgeçerse 'cancelled' döner (hata DEĞİL).
+ * Google yapılandırması bu modülde olduğu için burada duruyor.
+ */
+export async function deleteAccount(): Promise<'deleted' | 'cancelled'> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('no-session');
+  const providers = (user.identities ?? []).map((i) => i.provider);
+
+  // a) Apple: iOS'ta taze tek kullanımlık kod al (izin İSTEME — boş scope)
+  let appleAuthCode: string | undefined;
+  if (Platform.OS === 'ios' && providers.includes('apple')) {
+    try {
+      const cred = await AppleAuthentication.signInAsync({ requestedScopes: [] });
+      appleAuthCode = cred.authorizationCode ?? undefined;
+    } catch (e: any) {
+      if (e?.code === 'ERR_REQUEST_CANCELED') return 'cancelled';   // vazgeçti
+      // başka hata: kod olmadan devam — silme yine yapılmalı (Apple TN3194)
+    }
+  }
+
+  // b) Google: cihazdaki erişimi iptal et — en iyi çaba
+  if (providers.includes('google')) {
+    try { await GoogleSignin.revokeAccess(); } catch {}
+    try { await GoogleSignin.signOut(); } catch {}
+  }
+
+  // c) Sunucu: storage + auth kullanıcısı (tablolar cascade)
+  const { data, error } = await supabase.functions.invoke('delete-account', {
+    body: appleAuthCode ? { appleAuthCode } : {},
+  });
+  if (error || !data?.ok) throw new Error(error?.message ?? data?.error ?? 'delete-failed');
+
+  // d) Yerel temizlik — kullanıcı sunucuda yok, global signOut başarısız olur → 'local'.
+  // Hesap zaten silindi; buradaki bir hata kullanıcıya "silinemedi" diye yansımamalı.
+  try { await supabase.auth.signOut({ scope: 'local' }); } catch (e) {
+    console.warn('[deleteAccount] local signOut:', e);
+  }
+  return 'deleted';
+}

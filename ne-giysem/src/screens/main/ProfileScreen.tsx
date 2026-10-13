@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
+import { deleteAccount } from '../../lib/socialAuth';
 import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
@@ -212,14 +213,42 @@ export default function ProfileScreen() {
     setEditingName(false);
   };
 
+  // Çıkış ve hesap silme ortak yerel temizliği — iki yer de bunu çağırır
+  const clearLocalSession = () => {
+    setItems([]);
+    resetFavorites();   // App SIGNED_OUT da sıfırlar; çevrimdışı signOut event üretmezse diye burada da
+    logout();
+  };
+
   const handleLogout = () => {
     supabase.auth.signOut()
       .catch((err) => console.warn('[ProfileScreen] signOut exception:', err))
-      .finally(() => {
-        setItems([]);
-        resetFavorites();   // App SIGNED_OUT da sıfırlar; çevrimdışı signOut event üretmezse diye burada da
-        logout();
-      });
+      .finally(clearLocalSession);
+  };
+
+  const [deleting, setDeleting] = useState(false);
+
+  const runDelete = async () => {
+    setDeleting(true);
+    try {
+      const r = await deleteAccount();
+      if (r === 'cancelled') return;   // Apple ekranında vazgeçti — sessizce kapat
+      // Önce Alert, sonra temizlik: logout() ekranı söker; RootNavigator onboarding'e geçer
+      Alert.alert(t('profile.deleteAccountDone'));
+      clearLocalSession();
+    } catch (err) {
+      console.warn('[ProfileScreen] deleteAccount failed:', err);
+      Alert.alert(t('combos.errorTitle'), t('profile.deleteAccountError'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(t('profile.deleteAccountTitle'), t('profile.deleteAccountBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.deleteAccountConfirm'), style: 'destructive', onPress: runDelete },
+    ]);
   };
 
   if (!user) return null;
@@ -496,6 +525,16 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Hesap silme — kart dışında, ayrı: kolay bulunur ama yanlışlıkla basılmaz */}
+        <TouchableOpacity
+          style={styles.deleteAccountBtn}
+          onPress={handleDeleteAccount}
+          disabled={deleting}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.deleteAccountText}>{t('profile.deleteAccount')}</Text>
+        </TouchableOpacity>
+
         {/* 6 ── KİMLİK (en altta) ── */}
         <View style={styles.separator} />
         <View style={styles.avatarSection}>
@@ -527,6 +566,14 @@ export default function ProfileScreen() {
           { source: require('../../../assets/guide/avatar_dont_dark.jpg'),  ok: false, label: t('profile.exampleDark') },
         ]}
       />
+
+      {/* Silme sürerken tüm ekran etkileşimi kilitli */}
+      {deleting && (
+        <View style={styles.blockingOverlay}>
+          <View style={styles.blockingScrim} />
+          <ActivityIndicator color={colors.text} size="large" />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -860,6 +907,30 @@ const styles = StyleSheet.create({
   logoutText: {
     ...typography.body,
     color: colors.error,
+  },
+
+  // Hesabımı Sil — çerçevesiz, sade metin
+  deleteAccountBtn: {
+    marginTop: spacing.lg,
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  deleteAccountText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.error,
+    textAlign: 'center',
+  },
+  blockingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blockingScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.background,
+    opacity: 0.8,
   },
 
   bottomPad: {
