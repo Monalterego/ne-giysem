@@ -38,6 +38,8 @@ import { upper } from '../../utils/text';
 import { catLabel, subcatLabel } from '../../constants/categories';
 import { requiredShoeLabels, hasRequiredShoes } from '../../utils/occasionRules';
 
+// Yalnızca limit modal'ının yedek metni — sunucu 402'de limit döndürmezse.
+// Asıl limit start_tryon'da (006 SQL: c_free_limit).
 const FREE_RENDER_LIMIT = 3;
 const FEW_COMBOS = 4;
 
@@ -359,7 +361,7 @@ function PremiumModal({
   onClose,
 }: {
   visible: boolean;
-  /** Sunucudan gelen limit (start yanıtı); UI ön-kontrolünde FREE_RENDER_LIMIT */
+  /** Sunucudan gelen limit (start 402 yanıtı) */
   limit: number;
   onClose: () => void;
 }) {
@@ -580,22 +582,13 @@ export default function CombosScreen() {
     if (!user) return;
     setModelHasExtras(combo.items.some((i) => i.category === 'bag' || i.category === 'accessory'));
 
-    // Fiziksel profil + render sayısı + kayıtlı manken URL'i
+    // Fiziksel profil + kayıtlı manken URL'i. Kota istemcide kontrol EDİLMEZ:
+    // önce cache (isabet kotasız), miss'te sunucu start_tryon karar verir.
     const { data: profile } = await supabase
       .from('profiles')
-      .select('height, weight, age, body_type, skin_tone, hair_color, hair_length, hair_type, virtual_model_renders, mannequin_url')
+      .select('height, weight, age, body_type, skin_tone, hair_color, hair_length, hair_type, mannequin_url')
       .eq('id', user.id)
       .maybeSingle();
-
-    // Yalnızca UI ön-kontrolü (gereksiz bekleme ekranı açılmasın). Asıl karar
-    // startTryOn'da sunucuda; virtual_model_renders başarılı render sayısının aynası.
-    const renderCount = (profile?.virtual_model_renders ?? 0) as number;
-
-    if (renderCount >= FREE_RENDER_LIMIT && !user.isPremium) {
-      setRenderLimit(FREE_RENDER_LIMIT);
-      setPremiumModalVisible(true);
-      return;
-    }
 
     // Modal hemen aç — bekleme ekranı gösterilsin
     setModelImageUrl(null);

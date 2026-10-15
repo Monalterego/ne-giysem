@@ -565,7 +565,8 @@
     "imageTooLarge": "Fotoğraf çok büyük. Lütfen başka bir fotoğraf dene.",
     "genericRetry": "Bir şeyler ters gitti. Lütfen tekrar dene.",
     "sessionExpired": "Oturumun sona erdi. Lütfen tekrar giriş yap.",
-    "dailyLimit": "Bugünkü kullanım sınırına ulaştın. Yarın tekrar deneyebilirsin."
+    "dailyLimit": "Bugünkü kullanım sınırına ulaştın. Yarın tekrar deneyebilirsin.",
+    "updateRequired": "Uygulama güncellendi. Lütfen uygulamayı tamamen kapatıp yeniden aç."
   },
   "scan": {
     "preparingImage": "Görsel hazırlanıyor…",

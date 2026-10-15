@@ -110,6 +110,12 @@ Deno.serve(async (req) => {
     // ── run ────────────────────────────────────────────────────────────────
     if (body.action === "run") {
       const renderId = body.render_id;
+      // render_id hiç yok → kota öncesi istemci paketi (OTA henüz uygulanmamış).
+      // 426: istemci "uygulamayı kapatıp aç" der. Biçimi bozuksa normal 400.
+      if (renderId === undefined) {
+        console.error(`[fashn-proxy] 426 update-required user=${user.id} keys=${Object.keys(body).join(",")}`);
+        return json({ error: "update-required" }, 426);
+      }
       if (typeof renderId !== "string" || !UUID_RE.test(renderId)) {
         return bad("render_id required");
       }

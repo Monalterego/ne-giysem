@@ -565,7 +565,8 @@
     "imageTooLarge": "Photo is too large. Please try another one.",
     "genericRetry": "Something went wrong. Please try again.",
     "sessionExpired": "Your session has expired. Please sign in again.",
-    "dailyLimit": "You've reached today's usage limit. You can try again tomorrow."
+    "dailyLimit": "You've reached today's usage limit. You can try again tomorrow.",
+    "updateRequired": "The app has been updated. Please fully close and reopen it."
   },
   "scan": {
     "preparingImage": "Preparing image…",

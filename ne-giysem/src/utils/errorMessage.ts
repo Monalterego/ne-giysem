@@ -6,6 +6,7 @@ export function friendlyError(err: unknown): string {
   // Kendi edge function'larımızın kodları — üst servis eşleştirmelerinden ÖNCE
   if (err instanceof EdgeError) {
     if (err.status === 401) return t('errors.sessionExpired');
+    if (err.status === 426) return t('errors.updateRequired');
     if (err.code === 'daily-limit') return t('errors.dailyLimit');
     if (err.code === 'quota-exceeded') return t('combos.limitReached');
     if (err.code === 'run-budget-exceeded') return t('combos.tryOnBusy');
