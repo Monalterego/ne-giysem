@@ -226,8 +226,9 @@ const LAYER_ORDER: Partial<Record<WardrobeItem['category'], number>> = {
   outer:          3,
 };
 
-// Dış katman olarak giydirilen yelek — her şeyin (outer dahil) üstünde, en son
-const VEST_LAYER = 4;
+// Dış katman olarak giydirilen yelek — üstün (2) üstünde, outer'ın (3) altında:
+// gömlek → yelek → blazer
+const VEST_LAYER = 2.5;
 
 /**
  * FASHN'in desteklemediği kategorileri (shoes, bag, accessory) eler;
@@ -238,8 +239,8 @@ export function selectAndOrderGarments(items: WardrobeItem[]): WardrobeItem[] {
   const hasDress = items.some((i) => i.category === 'dress_jumpsuit');
 
   // Yelek DB'de 'upper' ama kombin motoru onu dış katman havuzunda kullanıyor
-  // (comboEngine OUTER_SUBCATEGORIES). İki upper varsa ve biri yelekse → yelek en
-  // son, dış katman olarak giydirilir. Tek upper yelekse normal upper kalır.
+  // (comboEngine OUTER_SUBCATEGORIES). İki upper varsa ve biri yelekse → yelek diğer
+  // üstün üzerine, outer'ın altına giydirilir. Tek upper yelekse normal upper kalır.
   const uppers = items.filter((i) => i.category === 'upper');
   const vestAsOuter = uppers.length >= 2 && uppers.some((i) => i.subCategory === 'yelek');
   const layerOf = (i: WardrobeItem) =>
