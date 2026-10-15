@@ -563,7 +563,9 @@
     "networkFailed": "Bağlantı sorunu. İnternetini kontrol edip tekrar dene.",
     "imageFormatUnsupported": "Bu fotoğraf formatı desteklenmiyor. Kamerayla çekmeyi deneyebilirsin.",
     "imageTooLarge": "Fotoğraf çok büyük. Lütfen başka bir fotoğraf dene.",
-    "genericRetry": "Bir şeyler ters gitti. Lütfen tekrar dene."
+    "genericRetry": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+    "sessionExpired": "Oturumun sona erdi. Lütfen tekrar giriş yap.",
+    "dailyLimit": "Bugünkü kullanım sınırına ulaştın. Yarın tekrar deneyebilirsin."
   },
   "scan": {
     "preparingImage": "Görsel hazırlanıyor…",

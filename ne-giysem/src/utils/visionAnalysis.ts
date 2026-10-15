@@ -1,8 +1,11 @@
 import type { ClothingCategory, Season } from '../types';
-import { supabase } from '../lib/supabase';
+import { callEdge, edgeError, EdgeError } from '../lib/edgeFunctions';
 import { getLocale } from '../i18n';
 
-const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
+/** Kullanıcıya nedeni gösterilmesi gereken proxy hatası (oturum yok / günlük sınır). */
+export function isUserFacingEdgeError(err: unknown): err is EdgeError {
+  return err instanceof EdgeError && (err.status === 401 || err.status === 429);
+}
 
 export interface VisionResult {
   category: ClothingCategory;
@@ -221,20 +224,8 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
   }, null, 2));
 
   const attemptRequest = async (): Promise<VisionResult> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session?.access_token ?? ''}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error('HTTP ' + res.status + ' — ' + body.slice(0, 400));
-    }
+    const res = await callEdge('anthropic-proxy', requestBody);
+    if (!res.ok) throw await edgeError(res);
 
     const json = await res.json();
     const text: string = (json as any)?.content?.[0]?.text ?? '';
@@ -255,6 +246,9 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
   try {
     return await attemptRequest();
   } catch (firstErr) {
+    // Oturum yok / günlük sınır: tekrar denemek anlamsız, sessiz fallback da yanıltıcı →
+    // çağıran ekran kullanıcıya nedenini göstersin
+    if (isUserFacingEdgeError(firstErr)) throw firstErr;
     console.warn('[vision] ilk deneme başarısız, yeniden deneniyor:', firstErr);
     try {
       return await attemptRequest();

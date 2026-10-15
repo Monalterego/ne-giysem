@@ -22,7 +22,8 @@ import { uuidv4 } from '../../utils/uuid';
 import { base64Decode } from '../../utils/base64';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { Feather } from '@expo/vector-icons';
-import { analyzeClothingImage } from '../../utils/visionAnalysis';
+import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
+import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'UploadDetail'>;
@@ -134,9 +135,13 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         }
         setAiDetected(true);
       })
-      .catch(() => {
+      .catch((err) => {
         // Beklenmedik hata — burada da sessiz kalma, kullanıcıya "sen seç" de
         if (!cancelled) { setAiFailed(true); setAiDetected(true); }
+        // Oturum yok / günlük sınır → nedenini de söyle (alanları yine elle doldurabilir)
+        if (!cancelled && isUserFacingEdgeError(err)) {
+          Alert.alert(t('combos.errorTitle'), friendlyError(err));
+        }
       })
       .finally(() => {
         if (!cancelled) setAnalyzing(false);

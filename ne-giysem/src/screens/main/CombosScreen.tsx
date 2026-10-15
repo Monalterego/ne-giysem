@@ -26,12 +26,13 @@ import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesSto
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
-import { generateVirtualModelImage, getModelImage, comboSignatureForCache } from '../../utils/virtualModel';
+import { generateVirtualModelImage, getModelImage, comboSignatureForCache, startTryOn } from '../../utils/virtualModel';
 import type { PhysicalProfile } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
 import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { friendlyError, isModelImageError } from '../../utils/errorMessage';
+import { EdgeError } from '../../lib/edgeFunctions';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
 import { catLabel, subcatLabel } from '../../constants/categories';
@@ -354,9 +355,12 @@ function ModelModal({
 
 function PremiumModal({
   visible,
+  limit,
   onClose,
 }: {
   visible: boolean;
+  /** Sunucudan gelen limit (start yanıtı); UI ön-kontrolünde FREE_RENDER_LIMIT */
+  limit: number;
   onClose: () => void;
 }) {
   return (
@@ -365,7 +369,7 @@ function PremiumModal({
         <View style={premiumStyles.card}>
           <Text style={premiumStyles.title}>{t('combos.limitReached')}</Text>
           <Text style={premiumStyles.body}>
-            {t('combos.limitBody', { count: FREE_RENDER_LIMIT })}
+            {t('combos.limitBody', { count: limit })}
           </Text>
           <TouchableOpacity style={premiumStyles.premiumBtn} onPress={onClose} activeOpacity={0.85}>
             <Text style={premiumStyles.premiumBtnText}>{t('combos.goPremium')}</Text>
@@ -462,6 +466,7 @@ export default function CombosScreen() {
   const [modelLoading,         setModelLoading]          = useState(false);
   const [lightboxItemId,       setLightboxItemId]        = useState<string | null>(null);
   const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
+  const [renderLimit,          setRenderLimit]           = useState(FREE_RENDER_LIMIT);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
   const [planTarget,           setPlanTarget]            = useState<Combo | null>(null);
@@ -582,9 +587,12 @@ export default function CombosScreen() {
       .eq('id', user.id)
       .maybeSingle();
 
+    // Yalnızca UI ön-kontrolü (gereksiz bekleme ekranı açılmasın). Asıl karar
+    // startTryOn'da sunucuda; virtual_model_renders başarılı render sayısının aynası.
     const renderCount = (profile?.virtual_model_renders ?? 0) as number;
 
     if (renderCount >= FREE_RENDER_LIMIT && !user.isPremium) {
+      setRenderLimit(FREE_RENDER_LIMIT);
       setPremiumModalVisible(true);
       return;
     }
@@ -607,12 +615,47 @@ export default function CombosScreen() {
         hairType:   (profile?.hair_type   ?? null) as string | null,
       };
 
-      // 1. Manken kaynağını çöz: avatarUrl → kayıtlı manken → yeni üretim
       const savedMannequinUrl = (profile?.mannequin_url ?? null) as string | null;
-      let modelSource: string | null = avatarUrl ?? null;
 
       // Avatar da yok, kayıtlı manken de yoksa → ilk üretim (uzun sürer, kullanıcıya haber ver)
       setIsFirstTryOn(!avatarUrl && !savedMannequinUrl);
+
+      // 1. Kombin cache kontrolü — mankenden bağımsız, bu yüzden FASHN'dan ÖNCE
+      // Manken sürümü: avatar değişince (?v=timestamp) yeni anahtar üretilir, böylece
+      // eski yüzlü cache HIT vermez. Yapay manken kullanılıyorsa sabit 'm' — o zaten
+      // profil verisinden türetiliyor ve mannequin_url değişmedikçe aynı kalıyor.
+      const modelVersion = avatarUrl
+        ? (avatarUrl.split('?v=')[1] ?? 'a')
+        : 'm';
+
+      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}_${modelVersion}.jpg`;
+      const { data: { publicUrl: cachedUrl } } = supabase.storage
+        .from('mannequin-cache')
+        .getPublicUrl(cacheKey);
+
+      try {
+        const headRes = await fetch(cachedUrl, { method: 'HEAD' });
+        if (headRes.ok) {
+          // Cache HIT — FASHN çağrısı yok, kota düşmez
+          setModelImageUrl(cachedUrl);
+          return;   // finally loading'i kapatır
+        }
+      } catch {
+        // HEAD hatası → cache miss sayılır, devam et
+      }
+
+      // 2. Cache MISS — kotayı SUNUCU verir; render_id tüm FASHN çağrılarında taşınır
+      const start = await startTryOn();
+      if (!start.allowed) {
+        setModelModalVisible(false);
+        setRenderLimit(start.limit ?? FREE_RENDER_LIMIT);
+        setPremiumModalVisible(true);
+        return;
+      }
+      const { renderId } = start;
+
+      // 3. Manken kaynağını çöz: avatarUrl → kayıtlı manken → yeni üretim
+      let modelSource: string | null = avatarUrl ?? null;
 
       // Kayıtlı manken varsa canlı mı doğrula (FASHN CDN çıktıları 72 saatte silinir — ölü URL 403 verir)
       if (!modelSource && savedMannequinUrl) {
@@ -625,7 +668,7 @@ export default function CombosScreen() {
       }
 
       if (!modelSource) {
-        const fashnUrl = await getModelImage(physProfile);
+        const fashnUrl = await getModelImage(physProfile, renderId);
         // FASHN URL'i geçici — kendi storage'ımıza taşı, kalıcı URL'i kaydet
         let persistedUrl = fashnUrl;
         try {
@@ -647,32 +690,8 @@ export default function CombosScreen() {
         await supabase.from('profiles').update({ mannequin_url: persistedUrl }).eq('id', user.id);
       }
 
-      // 2. Kombin cache kontrolü
-      // Manken sürümü: avatar değişince (?v=timestamp) yeni anahtar üretilir, böylece
-      // eski yüzlü cache HIT vermez. Yapay manken kullanılıyorsa sabit 'm' — o zaten
-      // profil verisinden türetiliyor ve mannequin_url değişmedikçe aynı kalıyor.
-      const modelVersion = avatarUrl
-        ? (avatarUrl.split('?v=')[1] ?? 'a')
-        : 'm';
-
-      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}_${modelVersion}.jpg`;
-      const { data: { publicUrl: cachedUrl } } = supabase.storage
-        .from('mannequin-cache')
-        .getPublicUrl(cacheKey);
-
-      try {
-        const headRes = await fetch(cachedUrl, { method: 'HEAD' });
-        if (headRes.ok) {
-          // Cache HIT — FASHN çağrısı yok, render sayacı artmaz
-          setModelImageUrl(cachedUrl);
-          return;   // finally loading'i kapatır
-        }
-      } catch {
-        // HEAD hatası → cache miss sayılır, devam et
-      }
-
-      // 3. Cache MISS — üret, bucket'a yükle, render sayacını artır
-      const finalUrl = await generateVirtualModelImage(physProfile, combo.items, modelSource);
+      // 4. Üret (son adımın status'unda final:true → sunucu render'ı başarılı sayar), bucket'a yükle
+      const finalUrl = await generateVirtualModelImage(physProfile, combo.items, renderId, modelSource);
       if (!finalUrl) return;
 
       const imgRes = await fetch(finalUrl);
@@ -690,15 +709,15 @@ export default function CombosScreen() {
         .from('mannequin-cache')
         .getPublicUrl(cacheKey);
 
-      await supabase.from('profiles').update({ virtual_model_renders: renderCount + 1 }).eq('id', user.id);
-
       // Upload patlasa bile FASHN URL'iyle manken gösterilir; sadece o sefer cache'lenmez
       setModelImageUrl(upErr ? finalUrl : uploadedUrl);
     } catch (err) {
       setModelModalVisible(false);
       // ⚠️ Bozuk manken kalıcı: bir kez kaydedilirse her denemede aynı hata gelir.
       //    Pose hatasında cache'i temizle ki sonraki denemede YENİ manken üretilsin.
-      if (isModelImageError(err) && user?.id) {
+      //    Deploy öncesi kaydedilmiş FASHN URL'i proxy'nin izin listesinde değil (400) → aynı tedavi.
+      const staleMannequin = !avatarUrl && err instanceof EdgeError && err.code === 'image-not-allowed:model_image';
+      if ((isModelImageError(err) || staleMannequin) && user?.id) {
         await supabase.from('profiles').update({ mannequin_url: null }).eq('id', user.id);
       }
       Alert.alert(t('combos.errorTitle'), friendlyError(err));
@@ -1007,6 +1026,7 @@ export default function CombosScreen() {
       />
       <PremiumModal
         visible={premiumModalVisible}
+        limit={renderLimit}
         onClose={() => setPremiumModalVisible(false)}
       />
       <NoAvatarModal

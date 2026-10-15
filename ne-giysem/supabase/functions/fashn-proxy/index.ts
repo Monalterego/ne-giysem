@@ -1,41 +1,198 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+// supabase/functions/fashn-proxy/index.ts
+//
+// FASHN proxy'si — kimlik + kota + izin listesi sunucuda.
+//
+// action 'start'  → start_tryon: kota kontrolü + render_id (limit doluysa 402)
+// action 'run'    → render_id zorunlu; model + girdi anahtarları izin listesinde,
+//                   görsel URL'leri kullanıcının kendi storage'ı veya kendi FASHN çıktısı
+// action 'status' → prediction id kullanıcının bir render'ına ait olmalı (403);
+//                   completed ise çıktılar kaydedilir, final:true ise render başarılı
+
+import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
 
 const FASHN_BASE = "https://api.fashn.ai/v1";
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+
+// Model → izinli inputs anahtarları (src/utils/virtualModel.ts'te kullanılanlar)
+const ALLOWED_INPUTS: Record<string, readonly string[]> = {
+  "model-create": ["prompt", "aspect_ratio"],
+  "tryon-v1.6":   ["model_image", "garment_image", "garment_photo_type", "category",
+                   "mode", "segmentation_free", "seed", "output_format"],
+  "tryon-max":    ["model_image", "product_image", "prompt", "resolution", "generation_mode"],
 };
 
-serve(async (req) => {
+// Maliyeti etkileyen değerler koddaki değere sabit
+const PINNED_VALUES: Record<string, Record<string, readonly unknown[]>> = {
+  "tryon-max": { resolution: ["1k"] },
+};
+
+const IMAGE_FIELDS = ["model_image", "garment_image", "product_image"] as const;
+const STORAGE_BUCKETS = new Set(["avatars", "wardrobe-items", "mannequin-cache"]);
+
+// FASHN id formatı repoda/yanıtlarda görülmedi → biçim tahmini yok; yalnızca güvenli
+// karakter kümesi (path enjeksiyonunu keser). Asıl kontrol: id'nin kullanıcıya ait olması.
+const PREDICTION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** https://<proje>/storage/v1/object/(public|sign)/<bucket>/<uid>/<dosya...> mı? */
+function isOwnStorageUrl(raw: string, uid: string): boolean {
+  let url: URL;
+  try { url = new URL(raw); } catch { return false; }
+  const origin = new URL(Deno.env.get("SUPABASE_URL")!).origin;
+  if (url.origin !== origin) return false;
+
+  const m = url.pathname.match(/^\/storage\/v1\/object\/(public|sign)\/([^/]+)\/([^/]+)\/(.+)$/);
+  if (!m) return false;
+  const [, , bucket, owner, rest] = m;
+  if (!STORAGE_BUCKETS.has(bucket) || owner !== uid) return false;
+
+  // Kodlanmış ../ ile başka klasöre kaçmayı engelle
+  try {
+    return rest.split("/").every((seg) => {
+      const s = decodeURIComponent(seg);
+      return s !== "" && s !== "." && s !== ".." && !s.includes("/");
+    });
+  } catch {
+    return false;
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function isAllowedImage(admin: any, raw: unknown, uid: string): Promise<boolean> {
+  if (typeof raw !== "string" || raw.length > 2048) return false;
+  if (isOwnStorageUrl(raw, uid)) return true;
+  // Kullanıcının daha önceki bir render'ında FASHN'ın döndürdüğü çıktı mı?
+  const { data, error } = await admin.rpc("user_owns_output", { p_user: uid, p_url: raw });
+  if (error) throw new Error(`user_owns_output: ${error.message}`);
+  return data === true;
+}
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "POST")    return json({ error: "method-not-allowed" }, 405);
+
   try {
     const key = Deno.env.get("FASHN_API_KEY");
-    if (!key) return new Response(JSON.stringify({ error: "FASHN_API_KEY missing" }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
+    if (!key) return json({ error: "FASHN_API_KEY missing" }, 500);
 
-    const body = await req.json();
-    // body.action: "run" veya "status"; status ise body.id gerekli
-    let fashnUrl: string;
-    let fashnOpts: RequestInit;
+    const admin = adminClient();
+    const user  = await requireUser(req, admin);
+    if (!user) return json({ error: "unauthorized" }, 401);
 
-    if (body.action === "run") {
-      fashnUrl = `${FASHN_BASE}/run`;
-      fashnOpts = {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body.payload),
-      };
-    } else if (body.action === "status") {
-      fashnUrl = `${FASHN_BASE}/status/${body.id}`;
-      fashnOpts = { method: "GET", headers: { "Authorization": `Bearer ${key}` } };
-    } else {
-      return new Response(JSON.stringify({ error: "invalid action" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") return json({ error: "invalid-body" }, 400);
+
+    // ── start ──────────────────────────────────────────────────────────────
+    if (body.action === "start") {
+      const { data, error } = await admin.rpc("start_tryon", { p_user: user.id });
+      if (error) throw new Error(`start_tryon: ${error.message}`);
+      if (!data?.allowed) {
+        return json({ error: "quota-exceeded", used: data?.used ?? null, limit: data?.limit ?? null }, 402);
+      }
+      return json(data);
     }
 
-    const res = await fetch(fashnUrl, fashnOpts);
-    const text = await res.text();
-    return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });
+    // ── run ────────────────────────────────────────────────────────────────
+    if (body.action === "run") {
+      const renderId = body.render_id;
+      if (typeof renderId !== "string" || !UUID_RE.test(renderId)) {
+        return json({ error: "render_id required" }, 400);
+      }
+
+      const modelName = body.payload?.model_name;
+      const inputs    = body.payload?.inputs;
+      const allowedKeys = typeof modelName === "string" ? ALLOWED_INPUTS[modelName] : undefined;
+      if (!allowedKeys) return json({ error: "model-not-allowed" }, 400);
+      if (!inputs || typeof inputs !== "object" || Array.isArray(inputs)) {
+        return json({ error: "invalid-inputs" }, 400);
+      }
+
+      for (const k of Object.keys(inputs)) {
+        if (!allowedKeys.includes(k)) return json({ error: `input-not-allowed:${k}` }, 400);
+      }
+      for (const [k, values] of Object.entries(PINNED_VALUES[modelName] ?? {})) {
+        if (k in inputs && !values.includes(inputs[k])) {
+          return json({ error: `value-not-allowed:${k}` }, 400);
+        }
+      }
+      for (const f of IMAGE_FIELDS) {
+        if (f in inputs && !(await isAllowedImage(admin, inputs[f], user.id))) {
+          return json({ error: `image-not-allowed:${f}` }, 400);
+        }
+      }
+
+      // FASHN'a gitmeden ÖNCE çağrı bütçesinden yer ayır
+      const { data: reserved, error: resErr } = await admin.rpc("register_run", {
+        p_user: user.id, p_render: renderId, p_prediction_id: null,
+      });
+      if (resErr) throw new Error(`register_run: ${resErr.message}`);
+      if (reserved !== true) return json({ error: "run-budget-exceeded" }, 429);
+
+      const res  = await fetch(`${FASHN_BASE}/run`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model_name: modelName, inputs }),
+      });
+      const text = await res.text();
+
+      if (res.ok) {
+        let id: unknown;
+        try { id = JSON.parse(text)?.id; } catch { /* yanıt JSON değil */ }
+        if (typeof id === "string" && PREDICTION_ID_RE.test(id)) {
+          const { error: regErr } = await admin.rpc("register_run", {
+            p_user: user.id, p_render: renderId, p_prediction_id: id,
+          });
+          if (regErr) throw new Error(`register_run(id): ${regErr.message}`);
+        }
+      }
+      return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+
+    // ── status ─────────────────────────────────────────────────────────────
+    if (body.action === "status") {
+      const id = body.id;
+      if (typeof id !== "string" || !PREDICTION_ID_RE.test(id)) {
+        return json({ error: "invalid-id" }, 400);
+      }
+
+      const { data: renderId, error: ownErr } = await admin.rpc("render_for_prediction", {
+        p_user: user.id, p_prediction_id: id,
+      });
+      if (ownErr) throw new Error(`render_for_prediction: ${ownErr.message}`);
+      if (!renderId) return json({ error: "forbidden" }, 403);
+
+      const res  = await fetch(`${FASHN_BASE}/status/${encodeURIComponent(id)}`, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${key}` },
+      });
+      const text = await res.text();
+
+      if (res.ok) {
+        // deno-lint-ignore no-explicit-any
+        let s: any = null;
+        try { s = JSON.parse(text); } catch { /* yanıt JSON değil */ }
+        if (s?.status === "completed") {
+          const outputs = (Array.isArray(s.output) ? s.output : [])
+            .filter((u: unknown): u is string => typeof u === "string" && u.startsWith("https://"));
+          if (outputs.length) {
+            const { error } = await admin.rpc("record_outputs", {
+              p_user: user.id, p_render: renderId, p_urls: outputs,
+            });
+            if (error) throw new Error(`record_outputs: ${error.message}`);
+          }
+          if (body.final === true) {
+            const { error } = await admin.rpc("mark_render_success", {
+              p_user: user.id, p_render: renderId,
+            });
+            if (error) throw new Error(`mark_render_success: ${error.message}`);
+          }
+        }
+      }
+      return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+
+    return json({ error: "invalid action" }, 400);
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
+    console.error("[fashn-proxy]", e);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });

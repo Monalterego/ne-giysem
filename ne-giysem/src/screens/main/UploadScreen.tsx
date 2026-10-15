@@ -16,30 +16,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
-import { supabase } from '../../lib/supabase';
+import { callEdge, edgeError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
-const BG_PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/bg-removal-proxy';
-
 async function removeBackground(imageBase64: string): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch(BG_PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session?.access_token ?? ''}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ image_b64: imageBase64 }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any)?.error ?? `Arka plan kaldırma hatası: ${res.status}`);
-  }
+  const res = await callEdge('bg-removal-proxy', { image_b64: imageBase64 });
+  if (!res.ok) throw await edgeError(res);
 
   const json = await res.json();
   return (json as any).result_b64 as string;

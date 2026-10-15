@@ -563,7 +563,9 @@
     "networkFailed": "Connection problem. Check your internet and try again.",
     "imageFormatUnsupported": "This photo format isn't supported. Try taking a photo with the camera.",
     "imageTooLarge": "Photo is too large. Please try another one.",
-    "genericRetry": "Something went wrong. Please try again."
+    "genericRetry": "Something went wrong. Please try again.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "dailyLimit": "You've reached today's usage limit. You can try again tomorrow."
   },
   "scan": {
     "preparingImage": "Preparing image…",

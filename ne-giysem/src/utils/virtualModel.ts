@@ -1,5 +1,5 @@
 import type { WardrobeItem } from '../types';
-import { supabase } from '../lib/supabase';
+import { callEdge, edgeError, EdgeError } from '../lib/edgeFunctions';
 
 // ─── Açıklama eşlemeleri ──────────────────────────────────────────────────────
 
@@ -60,52 +60,64 @@ export interface PhysicalProfile {
 
 // ─── FASHN istemcisi ──────────────────────────────────────────────────────────
 
-const FASHN_PROXY_URL  = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/fashn-proxy';
 const FASHN_POLL_MS    = 2_000;
 const FASHN_TIMEOUT_MS = 240_000;
 
-// Geçici ağ kopmalarında üstel backoff ile yeniden dener (1.5s → 3s)
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  retries = 2,
-): Promise<Response> {
+// Geçici ağ kopmalarında üstel backoff ile yeniden dener (1.5s → 3s).
+// YALNIZCA status için — /run tekrar denenirse FASHN'da aynı iş iki kez başlayabilir.
+// EdgeError (oturum yok vb.) tekrar denenmez.
+async function withRetry(call: () => Promise<Response>, retries = 2): Promise<Response> {
   for (let i = 0; i <= retries; i++) {
     try {
-      return await fetch(url, options);
+      return await call();
     } catch (err) {
-      if (i === retries) throw err;
+      if (err instanceof EdgeError || i === retries) throw err;
       await new Promise<void>((r) => setTimeout(r, 1500 * (i + 1)));
     }
   }
   throw new Error('unreachable');
 }
 
+export type TryOnStart =
+  | { allowed: true;  renderId: string; used: number; limit: number | null }
+  | { allowed: false; used: number | null; limit: number | null };
+
+/**
+ * Sunucuda kota kontrolü + render kaydı. Bir try-on'un tüm FASHN çağrıları
+ * (manken + katmanlar + ayakkabı) dönen renderId altında sayılır.
+ */
+export async function startTryOn(): Promise<TryOnStart> {
+  const res = await callEdge('fashn-proxy', { action: 'start' });
+  if (res.status === 402) {
+    const body = await res.json().catch(() => ({})) as { used?: number; limit?: number };
+    return { allowed: false, used: body.used ?? null, limit: body.limit ?? null };
+  }
+  if (!res.ok) throw await edgeError(res);
+  const body = await res.json() as { render_id: string; used: number; limit: number | null };
+  return { allowed: true, renderId: body.render_id, used: body.used, limit: body.limit };
+}
+
 /**
  * FASHN API'de prediction başlatır, sonuç görsel URL'ini döndürür.
  * @param modelName  Örn. 'tryon-v1.6' | 'model-create'
  * @param inputs     Model girdileri
+ * @param renderId   startTryOn'dan gelen render kimliği
+ * @param final      true → render'ın son adımı; tamamlanınca sunucu render'ı başarılı sayar
  * @returns          CDN URL (72 saat geçerli)
  */
 export async function runFashn(
   modelName: string,
   inputs: Record<string, unknown>,
+  renderId: string,
+  final = false,
 ): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-
-  const runRes = await fetchWithRetry(FASHN_PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session?.access_token ?? ''}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify({ action: 'run', payload: { model_name: modelName, inputs } }),
+  // Tek deneme — bkz. withRetry
+  const runRes = await callEdge('fashn-proxy', {
+    action: 'run',
+    render_id: renderId,
+    payload: { model_name: modelName, inputs },
   });
-
-  if (!runRes.ok) {
-    const body = await runRes.text();
-    throw new Error(`FASHN /run ${runRes.status}: ${body}`);
-  }
+  if (!runRes.ok) throw await edgeError(runRes);
 
   const runJson = await runRes.json() as { id?: string; error?: unknown };
   if (runJson.error) throw new Error(`FASHN run hatası: ${JSON.stringify(runJson.error)}`);
@@ -121,22 +133,13 @@ export async function runFashn(
 
     let statusRes: Response;
     try {
-      statusRes = await fetchWithRetry(FASHN_PROXY_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token ?? ''}`,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({ action: 'status', id }),
-      });
-    } catch {
+      statusRes = await withRetry(() => callEdge('fashn-proxy', { action: 'status', id, final }));
+    } catch (err) {
+      if (err instanceof EdgeError) throw err;
       throw new Error('Manken üretimi sırasında bağlantı koptu, tekrar dene.');
     }
 
-    if (!statusRes.ok) {
-      const body = await statusRes.text();
-      throw new Error(`FASHN /status ${statusRes.status}: ${body}`);
-    }
+    if (!statusRes.ok) throw await edgeError(statusRes);
 
     const s = await statusRes.json() as {
       id: string;
@@ -187,9 +190,11 @@ export function profileToPrompt(profile: PhysicalProfile): string {
 /**
  * Öncelik: avatarUrl → savedMannequinUrl → FASHN model-create
  * Kalıcı kayıt Aşama C'de; burada sadece URL döndürülür.
+ * Manken üretimi kotadan düşmez ama render'ın çağrı bütçesine dahildir.
  */
 export async function getModelImage(
   profile: PhysicalProfile,
+  renderId: string,
   avatarUrl?: string,
   savedMannequinUrl?: string,
 ): Promise<string> {
@@ -200,7 +205,7 @@ export async function getModelImage(
   const url = await runFashn('model-create', {
     prompt:       profileToPrompt(profile),
     aspect_ratio: '2:3',
-  });
+  }, renderId);
   console.log('[fashn] manken hazır:', url);
   return url;
 }
@@ -244,14 +249,18 @@ export function selectAndOrderGarments(items: WardrobeItem[]): WardrobeItem[] {
 
 /**
  * Her parçayı sırayla giydirir; her adımın çıktısı bir sonraki adıma model_image olarak girer.
+ * finalOnLast: son katman render'ın son adımıysa (ayakkabı yoksa) true.
  */
 export async function layeredTryOn(
   modelImage: string,
   garments: WardrobeItem[],
+  renderId: string,
+  finalOnLast: boolean,
 ): Promise<string> {
   let current = modelImage;
 
-  for (const g of garments) {
+  for (const [idx, g] of garments.entries()) {
+    const isFinal  = finalOnLast && idx === garments.length - 1;
     const label    = g.itemName ?? g.subCategory ?? g.category;
     const category = FASHN_CATEGORY[g.category] ?? 'tops';
     console.log(`[fashn] katman: ${g.category} → FASHN category="${category}" / ${label}`);
@@ -270,7 +279,7 @@ export async function layeredTryOn(
       seed:               Math.floor(Math.random() * 4294967295),
       // jpeg: tüketici try-on için daha hızlı yanıt + ~8x küçük (cached egress)
       output_format:      'jpeg',
-    });
+    }, renderId, isFinal);
 
     console.log(`[fashn] katman çıktı (${label}):`, current);
   }
@@ -297,17 +306,20 @@ export function comboSignatureForCache(items: WardrobeItem[]): string {
 export async function generateVirtualModelImage(
   profile: PhysicalProfile,
   items: WardrobeItem[],
+  renderId: string,
   avatarUrl?: string,
   savedMannequinUrl?: string,
 ): Promise<string> {
-  const model    = await getModelImage(profile, avatarUrl, savedMannequinUrl);
+  const model    = await getModelImage(profile, renderId, avatarUrl, savedMannequinUrl);
   const garments = selectAndOrderGarments(items);
   if (!garments.length) throw new Error('Giydirilecek parça yok');
 
-  let result = await layeredTryOn(model, garments);
+  // Son adım: ayakkabı varsa tryon-max, yoksa son katman → final:true orada gider
+  const shoe = items.find((i) => i.category === 'shoes');
+
+  let result = await layeredTryOn(model, garments, renderId, !shoe);
 
   // Shoes katmanı: tryon-max (tryon-v1.6'da desteklenmiyor)
-  const shoe = items.find((i) => i.category === 'shoes');
   if (shoe) {
     console.log('[fashn] tryon-max: ayakkabı ekleniyor...');
     result = await runFashn('tryon-max', {
@@ -316,7 +328,7 @@ export async function generateVirtualModelImage(
       prompt:          'shoes worn on feet',
       resolution:      '1k',
       generation_mode: 'quality',
-    });
+    }, renderId, true);
     console.log('[fashn] tryon-max ayakkabı çıktı:', result);
   }
 
@@ -370,14 +382,19 @@ if (require.main === module) {
     console.log('Avatar: YOK → model-create yolu\n');
 
     try {
-      const mannequinUrl = await getModelImage(testProfile);
+      // Sunucu kotası — oturum açık bir kullanıcı gerekir
+      const start = await startTryOn();
+      if (!start.allowed) throw new Error(`kota dolu: ${start.used}/${start.limit}`);
+      const renderId = start.renderId;
+
+      const mannequinUrl = await getModelImage(testProfile, renderId);
       console.log('\n[1] Manken URL:', mannequinUrl);
       console.log('    → Tarayıcıda aç: tam boy, nötr poz, açık gri zemin var mı?\n');
 
       const garments = selectAndOrderGarments(testGarments);
       console.log('[2] Katmanlama sırası:', garments.map((g) => g.category).join(' → '));
 
-      const layeredUrl = await layeredTryOn(mannequinUrl, garments);
+      const layeredUrl = await layeredTryOn(mannequinUrl, garments, renderId, false);
       console.log('\n[3] Katmanlı (üst+alt) URL:', layeredUrl);
       console.log('    → Tarayıcıda aç: üst+alt düzgün giydirilmiş mi?\n');
 
@@ -396,7 +413,7 @@ if (require.main === module) {
         prompt:          'shoes worn on feet',
         resolution:      '1k',
         generation_mode: 'quality',
-      });
+      }, renderId, true);
       console.log('\n✅ tryon-max ayakkabı URL:', shoesUrl);
       console.log('   → (a) Ayakkabı ayağa düzgün giydirilmiş mi?');
       console.log('   → (b) Üst+alt kıyafet BOZULMADAN korunmuş mu?');

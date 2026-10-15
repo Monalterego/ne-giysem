@@ -15,7 +15,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ScanStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
-import { analyzeClothingImage } from '../../utils/visionAnalysis';
+import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
+import { friendlyError } from '../../utils/errorMessage';
 import type { VisionResult } from '../../utils/visionAnalysis';
 import { analyzeStoreItem } from '../../utils/comboEngine';
 import type { StoreAnalysis } from '../../utils/comboEngine';
@@ -159,7 +160,12 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         setVisionResult(result);
         setDetectedCategory(result.category);
       })
-      .catch(() => {})
+      .catch((err) => {
+        // Oturum yok / günlük sınır → nedenini göster (diğer hatalarda eski sessiz davranış)
+        if (!cancelled && isUserFacingEdgeError(err)) {
+          Alert.alert(t('combos.errorTitle'), friendlyError(err));
+        }
+      })
       .finally(() => { if (!cancelled) setAnalyzing(false); });
     return () => { cancelled = true; };
   }, [processedBase64]);

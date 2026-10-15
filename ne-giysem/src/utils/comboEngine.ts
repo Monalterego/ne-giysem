@@ -1,4 +1,4 @@
-import type { WardrobeItem, Combo, Season, StyleProfile } from '../types';
+import type { WardrobeItem, Combo, StyleProfile } from '../types';
 import { OCCASIONS } from '../constants/occasions';
 import type { OccasionId } from '../constants/occasions';
 import { itemColorScore, outfitColorScore } from './colorTheory';
@@ -11,20 +11,6 @@ import { buildReasoning, buildTitle } from './reasoning';
 import { seasonFit, tempToSeason, parseSeasons } from './seasonTheory';
 import type { WeatherData } from './weatherService';
 import { computeStyleVector } from './styleVector';
-import { supabase } from '../lib/supabase';
-
-const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
-
-export interface UserProfileInput {
-  styleProfile?: string;   // "Minimalist %60, Old Money %40"
-  height?: number;
-  age?: number;
-  bodyType?: string;
-  skinTone?: string;
-  hairColor?: string;
-  hairLength?: string;
-  hairType?: string;
-}
 
 const OCCASION_TR: Record<Occasion, string> = {
   all:     'Günlük',
@@ -37,19 +23,6 @@ const OCCASION_TR: Record<Occasion, string> = {
   spor:    'Spor & Aktif',
   seyahat: 'Seyahat',
 };
-
-function getCurrentSeason(): Season {
-  const m = new Date().getMonth() + 1;
-  if (m >= 3 && m <= 5) return 'spring';
-  if (m >= 6 && m <= 8) return 'summer';
-  if (m >= 9 && m <= 11) return 'fall';
-  return 'winter';
-}
-
-function seasonDesc(s: Season): string {
-  const map: Record<Season, string> = { spring: 'ilkbahar', summer: 'yaz', fall: 'sonbahar', winter: 'kış' };
-  return map[s];
-}
 
 export type Occasion = OccasionId | 'all';
 export type { OccasionId };
@@ -531,195 +504,6 @@ export function missingCategories(items: WardrobeItem[]): string[] {
   if (!hasLower && !hasDress) missing.push('alt kıyafet');
   if (!hasShoes)              missing.push('ayakkabı');
   return missing;
-}
-
-// ─── Claude AI kombin motoru ─────────────────────────────────────────────────
-
-const OCCASION_PRIORITY: Record<string, string[]> = {
-  gece:    ['mini_elbise', 'midi_elbise', 'topuklu', 'sandalet', 'etek'],
-  date:    ['midi_elbise', 'maxi_elbise', 'mini_elbise', 'topuklu', 'sandalet', 'etek', 'bluz'],
-  davet:   ['maxi_elbise', 'midi_elbise', 'topuklu'],
-  is:      ['blazer', 'gomlek', 'pantolon', 'topuklu', 'loafer'],
-  brunch:  ['midi_elbise', 'etek', 'bluz', 'loafer', 'sandalet'],
-  spor:    ['tayt', 'sort', 'tisort', 'hoodie', 'sneaker'],
-  seyahat: ['pantolon', 'sneaker', 'loafer', 'bluz', 'tisort'],
-  gunluk:  ['jean', 'tisort', 'bluz', 'sneaker', 'loafer'],
-};
-
-export async function generateCombosAI(
-  items: WardrobeItem[],
-  userProfile: UserProfileInput,
-  weather?: { temp: number; description: string } | null,
-  occasion: Occasion = 'all',
-  page = 0,
-  previousItemIds: string[] = [],
-  styleProfile?: Record<string, number>,
-): Promise<Combo[]> {
-  if (!items.length) return [];
-
-  // Mevsim ön filtresi
-  const season   = getCurrentSeason();
-  const filtered = items.filter((i) => i.seasons.length === 0 || i.seasons.includes(season));
-  const pool     = filtered.length >= 3 ? filtered : items;
-
-  // İsimsiz parçaları AI prompt'undan çıkar — AI doğru ID eşleştirmesi yapamaz
-  const validPool = pool.filter((i) => i.itemName && i.itemName.trim() !== '');
-
-  const occasionData = OCCASIONS.find((o) => o.id === occasion) ?? OCCASIONS[0];
-
-  const outerPool    = validPool.filter(isOuter);
-  const optionalPool = validPool.filter((i) => ['bag', 'accessory'].includes(i.category));
-  const corePool     = validPool.filter((i) => !isOuter(i) && !['bag', 'accessory'].includes(i.category));
-
-  // Okasyon önceliğine göre sırala — AI listedeki ilk parçalara daha fazla ağırlık verir
-  const prioritySubs = OCCASION_PRIORITY[occasion] ?? [];
-  corePool.sort((a, b) => {
-    const aScore = prioritySubs.indexOf(a.subCategory ?? '');
-    const bScore = prioritySubs.indexOf(b.subCategory ?? '');
-    return (aScore === -1 ? 999 : aScore) - (bScore === -1 ? 999 : bScore);
-  });
-
-  const wardrobeText = corePool.map((item) =>
-    `- ID:${item.id} | ${item.itemName} (${item.subCategory ?? item.category})` +
-    ` | Renk: ${item.colors[0] ?? 'belirsiz'}` +
-    ` | Kumaş: ${item.fabric ?? 'belirsiz'}` +
-    ` | Desen: ${item.pattern ?? 'düz'}` +
-    ` | Mevsim: ${item.seasons.length ? item.seasons.map(seasonDesc).join(', ') : 'tüm mevsimler'}`,
-  ).join('\n');
-
-  const outerText = outerPool.length
-    ? `\nDIŞ GİYİM (hırka, ceket, blazer vb.):\n` +
-      outerPool.map((item) => `- ID:${item.id} | ${item.itemName}`).join('\n')
-    : '';
-
-  const optionalText = optionalPool.length
-    ? `\nOPSİYONEL TAMAMLAYICI PARÇALAR (aksesuar, çanta):\n` +
-      optionalPool.map((item) => `- ID:${item.id} | ${item.itemName}`).join('\n')
-    : '';
-
-  const profileLines = [
-    styleProfile
-      ? `- Stil DNA: ${Object.entries(styleProfile).map(([k, v]) => `${k} %${v}`).join(', ')}`
-      : (userProfile.styleProfile ? `- Stil DNA: ${userProfile.styleProfile}` : null),
-    userProfile.height       ? `- Boy: ${userProfile.height}cm`          : null,
-    userProfile.age          ? `- Yaş: ${userProfile.age}`               : null,
-    userProfile.bodyType     ? `- Vücut tipi: ${userProfile.bodyType}`   : null,
-    userProfile.skinTone     ? `- Ten rengi: ${userProfile.skinTone}`    : null,
-    (userProfile.hairColor || userProfile.hairLength || userProfile.hairType)
-      ? `- Saç: ${[userProfile.hairColor, userProfile.hairLength, userProfile.hairType].filter(Boolean).join(', ')}` : null,
-  ].filter(Boolean).join('\n') || '- Profil bilgisi girilmemiş';
-
-  const weatherText    = weather ? `${weather.temp}°C, ${weather.description}` : 'Bilinmiyor';
-  const needsOuter     = weather ? weather.temp < 18 : false;
-  const previousNote   = previousItemIds.length > 0
-    ? `\nDAHA ÖNCE GÖSTERİLEN PARÇALAR: ${previousItemIds.join(', ')} — Bu parçaları içeren kombinler yerine farklı parçaları ön plana çıkar.`
-    : '';
-
-  const systemPrompt = `Sen uzman bir moda stilistisin. Renk teorisi, Kibbe vücut tipleri, seasonal color analysis ve stil sistemleri konusunda derin bilgin var. Kullanıcının fiziksel özelliklerine ve stil profiline göre kişiselleştirilmiş kombin önerileri yapıyorsun. Sadece JSON döndür, başka hiçbir şey yazma.`;
-
-  const userPrompt =
-`KULLANICI PROFİLİ:
-${profileLines}
-
-HAVA DURUMU: ${weatherText}
-
-OKASYON: ${occasionData.label}
-OKASYON TANIMI: ${occasionData.styleGuide}
-${previousNote}
-
-GARDROP PARÇALARI (${corePool.length} parça):
-${wardrobeText}
-${outerText}
-${optionalText}
-
-GÖREV:
-Bu kişi için 5 adet kombin öner. Aşağıdaki KATMANLı yapıya kesinlikle uy:
-
-KATMAN 1 — ZORUNLU (her kombinasyonda mutlaka olmalı):
-• 1 ÜST GİYİM + 1 ALT GİYİM + 1 AYAKKABI
-• VEYA: 1 ELBİSE/TULUM + 1 AYAKKABI
-Not: Hiçbir kombinasyonda 2 üst veya 2 alt giyim olamaz.
-Not: Dış giyim (hırka, ceket, blazer, mont) ÜST GİYİM sayılmaz — ayrı katmandır.
-
-KATMAN 2 — HER KOMBİNDE OLMALI:
-• 1 ÇANTA — dolaptaki çantalardan seç. Dolabında çanta yoksa reasoning'e "Dolabında çanta yok, eklemeyi düşün" yaz ve çanta ID'si verme.
-• 1 AKSESUAR — kolye, küpe, kemer, fular vb. dolaptaki aksesuarlardan seç. Yoksa reasoning'e not ekle.
-
-KATMAN 3 — DIŞ GİYİM:
-${needsOuter ? '• Hava 18°C altında — her kombinlere dolaptaki dış giyimden 1 parça EKLE (hırka, ceket, blazer, mont).' : '• Hava uygun — dış giyim opsiyonel, ekleme zorunluluğu yok.'}
-
-AYRICA:
-- Okasyon tanımına kesinlikle uy
-- Ten rengine ve vücut tipine uygun parçaları tercih et
-- Stil DNA'ya uygun kombinasyonlar kur
-- Renk uyumuna dikkat et
-
-JSON formatı:
-Tüm parçaları (üst, alt, ayakkabı, çanta, aksesuar, dış giyim) tek "items" array'ine koy. Ayrı field kullanma.
-{
-  "combos": [
-    {
-      "items": ["upper_id", "lower_id", "shoes_id", "bag_id", "accessory_id"],
-      "score": 92,
-      "occasion": "${occasionData.id}",
-      "reasoning": "Kısa Türkçe gerekçe (1 cümle)"
-    }
-  ]
-}`;
-
-  console.log('=== KOMBIN PROMPT ===');
-  console.log('SYSTEM:', systemPrompt);
-  console.log('USER:', userPrompt);
-  console.log('Core pool count:', corePool.length);
-  console.log('Outer pool count:', outerPool.length);
-  console.log('Optional pool count:', optionalPool.length);
-
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session?.access_token ?? ''}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model:      'claude-sonnet-4-5-20250929',
-      max_tokens: 1024,
-      system:     systemPrompt,
-      messages:   [{ role: 'user', content: userPrompt }],
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Claude API hatası: ${res.status}`);
-
-  const json   = await res.json();
-  const text: string = (json as any)?.content?.[0]?.text ?? '';
-  if (!text) throw new Error('Claude boş yanıt döndürdü');
-
-  const clean  = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-  const parsed = JSON.parse(clean) as {
-    combos: Array<{ items: string[]; score: number; occasion: string; reasoning: string }>;
-  };
-
-  const itemMap = new Map(items.map((i) => [i.id, i]));
-  const now = new Date().toISOString();
-
-  return parsed.combos
-    .map((c) => {
-      const comboItems = c.items
-        .map((id) => itemMap.get(id))
-        .filter((i): i is WardrobeItem => !!i);
-      if (comboItems.length < 2) return null;
-      return {
-        id: uid(),
-        items: comboItems,
-        score: Math.max(0, Math.min(98, Math.round(c.score))),
-        occasion,
-        label: c.reasoning,
-        createdAt: now,
-      } as Combo;
-    })
-    .filter((c): c is Combo => c !== null)
-    .slice(0, 5);
 }
 
 // ID listesinden Combo nesnesi oluşturur (Supabase cache'den geri yüklemek için)

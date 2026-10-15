@@ -15,14 +15,13 @@ import type { OnboardingStackParamList, StyleEntry } from '../../navigation/type
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
+import { callEdge, edgeError } from '../../lib/edgeFunctions';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { STYLE_DATA_MAP } from '../../constants/styles';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'StyleResult'>;
-
-const PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/anthropic-proxy';
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -58,21 +57,14 @@ async function fetchDnaFromClaude(
   "traits": ["4 adet kısa Türkçe stil özelliği"]
 }`;
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session?.access_token ?? ''}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 128,
-      messages: [{ role: 'user', content: prompt }],
-    }),
+  // Hata → çağıran yerel stil adına düşer (onboarding akışı kesilmez)
+  const res = await callEdge('anthropic-proxy', {
+    model: 'claude-sonnet-4-5-20250929',
+    max_tokens: 128,
+    messages: [{ role: 'user', content: prompt }],
   });
 
-  if (!res.ok) throw new Error(`API ${res.status}`);
+  if (!res.ok) throw await edgeError(res);
   const json = await res.json();
   const text: string = (json as any)?.content?.[0]?.text ?? '';
   if (!text) throw new Error(t('style.emptyResponse'));

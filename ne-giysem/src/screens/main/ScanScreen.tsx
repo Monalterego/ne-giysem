@@ -19,31 +19,36 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ScanStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
-import { supabase } from '../../lib/supabase';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { callEdge, edgeError, EdgeError } from '../../lib/edgeFunctions';
+import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
 
-const BG_PROXY_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1/bg-removal-proxy';
-
 async function removeBackground(imageBase64: string): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch(BG_PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session?.access_token ?? ''}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ image_b64: imageBase64 }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any)?.error ?? `Arka plan kaldırma hatası: ${res.status}`);
-  }
+  const res = await callEdge('bg-removal-proxy', { image_b64: imageBase64 });
+  if (!res.ok) throw await edgeError(res);
   const json = await res.json();
   return (json as any).result_b64 as string;
+}
+
+/**
+ * 1400px JPEG'e indir (UploadScreen ile aynı). 12MP base64 ~8MB — proxy'nin boyut
+ * tavanını aşar ve HEIC'i Poof kabul etmez. Başarısızsa orijinale düş.
+ */
+async function shrinkToJpeg(uri: string, fallbackBase64: string): Promise<string> {
+  try {
+    const normalized = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1400 } }],
+      { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    );
+    return normalized.base64 ?? fallbackBase64;
+  } catch {
+    return fallbackBase64;
+  }
 }
 
 async function processBase64(base64: string): Promise<string> {
@@ -80,7 +85,9 @@ export default function ScanScreen({ navigation }: Props) {
 
     const asset = result.assets[0];
     const uri   = asset.uri;
-    const base64Input = asset.base64;
+    const base64Input = asset.base64
+      ? (Platform.OS === 'web' ? asset.base64 : await shrinkToJpeg(uri, asset.base64))
+      : null;
     if (!base64Input) {
       Alert.alert(t('combos.errorTitle'), t('errors.imageReadFailed'));
       return;
@@ -93,8 +100,8 @@ export default function ScanScreen({ navigation }: Props) {
     try {
       const processedBase64 = await processBase64(base64Input);
       navigation.navigate('StoreResult', { processedBase64, originalUri: uri });
-    } catch (err: any) {
-      Alert.alert(t('combos.errorTitle'), err.message ?? t('errors.imageProcessFailed'));
+    } catch (err) {
+      Alert.alert(t('combos.errorTitle'), friendlyError(err));
     } finally {
       setLoading(false);
       setLoadingUri(null);
@@ -109,12 +116,21 @@ export default function ScanScreen({ navigation }: Props) {
     setLoadingUri(null);
     try {
       setLoadingStep(t('scan.readingProduct'));
-      const imageBase64 = await scrapeProductImage(url);
+      const scraped = await scrapeProductImage(url);
+      // Ürün görselleri boyut/format açısından kontrolsüz → aynı normalizasyon
+      const imageBase64 = Platform.OS === 'web'
+        ? scraped
+        : await shrinkToJpeg(`data:image/jpeg;base64,${scraped}`, scraped);
       setLoadingStep(Platform.OS === 'web' ? t('scan.preparingImage') : t('scan.removingBg'));
       const processedBase64 = await processBase64(imageBase64);
       navigation.navigate('StoreResult', { processedBase64, originalUri: url });
-    } catch (err: any) {
-      Alert.alert(t('combos.errorTitle'), err.message ?? t('errors.productImageFailed'));
+    } catch (err) {
+      // Proxy hataları (oturum, sınır, boyut) anlamlı mesaja; scraper'ın kendi Türkçe
+      // mesajları (og:image yok vb.) olduğu gibi kalır
+      const msg = err instanceof EdgeError
+        ? friendlyError(err)
+        : ((err as Error)?.message ?? t('errors.productImageFailed'));
+      Alert.alert(t('combos.errorTitle'), msg);
     } finally {
       setLoading(false);
       setLoadingStep('');
