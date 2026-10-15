@@ -713,7 +713,9 @@ export default function CombosScreen() {
       if ((isModelImageError(err) || staleMannequin) && user?.id) {
         await supabase.from('profiles').update({ mannequin_url: null }).eq('id', user.id);
       }
-      Alert.alert(t('combos.errorTitle'), friendlyError(err));
+      // 503: üst servis (FASHN) kullanılamıyor — 429 run-budget mesajından (tryOnBusy) ayrı
+      const unavailable = err instanceof EdgeError && err.status === 503;
+      Alert.alert(t('combos.errorTitle'), unavailable ? t('combos.tryOnUnavailable') : friendlyError(err));
     } finally {
       setGeneratingComboId(null);
       setModelLoading(false);

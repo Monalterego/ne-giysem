@@ -108,6 +108,7 @@
     "tryOnNote": "This may take a few minutes — just keep the screen open.",
     "limitBody": "Your free plan includes %{count} virtual try-ons. Upgrade to Premium for more.",
     "tryOnBusy": "Virtual try-on is busy right now. Please try again shortly.",
+    "tryOnUnavailable": "Virtual try-on is unavailable right now. Please try again later.",
     "tryOnPoseFailed": "Couldn't create the model. If your profile photo isn't full-body, remove it and try again.",
     "firstTryOnNote": "The first try-on takes longer — your model is being created once.",
     "needShoesTitle": "No suitable shoes for this occasion",

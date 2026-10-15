@@ -9,6 +9,7 @@
 //                   completed ise çıktılar kaydedilir; model-create değilse render başarılı
 
 import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
+import { reportOpsEvent, serviceUnavailable } from "../_shared/ops.ts";
 
 const FASHN_BASE = "https://api.fashn.ai/v1";
 
@@ -159,6 +160,17 @@ Deno.serve(async (req) => {
       // FASHN'ın kendi hatası istemciye aynı status ile geçer (400 dahil) — ayırt edilsin
       if (!res.ok) {
         console.error(`[fashn-proxy] upstream /run ${res.status} model=${modelName} render=${renderId}`, text.slice(0, 500));
+
+        // Ölçülmüş biçim: 429 {"error":"OutOfCredits"}. 429'u istemciye geçirmeyiz —
+        // 429 bizim run bütçemize (run-budget-exceeded) ayrılı.
+        let upstreamError: unknown;
+        try { upstreamError = JSON.parse(text)?.error; } catch { /* JSON değil */ }
+        if (upstreamError === "OutOfCredits") {
+          await reportOpsEvent(admin, "fashn-proxy", "fashn_out_of_credits", {
+            status: res.status, model: modelName, user: user.id,
+          });
+          return serviceUnavailable();
+        }
       }
 
       if (res.ok) {

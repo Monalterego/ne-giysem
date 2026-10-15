@@ -53,6 +53,9 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const errText = await res.text();
+      // Poof'un kredi/kota hata biçimi repoda ve ölçümlerde yok → tahminle 503'e
+      // çevrilmiyor. Biçim bu logdan öğrenilince fashn/anthropic gibi eklenecek.
+      console.error(`[bg-removal-proxy] upstream ${res.status}`, errText.slice(0, 500));
       return json({ error: "Poof error " + res.status, detail: errText }, res.status);
     }
 

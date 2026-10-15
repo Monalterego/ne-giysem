@@ -4,6 +4,7 @@
 // yeniden kurulur. Kimlik (getUser) + günlük sayaç sunucuda.
 
 import { adminClient, requireUser, bumpUsage, json, CORS } from "../_shared/auth.ts";
+import { reportOpsEvent, serviceUnavailable } from "../_shared/ops.ts";
 
 // ─── Sınırlar (tek yer) ──────────────────────────────────────────────────────
 const DAILY_CAP        = 150;
@@ -120,6 +121,19 @@ Deno.serve(async (req) => {
       body: JSON.stringify(outgoing),
     });
     const data = await res.text();
+
+    if (!res.ok) {
+      console.error(`[anthropic-proxy] upstream ${res.status} model=${outgoing.model}`, data.slice(0, 500));
+      // Kredi/ödeme: 402 ya da gövdede "credit balance" (Anthropic bakiye hatasını
+      // 400 invalid_request_error + "Your credit balance is too low…" ile döndürür)
+      if (res.status === 402 || /credit[ _]balance/i.test(data)) {
+        await reportOpsEvent(admin, "anthropic-proxy", "anthropic_out_of_credits", {
+          status: res.status, model: outgoing.model, user: user.id,
+        });
+        return serviceUnavailable();
+      }
+    }
+
     return new Response(data, {
       status: res.status,
       headers: { ...CORS, "content-type": "application/json" },
