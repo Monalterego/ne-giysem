@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     borderColor: colors.text,
   },
   dayThumb: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.9,
   },
   dayNum: {

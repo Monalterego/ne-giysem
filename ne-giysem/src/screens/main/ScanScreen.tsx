@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
 
   // Yükleniyor overlay
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(250,250,248,0.94)',
     alignItems: 'center',
     justifyContent: 'center',

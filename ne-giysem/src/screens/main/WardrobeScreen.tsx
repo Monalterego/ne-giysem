@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
 
   // Seçim overlay (grid)
   selectionOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: radius.md,
     alignItems: 'flex-end',

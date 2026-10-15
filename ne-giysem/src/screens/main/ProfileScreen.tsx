@@ -923,12 +923,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   blockingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   blockingScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: colors.background,
     opacity: 0.8,
   },

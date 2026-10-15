@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   weekThumb: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   weekDayNum: {
     ...typography.caption,
