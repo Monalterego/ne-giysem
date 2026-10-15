@@ -6,7 +6,7 @@
 // action 'run'    → render_id zorunlu; model + girdi anahtarları izin listesinde,
 //                   görsel URL'leri kullanıcının kendi storage'ı veya kendi FASHN çıktısı
 // action 'status' → prediction id kullanıcının bir render'ına ait olmalı (403);
-//                   completed ise çıktılar kaydedilir, final:true ise render başarılı
+//                   completed ise çıktılar kaydedilir; model-create değilse render başarılı
 
 import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
 
@@ -138,8 +138,10 @@ Deno.serve(async (req) => {
         let id: unknown;
         try { id = JSON.parse(text)?.id; } catch { /* yanıt JSON değil */ }
         if (typeof id === "string" && PREDICTION_ID_RE.test(id)) {
+          // Tür sunucuda belirlenir: model-create dışındakiler try-on → tamamlanınca başarı
           const { error: regErr } = await admin.rpc("register_run", {
             p_user: user.id, p_render: renderId, p_prediction_id: id,
+            p_is_tryon: modelName !== "model-create",
           });
           if (regErr) throw new Error(`register_run(id): ${regErr.message}`);
         }
@@ -171,20 +173,14 @@ Deno.serve(async (req) => {
         let s: any = null;
         try { s = JSON.parse(text); } catch { /* yanıt JSON değil */ }
         if (s?.status === "completed") {
+          // Çıktıları kaydet + try-on ise render'ı başarılı işaretle — karar tamamen
+          // sunucuda (istemcinin gönderdiği 'final' vb. alanlar yok sayılır)
           const outputs = (Array.isArray(s.output) ? s.output : [])
             .filter((u: unknown): u is string => typeof u === "string" && u.startsWith("https://"));
-          if (outputs.length) {
-            const { error } = await admin.rpc("record_outputs", {
-              p_user: user.id, p_render: renderId, p_urls: outputs,
-            });
-            if (error) throw new Error(`record_outputs: ${error.message}`);
-          }
-          if (body.final === true) {
-            const { error } = await admin.rpc("mark_render_success", {
-              p_user: user.id, p_render: renderId,
-            });
-            if (error) throw new Error(`mark_render_success: ${error.message}`);
-          }
+          const { error } = await admin.rpc("complete_prediction", {
+            p_user: user.id, p_render: renderId, p_prediction_id: id, p_urls: outputs,
+          });
+          if (error) throw new Error(`complete_prediction: ${error.message}`);
         }
       }
       return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });

@@ -27,6 +27,9 @@ create table if not exists public.tryon_renders (
   created_at     timestamptz not null default now(),
   runs_used      int not null default 0,
   prediction_ids text[] not null default '{}',
+  -- prediction_ids'in try-on olanları (model-create HARİÇ). Model türünü istemci değil
+  -- fashn-proxy belirler; bunlardan biri tamamlanınca render başarılı sayılır.
+  tryon_prediction_ids text[] not null default '{}',
   -- FASHN'ın bu render için döndürdüğü çıktı URL'leri. fashn-proxy bir sonraki
   -- katmanın model_image'ını bunlarla doğrular (CDN host'unu tahmin etmek yerine).
   output_urls    text[] not null default '{}',
@@ -59,8 +62,8 @@ revoke all on table public.api_usage from anon, authenticated;
 -- ─── start_tryon ─────────────────────────────────────────────────────────────
 -- Kota kontrolü + render oluşturma tek işlemde. Sayılanlar:
 --   • başarılı render'lar (succeeded_at dolu)
---   • son 15 dk içinde başlamış, hâlâ açık render'lar (paralel başlatmayı engeller)
--- Başarısız/terk edilmiş render 15 dk sonra kotadan düşer.
+--   • son 30 dk içinde başlamış, hâlâ açık render'lar (paralel başlatmayı engeller)
+-- Başarısız/terk edilmiş render 30 dk sonra kotadan düşer.
 create or replace function public.start_tryon(p_user uuid)
 returns jsonb
 language plpgsql
@@ -69,7 +72,8 @@ set search_path = public
 as $$
 declare
   c_free_limit  constant int      := 3;
-  c_open_window constant interval := interval '15 minutes';
+  -- ⚠️ register_run'daki c_open_window ile AYNI olmalı (plpgsql'de paylaşılan sabit yok)
+  c_open_window constant interval := interval '30 minutes';
   -- Premium henüz yok. Eklenince burada abonelik kaynağından okunacak
   -- (örn. subscriptions tablosu / RevenueCat webhook'unun yazdığı kolon).
   v_is_premium  boolean := false;
@@ -106,13 +110,17 @@ $$;
 -- ─── register_run ────────────────────────────────────────────────────────────
 -- İki aşamalı:
 --   p_prediction_id NULL     → FASHN /run'dan ÖNCE yer ayır: render bu kullanıcının,
---                              15 dk içinde, başarıya ulaşmamış ve runs_used < 6
---                              ise runs_used++ ve true.
+--                              30 dk içinde ve runs_used < 6 ise runs_used++ ve true.
 --   p_prediction_id dolu     → /run başarılı olunca id'yi render'a ekle (sayaç artmaz).
+--                              p_is_tryon (proxy model_name'den belirler) true ise
+--                              tryon_prediction_ids'e de eklenir.
 -- Neden iki aşama: id ancak /run yanıtında gelir. Kontrol id'den sonra yapılsaydı
 -- bütçeyi aşan çağrı FASHN'da zaten başlamış (faturalanmış) olurdu.
+-- Not: succeeded_at kontrolü YOK — render ilk try-on katmanında başarılı sayılır,
+-- sonraki katmanlar/ayakkabı aynı render'da sürmeli. Yeniden kullanımı 6 run tavanı
+-- ve 30 dk pencere sınırlar.
 create or replace function public.register_run(
-  p_user uuid, p_render uuid, p_prediction_id text default null
+  p_user uuid, p_render uuid, p_prediction_id text default null, p_is_tryon boolean default false
 )
 returns boolean
 language plpgsql
@@ -121,21 +129,24 @@ set search_path = public
 as $$
 declare
   c_max_runs    constant int      := 6;   -- manken + 3 katman + ayakkabı = 5, +1 pay
-  c_open_window constant interval := interval '15 minutes';
+  -- ⚠️ start_tryon'daki c_open_window ile AYNI olmalı
+  c_open_window constant interval := interval '30 minutes';
 begin
   if p_prediction_id is null then
     update tryon_renders
        set runs_used = runs_used + 1
      where id = p_render
        and user_id = p_user
-       and succeeded_at is null
        and created_at > now() - c_open_window
        and runs_used < c_max_runs;
     return found;
   end if;
 
   update tryon_renders
-     set prediction_ids = array_append(prediction_ids, p_prediction_id)
+     set prediction_ids       = array_append(prediction_ids, p_prediction_id),
+         tryon_prediction_ids = case when p_is_tryon
+                                     then array_append(tryon_prediction_ids, p_prediction_id)
+                                     else tryon_prediction_ids end
    where id = p_render
      and user_id = p_user
      and not (p_prediction_id = any (prediction_ids));
@@ -163,20 +174,34 @@ as $$
    limit 1;
 $$;
 
--- ─── record_outputs / user_owns_output ───────────────────────────────────────
--- Tamamlanan prediction çıktılarını sakla; sonraki run'larda model_image olarak
--- yalnızca kullanıcının kendi storage'ı veya kendi FASHN çıktıları kabul edilir.
-create or replace function public.record_outputs(p_user uuid, p_render uuid, p_urls text[])
-returns void
-language sql
+-- ─── complete_prediction / user_owns_output ──────────────────────────────────
+-- fashn-proxy status 'completed' gördüğünde tek çağrı:
+--   1) çıktı URL'lerini sakla — sonraki run'larda model_image olarak yalnızca
+--      kullanıcının kendi storage'ı veya kendi FASHN çıktıları kabul edilir
+--   2) prediction bir try-on ise (model-create değilse) render'ı başarılı işaretle
+-- Başarı kararı tamamen sunucuda: istemcinin gönderdiği hiçbir alan kullanılmaz.
+-- Döner: render başarılı işaretlendiyse true.
+create or replace function public.complete_prediction(
+  p_user uuid, p_render uuid, p_prediction_id text, p_urls text[]
+)
+returns boolean
+language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_is_tryon boolean;
+begin
   update tryon_renders
      set output_urls = array(
-           select distinct u from unnest(output_urls || p_urls) as u
+           select distinct u from unnest(output_urls || coalesce(p_urls, '{}')) as u
          )
-   where id = p_render and user_id = p_user;
+   where id = p_render and user_id = p_user and p_prediction_id = any (prediction_ids)
+  returning p_prediction_id = any (tryon_prediction_ids) into v_is_tryon;
+
+  if not coalesce(v_is_tryon, false) then return false; end if;
+  return mark_render_success(p_user, p_render);
+end;
 $$;
 
 create or replace function public.user_owns_output(p_user uuid, p_url text)
@@ -240,17 +265,17 @@ $$;
 
 -- ─── Yetkiler: fonksiyonlar yalnızca service_role ────────────────────────────
 revoke execute on function public.start_tryon(uuid)                    from public, anon, authenticated;
-revoke execute on function public.register_run(uuid, uuid, text)       from public, anon, authenticated;
-revoke execute on function public.render_for_prediction(uuid, text)    from public, anon, authenticated;
-revoke execute on function public.record_outputs(uuid, uuid, text[])   from public, anon, authenticated;
+revoke execute on function public.register_run(uuid, uuid, text, boolean)          from public, anon, authenticated;
+revoke execute on function public.render_for_prediction(uuid, text)                from public, anon, authenticated;
+revoke execute on function public.complete_prediction(uuid, uuid, text, text[])    from public, anon, authenticated;
 revoke execute on function public.user_owns_output(uuid, text)         from public, anon, authenticated;
 revoke execute on function public.mark_render_success(uuid, uuid)      from public, anon, authenticated;
 revoke execute on function public.bump_usage(uuid, text, int)          from public, anon, authenticated;
 
 grant execute on function public.start_tryon(uuid)                     to service_role;
-grant execute on function public.register_run(uuid, uuid, text)        to service_role;
-grant execute on function public.render_for_prediction(uuid, text)     to service_role;
-grant execute on function public.record_outputs(uuid, uuid, text[])    to service_role;
+grant execute on function public.register_run(uuid, uuid, text, boolean)           to service_role;
+grant execute on function public.render_for_prediction(uuid, text)                 to service_role;
+grant execute on function public.complete_prediction(uuid, uuid, text, text[])     to service_role;
 grant execute on function public.user_owns_output(uuid, text)          to service_role;
 grant execute on function public.mark_render_success(uuid, uuid)       to service_role;
 grant execute on function public.bump_usage(uuid, text, int)           to service_role;

@@ -690,7 +690,7 @@ export default function CombosScreen() {
         await supabase.from('profiles').update({ mannequin_url: persistedUrl }).eq('id', user.id);
       }
 
-      // 4. Üret (son adımın status'unda final:true → sunucu render'ı başarılı sayar), bucket'a yükle
+      // 4. Üret (ilk try-on katmanı tamamlanınca sunucu render'ı başarılı sayar), bucket'a yükle
       const finalUrl = await generateVirtualModelImage(physProfile, combo.items, renderId, modelSource);
       if (!finalUrl) return;
 

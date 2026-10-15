@@ -102,14 +102,12 @@ export async function startTryOn(): Promise<TryOnStart> {
  * @param modelName  Örn. 'tryon-v1.6' | 'model-create'
  * @param inputs     Model girdileri
  * @param renderId   startTryOn'dan gelen render kimliği
- * @param final      true → render'ın son adımı; tamamlanınca sunucu render'ı başarılı sayar
  * @returns          CDN URL (72 saat geçerli)
  */
 export async function runFashn(
   modelName: string,
   inputs: Record<string, unknown>,
   renderId: string,
-  final = false,
 ): Promise<string> {
   // Tek deneme — bkz. withRetry
   const runRes = await callEdge('fashn-proxy', {
@@ -133,7 +131,7 @@ export async function runFashn(
 
     let statusRes: Response;
     try {
-      statusRes = await withRetry(() => callEdge('fashn-proxy', { action: 'status', id, final }));
+      statusRes = await withRetry(() => callEdge('fashn-proxy', { action: 'status', id }));
     } catch (err) {
       if (err instanceof EdgeError) throw err;
       throw new Error('Manken üretimi sırasında bağlantı koptu, tekrar dene.');
@@ -249,18 +247,15 @@ export function selectAndOrderGarments(items: WardrobeItem[]): WardrobeItem[] {
 
 /**
  * Her parçayı sırayla giydirir; her adımın çıktısı bir sonraki adıma model_image olarak girer.
- * finalOnLast: son katman render'ın son adımıysa (ayakkabı yoksa) true.
  */
 export async function layeredTryOn(
   modelImage: string,
   garments: WardrobeItem[],
   renderId: string,
-  finalOnLast: boolean,
 ): Promise<string> {
   let current = modelImage;
 
-  for (const [idx, g] of garments.entries()) {
-    const isFinal  = finalOnLast && idx === garments.length - 1;
+  for (const g of garments) {
     const label    = g.itemName ?? g.subCategory ?? g.category;
     const category = FASHN_CATEGORY[g.category] ?? 'tops';
     console.log(`[fashn] katman: ${g.category} → FASHN category="${category}" / ${label}`);
@@ -279,7 +274,7 @@ export async function layeredTryOn(
       seed:               Math.floor(Math.random() * 4294967295),
       // jpeg: tüketici try-on için daha hızlı yanıt + ~8x küçük (cached egress)
       output_format:      'jpeg',
-    }, renderId, isFinal);
+    }, renderId);
 
     console.log(`[fashn] katman çıktı (${label}):`, current);
   }
@@ -314,10 +309,9 @@ export async function generateVirtualModelImage(
   const garments = selectAndOrderGarments(items);
   if (!garments.length) throw new Error('Giydirilecek parça yok');
 
-  // Son adım: ayakkabı varsa tryon-max, yoksa son katman → final:true orada gider
   const shoe = items.find((i) => i.category === 'shoes');
 
-  let result = await layeredTryOn(model, garments, renderId, !shoe);
+  let result = await layeredTryOn(model, garments, renderId);
 
   // Shoes katmanı: tryon-max (tryon-v1.6'da desteklenmiyor)
   if (shoe) {
@@ -328,7 +322,7 @@ export async function generateVirtualModelImage(
       prompt:          'shoes worn on feet',
       resolution:      '1k',
       generation_mode: 'quality',
-    }, renderId, true);
+    }, renderId);
     console.log('[fashn] tryon-max ayakkabı çıktı:', result);
   }
 
@@ -394,7 +388,7 @@ if (require.main === module) {
       const garments = selectAndOrderGarments(testGarments);
       console.log('[2] Katmanlama sırası:', garments.map((g) => g.category).join(' → '));
 
-      const layeredUrl = await layeredTryOn(mannequinUrl, garments, renderId, false);
+      const layeredUrl = await layeredTryOn(mannequinUrl, garments, renderId);
       console.log('\n[3] Katmanlı (üst+alt) URL:', layeredUrl);
       console.log('    → Tarayıcıda aç: üst+alt düzgün giydirilmiş mi?\n');
 
@@ -413,7 +407,7 @@ if (require.main === module) {
         prompt:          'shoes worn on feet',
         resolution:      '1k',
         generation_mode: 'quality',
-      }, renderId, true);
+      }, renderId);
       console.log('\n✅ tryon-max ayakkabı URL:', shoesUrl);
       console.log('   → (a) Ayakkabı ayağa düzgün giydirilmiş mi?');
       console.log('   → (b) Üst+alt kıyafet BOZULMADAN korunmuş mu?');
