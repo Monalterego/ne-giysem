@@ -45,5 +45,8 @@ export async function edgeError(res: Response): Promise<EdgeError> {
   let payload: Record<string, unknown> = {};
   try { payload = JSON.parse(text) ?? {}; } catch { /* JSON değil */ }
   const code = typeof payload.error === 'string' ? payload.error : `http-${res.status}`;
+  // Ham gövde geliştirici loguna; kullanıcıya friendlyError gösterilir
+  const fn = res.url.split('/functions/v1/')[1] ?? res.url;
+  console.warn(`[edge] ${fn} → ${res.status}`, text.slice(0, 400));
   return new EdgeError(res.status, code, payload, text.slice(0, 400));
 }

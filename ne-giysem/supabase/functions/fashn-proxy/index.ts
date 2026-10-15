@@ -79,7 +79,23 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "unauthorized" }, 401);
 
     const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") return json({ error: "invalid-body" }, 400);
+    if (!body || typeof body !== "object") {
+      console.error(`[fashn-proxy] 400 invalid-body user=${user.id}`);
+      return json({ error: "invalid-body" }, 400);
+    }
+
+    // Her 400 nedeni function log'una — istemci sürümü / eksik alan teşhisi için
+    const bad = (reason: string, detail?: unknown) => {
+      console.error(`[fashn-proxy] 400 ${reason}`, JSON.stringify({
+        user:      user.id,
+        action:    body.action ?? null,
+        model:     body.payload?.model_name ?? null,
+        render_id: body.render_id ?? null,
+        keys:      Object.keys(body),
+        ...(detail !== undefined ? { detail } : {}),
+      }));
+      return json({ error: reason }, 400);
+    };
 
     // ── start ──────────────────────────────────────────────────────────────
     if (body.action === "start") {
@@ -95,28 +111,29 @@ Deno.serve(async (req) => {
     if (body.action === "run") {
       const renderId = body.render_id;
       if (typeof renderId !== "string" || !UUID_RE.test(renderId)) {
-        return json({ error: "render_id required" }, 400);
+        return bad("render_id required");
       }
 
       const modelName = body.payload?.model_name;
       const inputs    = body.payload?.inputs;
       const allowedKeys = typeof modelName === "string" ? ALLOWED_INPUTS[modelName] : undefined;
-      if (!allowedKeys) return json({ error: "model-not-allowed" }, 400);
+      if (!allowedKeys) return bad("model-not-allowed");
       if (!inputs || typeof inputs !== "object" || Array.isArray(inputs)) {
-        return json({ error: "invalid-inputs" }, 400);
+        return bad("invalid-inputs");
       }
 
       for (const k of Object.keys(inputs)) {
-        if (!allowedKeys.includes(k)) return json({ error: `input-not-allowed:${k}` }, 400);
+        if (!allowedKeys.includes(k)) return bad(`input-not-allowed:${k}`);
       }
       for (const [k, values] of Object.entries(PINNED_VALUES[modelName] ?? {})) {
         if (k in inputs && !values.includes(inputs[k])) {
-          return json({ error: `value-not-allowed:${k}` }, 400);
+          return bad(`value-not-allowed:${k}`);
         }
       }
       for (const f of IMAGE_FIELDS) {
         if (f in inputs && !(await isAllowedImage(admin, inputs[f], user.id))) {
-          return json({ error: `image-not-allowed:${f}` }, 400);
+          // Reddedilen URL de loga (yalnızca 200 karakter — yine de kullanıcı yolu içerir)
+          return bad(`image-not-allowed:${f}`, String(inputs[f]).slice(0, 200));
         }
       }
 
@@ -133,6 +150,10 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ model_name: modelName, inputs }),
       });
       const text = await res.text();
+      // FASHN'ın kendi hatası istemciye aynı status ile geçer (400 dahil) — ayırt edilsin
+      if (!res.ok) {
+        console.error(`[fashn-proxy] upstream /run ${res.status} model=${modelName} render=${renderId}`, text.slice(0, 500));
+      }
 
       if (res.ok) {
         let id: unknown;
@@ -153,7 +174,7 @@ Deno.serve(async (req) => {
     if (body.action === "status") {
       const id = body.id;
       if (typeof id !== "string" || !PREDICTION_ID_RE.test(id)) {
-        return json({ error: "invalid-id" }, 400);
+        return bad("invalid-id");
       }
 
       const { data: renderId, error: ownErr } = await admin.rpc("render_for_prediction", {
@@ -167,6 +188,9 @@ Deno.serve(async (req) => {
         headers: { "Authorization": `Bearer ${key}` },
       });
       const text = await res.text();
+      if (!res.ok) {
+        console.error(`[fashn-proxy] upstream /status ${res.status} id=${id}`, text.slice(0, 500));
+      }
 
       if (res.ok) {
         // deno-lint-ignore no-explicit-any
@@ -186,7 +210,7 @@ Deno.serve(async (req) => {
       return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
-    return json({ error: "invalid action" }, 400);
+    return bad("invalid action");
   } catch (e) {
     console.error("[fashn-proxy]", e);
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
