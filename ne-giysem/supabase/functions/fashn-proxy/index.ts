@@ -252,12 +252,27 @@ Deno.serve(async (req) => {
           if (error) throw new Error(`complete_prediction: ${error.message}`);
         } else if (s?.status === "failed") {
           // FASHN işin kendisinin başarısız olduğunu bildirdi (biçim: virtualModel.ts
-          // `s.status === 'failed'`, `s.error.name/message`) → render iade.
+          // `s.status === 'failed'`, `s.error.name/message`).
+          // İade YALNIZCA hiçbir try-on katmanı henüz tamamlanmadıysa (succeeded_at null):
+          // aksi halde istemci 1. katman çıktısını alıp sonraki katmanı bilerek
+          // başarısız ettirerek kotasını geri alabilirdi.
           // Yanıt istemciye aynen geçer: hata mesajı (örn. poz) friendlyError'a ulaşsın.
           console.error(`[fashn-proxy] prediction failed id=${id}`, JSON.stringify(s.error ?? null).slice(0, 300));
-          const { data: refunded, error } = await admin.rpc("fail_render", { p_user: user.id, p_render: renderId });
-          if (error) console.error(`[fashn-proxy] fail_render ${renderId}: ${error.message}`);
-          else console.error(`[fashn-proxy] render ${renderId} iade (prediction-failed) → ${refunded === true ? "ok" : "zaten iade/yok"}`);
+          const { data: render, error: rErr } = await admin
+            .from("tryon_renders")
+            .select("succeeded_at")
+            .eq("id", renderId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (rErr) {
+            console.error(`[fashn-proxy] render okunamadı ${renderId}: ${rErr.message}`);
+          } else if (render && render.succeeded_at === null) {
+            const { data: refunded, error } = await admin.rpc("fail_render", { p_user: user.id, p_render: renderId });
+            if (error) console.error(`[fashn-proxy] fail_render ${renderId}: ${error.message}`);
+            else console.error(`[fashn-proxy] render ${renderId} iade (prediction-failed) → ${refunded === true ? "ok" : "zaten iade/yok"}`);
+          } else {
+            console.error(`[fashn-proxy] render ${renderId} iade YOK (prediction-failed, try-on katmanı zaten tamamlanmış)`);
+          }
         }
       }
       return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });

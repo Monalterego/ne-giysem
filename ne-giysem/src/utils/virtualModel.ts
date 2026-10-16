@@ -137,7 +137,17 @@ export async function runFashn(
       throw new Error('Manken üretimi sırasında bağlantı koptu, tekrar dene.');
     }
 
-    if (!statusRes.ok) throw await edgeError(statusRes);
+    if (!statusRes.ok) {
+      // 5xx/503 yoklamada geçici olabilir — FASHN'da iş sürüyor olabilir; proxy bu
+      // durumda iade de yapmaz. Hata gösterme, deadline'a kadar yoklamaya devam et.
+      // (503'ü kullanıcı yalnızca /run ve start'ta görür.)
+      if (statusRes.status >= 500) {
+        const e = await edgeError(statusRes);
+        console.warn(`[fashn] ${id} status ${statusRes.status} — yoklama sürüyor`, e.code);
+        continue;
+      }
+      throw await edgeError(statusRes);
+    }
 
     const s = await statusRes.json() as {
       id: string;
