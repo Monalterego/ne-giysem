@@ -64,7 +64,8 @@ function isOutOfCredits(text: string): boolean {
 
 /**
  * ÜST SERVİS hatasında render'ı iade et (kotadan düşmesin), sonra 503.
- * Yalnızca FASHN kaynaklı hatalarda çağrılır — bizim 400/403/426/429
+ * Yalnızca /run'da (iş başlamadı: OutOfCredits ya da 5xx). /status'un HTTP hatasında
+ * ÇAĞRILMAZ (geçici yoklama hatası). Bizim 400/403/426/429
  * doğrulamalarımızda ÇAĞRILMAZ (istemci bilerek hata üretip kotasını geri alamasın).
  * İade başarısız olsa da 503 döner; hata loglanır.
  */
@@ -228,13 +229,12 @@ Deno.serve(async (req) => {
       const text = await res.text();
       if (!res.ok) {
         console.error(`[fashn-proxy] upstream /status ${res.status} id=${id}`, text.slice(0, 500));
+        // Yoklama hatası geçici olabilir; FASHN'da iş sürüyor olabilir → İADE YOK, yalnızca 503
         if (isOutOfCredits(text)) {
           await reportOpsEvent(admin, "fashn-proxy", "fashn_out_of_credits", { status: res.status, at: "status" });
-          return await refundAndUnavailable(admin, user.id, renderId, "out-of-credits");
+          return serviceUnavailable();
         }
-        if (res.status >= 500) {
-          return await refundAndUnavailable(admin, user.id, renderId, `upstream-status-${res.status}`);
-        }
+        if (res.status >= 500) return serviceUnavailable();
       }
 
       if (res.ok) {
@@ -250,6 +250,14 @@ Deno.serve(async (req) => {
             p_user: user.id, p_render: renderId, p_prediction_id: id, p_urls: outputs,
           });
           if (error) throw new Error(`complete_prediction: ${error.message}`);
+        } else if (s?.status === "failed") {
+          // FASHN işin kendisinin başarısız olduğunu bildirdi (biçim: virtualModel.ts
+          // `s.status === 'failed'`, `s.error.name/message`) → render iade.
+          // Yanıt istemciye aynen geçer: hata mesajı (örn. poz) friendlyError'a ulaşsın.
+          console.error(`[fashn-proxy] prediction failed id=${id}`, JSON.stringify(s.error ?? null).slice(0, 300));
+          const { data: refunded, error } = await admin.rpc("fail_render", { p_user: user.id, p_render: renderId });
+          if (error) console.error(`[fashn-proxy] fail_render ${renderId}: ${error.message}`);
+          else console.error(`[fashn-proxy] render ${renderId} iade (prediction-failed) → ${refunded === true ? "ok" : "zaten iade/yok"}`);
         }
       }
       return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });
