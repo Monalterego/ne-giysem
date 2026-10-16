@@ -29,6 +29,7 @@ const OCC_LABEL: Record<Occasion, string> = {
   davet:   'davet',
   spor:    'spor',
   seyahat: 'seyahat',
+  tatil:   'tatil',
 };
 
 const SUBCATEGORY_TR: Record<string, string> = {

@@ -169,6 +169,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       return;
     }
     if (!user) return;
+    // Yeni kayıtta görsel zorunlu — route param eksikse base64Decode'a undefined gitmesin
+    if (!processedBase64) {
+      Alert.alert(t('combos.errorTitle'), t('uploadDetail.imageMissing'));
+      return;
+    }
 
     // Üst↔elbise en sık karışan ve en yıkıcı vision hatası. AI bu ikisinden birini seçtiyse
     // ve kullanıcı değiştirmediyse, kaydetmeden önce tek bir onay iste.

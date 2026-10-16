@@ -12,6 +12,7 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Bulunduğun yerin hava durumuna göre kombin önermek için konum izni gerekiyor.",
+        "NSLocationDefaultAccuracyReduced": true,
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.monalterego.sestina"

@@ -205,6 +205,7 @@ function ModelModal({
   hasExtras,
   isLoading,
   isFirstTryOn,
+  shareable,
   onClose,
 }: {
   visible: boolean;
@@ -212,6 +213,8 @@ function ModelModal({
   hasExtras: boolean;
   isLoading: boolean;
   isFirstTryOn: boolean;
+  /** false: görsel kendi storage'ımıza yüklenemedi, imageUrl FASHN CDN linki → paylaşılmaz */
+  shareable: boolean;
   onClose: () => void;
 }) {
   const insets    = useSafeAreaInsets();
@@ -271,7 +274,7 @@ function ModelModal({
   const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   const handleShare = async () => {
-    if (!imageUrl) return;
+    if (!imageUrl || !shareable) return;
     await Share.share({
       message: `Sanal manken kombinim — Sestina ile oluşturuldu: ${imageUrl}`,
       url: imageUrl,
@@ -347,10 +350,18 @@ function ModelModal({
             </ScrollView>
 
             <View style={modalStyles.footer}>
-              <TouchableOpacity style={modalStyles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={[modalStyles.shareBtn, !shareable && modalStyles.shareBtnDisabled]}
+                onPress={handleShare}
+                disabled={!shareable}
+                activeOpacity={0.85}
+              >
                 <Feather name="share-2" size={16} color={colors.white} />
                 <Text style={modalStyles.shareBtnText}>{t('combos.share')}</Text>
               </TouchableOpacity>
+              {!shareable && (
+                <Text style={modalStyles.modelNote}>{t('combos.shareUnavailable')}</Text>
+              )}
             </View>
           </>
         )}
@@ -475,6 +486,7 @@ export default function CombosScreen() {
   const [modelModalVisible,    setModelModalVisible]     = useState(false);
   const [modelHasExtras,       setModelHasExtras]        = useState(false);
   const [modelLoading,         setModelLoading]          = useState(false);
+  const [modelShareable,       setModelShareable]        = useState(true);
   const [lightboxItemId,       setLightboxItemId]        = useState<string | null>(null);
   const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
   const [renderLimit,          setRenderLimit]           = useState(FREE_RENDER_LIMIT);
@@ -577,16 +589,6 @@ export default function CombosScreen() {
     setSavingKey(null);
   }, [user, markWorn]);
 
-  // Avatar kontrolü: varsa direkt IDM-VTON, yoksa seçenek modalı
-  const handleVirtualModelPress = useCallback((combo: Combo) => {
-    if (!user?.avatarUrl) {
-      setPendingCombo(combo);
-      setNoAvatarModalVisible(true);
-      return;
-    }
-    handleVirtualModel(combo, user.avatarUrl);
-  }, [user, handleVirtualModel]);
-
   const handleVirtualModel = useCallback(async (combo: Combo, avatarUrl?: string) => {
     if (!user) return;
     setModelHasExtras(combo.items.some((i) => i.category === 'bag' || i.category === 'accessory'));
@@ -601,6 +603,7 @@ export default function CombosScreen() {
 
     // Modal hemen aç — bekleme ekranı gösterilsin
     setModelImageUrl(null);
+    setModelShareable(true);
     setModelLoading(true);
     setModelModalVisible(true);
     setGeneratingComboId(combo.id);
@@ -700,14 +703,20 @@ export default function CombosScreen() {
       const imgBuffer = await imgRes.arrayBuffer();
       const imgBytes  = new Uint8Array(imgBuffer);
 
-      const { error: upErr } = await supabase.storage
-        .from('mannequin-cache')
-        .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/jpeg' });
+      // Yükleme bir kez yeniden denenir — başarısızsa FASHN linki paylaşılmasın diye
+      let upErr: { message: string } | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        ({ error: upErr } = await supabase.storage
+          .from('mannequin-cache')
+          .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/jpeg' }));
+        if (!upErr) break;
+        console.warn(`cache upload başarısız (deneme ${attempt + 1}):`, upErr.message);
+      }
 
-      if (upErr) console.warn('cache upload başarısız:', upErr.message);
-
-      // Upload patlasa (ya da imza alınamasa) bile FASHN URL'iyle manken gösterilir
+      // Upload patlasa (ya da imza alınamasa) bile FASHN URL'iyle manken gösterilir,
+      // ama paylaşım kapatılır — FASHN CDN linki dışarı verilmez
       const uploadedUrl = upErr ? null : await displayUrl('mannequin-cache', cacheKey);
+      setModelShareable(uploadedUrl !== null);
       setModelImageUrl(uploadedUrl ?? finalUrl);
     } catch (err) {
       setModelModalVisible(false);
@@ -726,6 +735,17 @@ export default function CombosScreen() {
       setModelLoading(false);
     }
   }, [user]);
+
+  // Avatar kontrolü: varsa direkt IDM-VTON, yoksa seçenek modalı
+  // (handleVirtualModel'den SONRA tanımlı — bağımlılık dizisi render sırasında okunur)
+  const handleVirtualModelPress = useCallback((combo: Combo) => {
+    if (!user?.avatarUrl) {
+      setPendingCombo(combo);
+      setNoAvatarModalVisible(true);
+      return;
+    }
+    handleVirtualModel(combo, user.avatarUrl);
+  }, [user, handleVirtualModel]);
 
   // Stabil callback referansları — custom comparator sayesinde lightbox state
   // değiştiğinde memo kart render tetiklemez; yine de stable ref sağlıyoruz.
@@ -1023,6 +1043,7 @@ export default function CombosScreen() {
         hasExtras={modelHasExtras}
         isLoading={modelLoading}
         isFirstTryOn={isFirstTryOn}
+        shareable={modelShareable}
         onClose={() => { setModelModalVisible(false); setModelLoading(false); setModelImageUrl(null); }}
       />
       <PremiumModal
@@ -1470,6 +1491,9 @@ const modalStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
+  },
+  shareBtnDisabled: {
+    opacity: 0.35,
   },
   shareBtnText: {
     ...typography.body,

@@ -151,14 +151,14 @@ const styles = StyleSheet.create({
   slideTitle: {
     fontSize: 24,
     fontFamily: fonts.headingBold,
-    color: colors.primary,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 12,
   },
   slideSubtitle: {
     fontSize: 14,
     fontFamily: fonts.body,
-    color: colors.muted,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 8,
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   button: {
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },

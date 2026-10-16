@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   question: {
     fontSize: 22,
     fontFamily: fonts.headingBold,
-    color: colors.primary,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 28,
     lineHeight: 30,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 12,
     fontFamily: fonts.bodyMedium,
-    color: colors.primary,
+    color: colors.text,
     textAlign: 'center',
     lineHeight: 17,
   },

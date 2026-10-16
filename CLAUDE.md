@@ -106,16 +106,20 @@ Kullanıcıların gardrobunu dijitalleştiren, yapay zeka ile kombin önerileri 
 
 ### 5. Monetizasyon (Freemium)
 
-**Ücretsiz:**
-- 30 parçaya kadar gardrob
-- 3 kombin önerisi / gün
-- 5 mağaza analizi / ay
-- Temel stil profili
+| Özellik | Ücretsiz | Premium |
+|---|---|---|
+| Dolap | 50 parça | Sınırsız |
+| Sanal deneme (try-on) | 3 (ömür boyu) | 8 / ay (takvim ayı, Europe/Istanbul) |
+| "Uyar mı?" (mağaza uyum) | 3 / ay | Sınırsız |
+| Takvim | Geçmiş | Geçmiş + planlama |
 
-**Premium (₺99.99/ay veya ₺799.99/yıl):**
-- Limitsiz gardrob
-- Limitsiz kombin önerisi
-- Limitsiz mağaza analizi
+**Fiyat:** TR ₺229,99/ay – ₺2.299,99/yıl · Global $9.99/ay – $69.99/yıl. Paywall'da yıllık plan varsayılan seçili.
+
+**Premium bitince:** mevcut planlar ve limit üstü parçalar korunur (silinmez); yalnızca yeni ekleme yapılamaz.
+
+**Lansman:** AB ülkeleri hariç.
+
+**Diğer premium özellikler (yol haritası):**
 - Detaylı Stil DNA + evrim takibi
 - AI Stil Danışmanı (sohbet tabanlı)
 - Etkinlik bazlı kombin

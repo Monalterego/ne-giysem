@@ -187,7 +187,7 @@ export default function LoginScreen({ navigation }: Props) {
           <TextInput
             style={styles.input}
             placeholder={t('auth.email')}
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textTertiary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -199,7 +199,7 @@ export default function LoginScreen({ navigation }: Props) {
           <TextInput
             style={styles.input}
             placeholder={t('auth.password')}
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textTertiary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry

@@ -22,6 +22,7 @@ const OCCASION_TR: Record<Occasion, string> = {
   davet:   'Düğün & Davet',
   spor:    'Spor & Aktif',
   seyahat: 'Seyahat',
+  tatil:   'Tatil',
 };
 
 export type Occasion = OccasionId | 'all';
