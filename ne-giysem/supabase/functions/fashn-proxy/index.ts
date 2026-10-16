@@ -57,6 +57,25 @@ function isOwnStorageUrl(raw: string, uid: string): boolean {
   }
 }
 
+/** FASHN kredi hatası mı? Ölçülmüş biçim: {"error":"OutOfCredits"} */
+function isOutOfCredits(text: string): boolean {
+  try { return JSON.parse(text)?.error === "OutOfCredits"; } catch { return false; }
+}
+
+/**
+ * ÜST SERVİS hatasında render'ı iade et (kotadan düşmesin), sonra 503.
+ * Yalnızca FASHN kaynaklı hatalarda çağrılır — bizim 400/403/426/429
+ * doğrulamalarımızda ÇAĞRILMAZ (istemci bilerek hata üretip kotasını geri alamasın).
+ * İade başarısız olsa da 503 döner; hata loglanır.
+ */
+// deno-lint-ignore no-explicit-any
+async function refundAndUnavailable(admin: any, uid: string, renderId: string, reason: string) {
+  const { data, error } = await admin.rpc("fail_render", { p_user: uid, p_render: renderId });
+  if (error) console.error(`[fashn-proxy] fail_render ${renderId}: ${error.message}`);
+  else console.error(`[fashn-proxy] render ${renderId} iade (${reason}) → ${data === true ? "ok" : "zaten iade/yok"}`);
+  return serviceUnavailable();
+}
+
 // deno-lint-ignore no-explicit-any
 async function isAllowedImage(admin: any, raw: unknown, uid: string): Promise<boolean> {
   if (typeof raw !== "string" || raw.length > 2048) return false;
@@ -163,13 +182,14 @@ Deno.serve(async (req) => {
 
         // Ölçülmüş biçim: 429 {"error":"OutOfCredits"}. 429'u istemciye geçirmeyiz —
         // 429 bizim run bütçemize (run-budget-exceeded) ayrılı.
-        let upstreamError: unknown;
-        try { upstreamError = JSON.parse(text)?.error; } catch { /* JSON değil */ }
-        if (upstreamError === "OutOfCredits") {
+        if (isOutOfCredits(text)) {
           await reportOpsEvent(admin, "fashn-proxy", "fashn_out_of_credits", {
             status: res.status, model: modelName,
           });
-          return serviceUnavailable();
+          return await refundAndUnavailable(admin, user.id, renderId, "out-of-credits");
+        }
+        if (res.status >= 500) {
+          return await refundAndUnavailable(admin, user.id, renderId, `upstream-run-${res.status}`);
         }
       }
 
@@ -208,6 +228,13 @@ Deno.serve(async (req) => {
       const text = await res.text();
       if (!res.ok) {
         console.error(`[fashn-proxy] upstream /status ${res.status} id=${id}`, text.slice(0, 500));
+        if (isOutOfCredits(text)) {
+          await reportOpsEvent(admin, "fashn-proxy", "fashn_out_of_credits", { status: res.status, at: "status" });
+          return await refundAndUnavailable(admin, user.id, renderId, "out-of-credits");
+        }
+        if (res.status >= 500) {
+          return await refundAndUnavailable(admin, user.id, renderId, `upstream-status-${res.status}`);
+        }
       }
 
       if (res.ok) {
