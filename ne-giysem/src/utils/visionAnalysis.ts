@@ -138,7 +138,9 @@ KATEGORİ KARARI — önce şuna karar ver, sonra diğer alanları doldur:
   "colors": en fazla 3 dominant rengin hex kodu dizisi — örn. ["#1A1A2E", "#FFFFFF"],
   "pattern": "duz" | "cizgili" | "ekose" | "cicekli" | "geometrik",
   "fabric": kumaş — GÖRÜNÜR DOKUYA bak: parlak/yansımalı yüzey → "saten" veya "ipek" (asla pamuk); örgü dokusu → "triko"; tüylü mat → "kadife"; mat dokusuz günlük → "pamuk". EMİN DEĞİLSEN "bilmiyorum" — "pamuk" | "keten" | "denim" | "ipek" | "yun" | "kasmir" | "polyester" | "viskon" | "saten" | "kadife" | "deri" | "suni_deri" | "triko" | "sifon" | "karisim" | "bilmiyorum",
-  "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"]
+  "season": uygun mevsimlerin dizisi — örn. ["yaz"] veya ["ilkbahar", "sonbahar"] veya ["kis"].
+            İSTİSNA: signals'a "evening_wear" eklediysen ya da subcategory abiye/gece parçasıysa
+            ("abiye_canta" gibi) → MUTLAKA boş dizi [] (abiye mevsimsizdir; kumaşa bakıp mevsim uydurma)
 }`;
 }
 
@@ -147,7 +149,7 @@ function parseVisionResponse(text: string): VisionResult {
   const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
   const raw = JSON.parse(clean);
 
-  const seasons: Season[] = Array.isArray(raw.season)
+  let seasons: Season[] = Array.isArray(raw.season)
     ? (raw.season as string[]).map((s) => SEASON_MAP[s]).filter((s): s is Season => !!s)
     : [];
 
@@ -166,6 +168,9 @@ function parseVisionResponse(text: string): VisionResult {
         .filter((s) => (KNOWN_SIGNALS as readonly string[]).includes(s))
         .slice(0, 6)
     : [];
+
+  // Abiye/gece parçası mevsimsizdir — model prompt kuralına uymasa da season boşaltılır
+  if (signals.includes('evening_wear')) seasons = [];
 
   const mappedCategory = CATEGORY_MAP[raw.category ?? ''];
   if (!mappedCategory) console.warn('[vision] bilinmeyen kategori:', raw.category);
