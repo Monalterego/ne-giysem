@@ -27,8 +27,12 @@ import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
 import { generateVirtualModelImage, getModelImage, comboSignatureForCache, startTryOn } from '../../utils/virtualModel';
-import type { PhysicalProfile } from '../../utils/virtualModel';
+import type { PhysicalProfile, ModelSource } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
+import {
+  displayUrl, itemImageRefs, itemImageSource, itemThumbSource, storageExists,
+  toStoragePath, useSignedImages,
+} from '../../lib/storageUrls';
 import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { friendlyError, isModelImageError } from '../../utils/errorMessage';
@@ -72,6 +76,8 @@ const ComboCard = React.memo(function ComboCard({
   isFavorite,
   onToggleFavorite,
 }: {
+  /** İmzalı URL önbelleği dolunca kart yeniden çizilsin (yalnızca comparator okur) */
+  imgVersion: number;
   combo: Combo;
   isWorn: boolean;
   isSaving: boolean;
@@ -98,7 +104,7 @@ const ComboCard = React.memo(function ComboCard({
             activeOpacity={0.82}
           >
             <Image
-              source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+              source={itemThumbSource(item)}
               style={styles.itemImage}
               contentFit="contain"
               cachePolicy="memory-disk"
@@ -187,7 +193,8 @@ const ComboCard = React.memo(function ComboCard({
   prev.isWorn        === next.isWorn        &&
   prev.isSaving      === next.isSaving      &&
   prev.isGenerating  === next.isGenerating  &&
-  prev.isFavorite    === next.isFavorite,     // eksik olursa kalp dokununca güncellenmez
+  prev.isFavorite    === next.isFavorite    &&   // eksik olursa kalp dokununca güncellenmez
+  prev.imgVersion    === next.imgVersion,        // imzalı görsel URL'leri hazır olunca
 );
 
 // ─── Model sonuç modalı ───────────────────────────────────────────────────────
@@ -436,6 +443,8 @@ export default function CombosScreen() {
   const focusConsumed  = useRef(false);
   const listRef        = useRef<FlatList<any>>(null);
   const items          = useWardrobeStore((s) => s.items);
+  // Kartlar + lightbox: tüm parçalar tek createSignedUrls çağrısında (önbellekliyse 0)
+  const imgVersion     = useSignedImages('wardrobe-items', itemImageRefs(items));
   const isLoading      = useWardrobeStore((s) => s.isLoading);
   const fetchItems     = useWardrobeStore((s) => s.fetchItems);
   const wornComboKeys  = useWardrobeStore((s) => s.wornComboKeys);
@@ -622,19 +631,15 @@ export default function CombosScreen() {
         : 'm';
 
       const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}_${modelVersion}.jpg`;
-      const { data: { publicUrl: cachedUrl } } = supabase.storage
-        .from('mannequin-cache')
-        .getPublicUrl(cacheKey);
 
-      try {
-        const headRes = await fetch(cachedUrl, { method: 'HEAD' });
-        if (headRes.ok) {
-          // Cache HIT — FASHN çağrısı yok, kota düşmez
+      // Kimlikli HEAD (storage-js exists) — private bucket'ta da çalışır; hata → miss
+      if (await storageExists('mannequin-cache', cacheKey)) {
+        // Cache HIT — FASHN çağrısı yok, kota düşmez. Görüntüleme için 1 saatlik imza
+        const cachedUrl = await displayUrl('mannequin-cache', cacheKey);
+        if (cachedUrl) {
           setModelImageUrl(cachedUrl);
           return;   // finally loading'i kapatır
         }
-      } catch {
-        // HEAD hatası → cache miss sayılır, devam et
       }
 
       // 2. Cache MISS — kotayı SUNUCU verir; render_id tüm FASHN çağrılarında taşınır
@@ -647,23 +652,28 @@ export default function CombosScreen() {
       }
       const { renderId } = start;
 
-      // 3. Manken kaynağını çöz: avatarUrl → kayıtlı manken → yeni üretim
-      let modelSource: string | null = avatarUrl ?? null;
+      // 3. Manken kaynağını çöz: avatar → kayıtlı manken → yeni üretim.
+      //    Değerler storage YOLU (ya da eski tam URL); FASHN'a giderken virtualModel
+      //    10 dk'lık imzalı URL'e çevirir.
+      let modelSource: ModelSource | null = avatarUrl ? { bucket: 'avatars', ref: avatarUrl } : null;
 
-      // Kayıtlı manken varsa canlı mı doğrula (FASHN CDN çıktıları 72 saatte silinir — ölü URL 403 verir)
+      // Kayıtlı manken hâlâ var mı? Storage'daysa kimlikli HEAD; harici (eski FASHN
+      // CDN, 72 saatte silinir) ise düz HEAD
       if (!modelSource && savedMannequinUrl) {
-        try {
-          const head = await fetch(savedMannequinUrl, { method: 'HEAD' });
-          if (head.ok) modelSource = savedMannequinUrl;
-        } catch {
-          // ölü/erişilemez — aşağıda yeniden üretilecek
+        const inStorage = toStoragePath('mannequin-cache', savedMannequinUrl) !== null;
+        let alive = false;
+        if (inStorage) {
+          alive = await storageExists('mannequin-cache', savedMannequinUrl);
+        } else {
+          try { alive = (await fetch(savedMannequinUrl, { method: 'HEAD' })).ok; } catch { /* ölü */ }
         }
+        if (alive) modelSource = { bucket: 'mannequin-cache', ref: savedMannequinUrl };
       }
 
       if (!modelSource) {
         const fashnUrl = await getModelImage(physProfile, renderId);
-        // FASHN URL'i geçici — kendi storage'ımıza taşı, kalıcı URL'i kaydet
-        let persistedUrl = fashnUrl;
+        // FASHN URL'i geçici — kendi storage'ımıza taşı, DB'ye YOL kaydet
+        let persistedRef = fashnUrl;
         try {
           const res = await fetch(fashnUrl);
           if (res.ok) {
@@ -672,15 +682,13 @@ export default function CombosScreen() {
             const { error: mErr } = await supabase.storage
               .from('mannequin-cache')
               .upload(baseKey, bytes, { upsert: true, contentType: 'image/png' });
-            if (!mErr) {
-              persistedUrl = supabase.storage.from('mannequin-cache').getPublicUrl(baseKey).data.publicUrl;
-            }
+            if (!mErr) persistedRef = baseKey;
           }
         } catch {
           // taşıma başarısızsa FASHN URL ile devam — bu seans çalışır, sonraki seans yeniden üretir
         }
-        modelSource = persistedUrl;
-        await supabase.from('profiles').update({ mannequin_url: persistedUrl }).eq('id', user.id);
+        modelSource = { bucket: 'mannequin-cache', ref: persistedRef };
+        await supabase.from('profiles').update({ mannequin_url: persistedRef }).eq('id', user.id);
       }
 
       // 4. Üret (ilk try-on katmanı tamamlanınca sunucu render'ı başarılı sayar), bucket'a yükle
@@ -698,12 +706,9 @@ export default function CombosScreen() {
 
       if (upErr) console.warn('cache upload başarısız:', upErr.message);
 
-      const { data: { publicUrl: uploadedUrl } } = supabase.storage
-        .from('mannequin-cache')
-        .getPublicUrl(cacheKey);
-
-      // Upload patlasa bile FASHN URL'iyle manken gösterilir; sadece o sefer cache'lenmez
-      setModelImageUrl(upErr ? finalUrl : uploadedUrl);
+      // Upload patlasa (ya da imza alınamasa) bile FASHN URL'iyle manken gösterilir
+      const uploadedUrl = upErr ? null : await displayUrl('mannequin-cache', cacheKey);
+      setModelImageUrl(uploadedUrl ?? finalUrl);
     } catch (err) {
       setModelModalVisible(false);
       // ⚠️ Bozuk manken kalıcı: bir kez kaydedilirse her denemede aynı hata gelir.
@@ -954,6 +959,7 @@ export default function CombosScreen() {
                 onPlan={handlePlanCb}
                 isFavorite={favoriteSigs.has(comboSignatureForCache(item.items))}
                 onToggleFavorite={handleToggleFavoriteCb}
+                imgVersion={imgVersion}
               />
             );
           }}
@@ -974,7 +980,7 @@ export default function CombosScreen() {
         <TouchableOpacity style={modalStyles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
           <View style={modalStyles.lightboxContainer}>
             {selectedLightboxItem?.processedImageUrl && (
-              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={modalStyles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
+              <Image source={itemImageSource(selectedLightboxItem)} style={modalStyles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
             <TouchableOpacity style={modalStyles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />

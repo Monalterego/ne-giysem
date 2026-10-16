@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
 import { useUserStore } from './src/store/useUserStore';
 import { useFavoritesStore } from './src/store/useFavoritesStore';
+import { clearSignedUrlCache } from './src/lib/storageUrls';
 import { initI18n, getLocale } from './src/i18n';
 import RootNavigator from './src/navigation/RootNavigator';
 
@@ -31,6 +32,7 @@ export default function App() {
         useUserStore.getState().logout();
         // Mahremiyet: aynı cihazda sonraki kullanıcının fetch'i başarısız olursa öncekinin favorileri görünmesin
         useFavoritesStore.getState().reset();
+        clearSignedUrlCache();   // önceki kullanıcının imzalı URL'leri bellekte kalmasın
         return;
       }
 

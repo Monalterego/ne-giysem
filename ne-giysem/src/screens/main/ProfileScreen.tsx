@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
+import { imageSource, useSignedImages, clearSignedUrlCache } from '../../lib/storageUrls';
 import { deleteAccount } from '../../lib/socialAuth';
 import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { useUserStore } from '../../store/useUserStore';
@@ -58,6 +59,8 @@ export default function ProfileScreen() {
   const resetFavorites = useFavoritesStore((s) => s.reset);
   // Kombin > Favoriler listesiyle AYNI kural: parçası silinmiş favori sayılmaz
   const favoriteCount  = useMemo(() => resolveFavorites(favorites, items).length, [favorites, items]);
+  // Avatar private storage'da — tek imza (1 createSignedUrls çağrısı, önbellekliyse 0)
+  useSignedImages('avatars', [user?.avatarUrl]);
 
   // Favori sayısı için — Kombin sekmesi henüz hiç açılmamış olabilir
   useEffect(() => {
@@ -169,18 +172,19 @@ export default function ProfileScreen() {
         .upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
-      // Cache-buster: dosya adı sabit (upsert) ama URL değişmeli — yoksa expo-image
-      // disk cache'ten eski görseli gösterir, kullanıcı fotoğrafını güncelleyemez.
-      const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+      // DB'ye URL değil bucket içi YOL yazılır (görüntülemede imzalanır).
+      // ?v= sürümü: dosya adı sabit (upsert) — expo-image cacheKey'i (bucket/yol?v=)
+      // değişsin, eski fotoğraf disk önbelleğinden gelmesin. Try-on cache anahtarı da
+      // bu sürümden türetiliyor (CombosScreen modelVersion).
+      const avatarRef = `${path}?v=${Date.now()}`;
 
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: avatarRef })
         .eq('id', user.id);
       if (updateError) throw updateError;
 
-      setAvatarUrl(publicUrl);
+      setAvatarUrl(avatarRef);
     } catch {
       Alert.alert(t('combos.errorTitle'), t('profile.photoUploadError'));
     } finally {
@@ -217,6 +221,7 @@ export default function ProfileScreen() {
   const clearLocalSession = () => {
     setItems([]);
     resetFavorites();   // App SIGNED_OUT da sıfırlar; çevrimdışı signOut event üretmezse diye burada da
+    clearSignedUrlCache();
     logout();
   };
 
@@ -273,7 +278,7 @@ export default function ProfileScreen() {
               {uploadingAvatar ? (
                 <ActivityIndicator color={colors.textSecondary} />
               ) : user?.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.avatarPickerImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
+                <Image source={imageSource('avatars', user.avatarUrl)} style={styles.avatarPickerImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
               ) : (
                 <Feather name="user" size={48} color={colors.border} />
               )}

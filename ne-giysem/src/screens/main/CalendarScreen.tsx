@@ -15,6 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
+import { imageSource, itemImageRefs, itemImageSource, itemThumbSource, useSignedImages } from '../../lib/storageUrls';
 import type { WornEntry, PlannedEntry } from '../../store/useWardrobeStore';
 import type { WardrobeItem } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -25,6 +26,8 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'Calendar'>;
 export default function CalendarScreen({ navigation }: Props) {
   const user  = useUserStore((s) => s.user);
   const items = useWardrobeStore((s) => s.items);
+  // Görseller private storage'da — ekrandaki tüm parçalar tek createSignedUrls çağrısında
+  useSignedImages('wardrobe-items', itemImageRefs(items));
   const fetchWornHistory  = useWardrobeStore((s) => s.fetchWornHistory);
   const fetchPlannedRange = useWardrobeStore((s) => s.fetchPlannedRange);
   const removePlan        = useWardrobeStore((s) => s.removePlan);
@@ -220,7 +223,7 @@ export default function CalendarScreen({ navigation }: Props) {
                 >
                   {thumb ? (
                     <Image
-                      source={{ uri: thumb }}
+                      source={imageSource('wardrobe-items', thumb)}
                       style={[styles.dayThumb, plannedOnly && { opacity: 0.45 }]}
                       contentFit="cover"
                       cachePolicy="memory-disk"
@@ -266,7 +269,7 @@ export default function CalendarScreen({ navigation }: Props) {
                           activeOpacity={0.85}
                         >
                           <Image
-                            source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+                            source={itemThumbSource(item)}
                             style={styles.comboImg}
                             contentFit="contain"
                             cachePolicy="memory-disk"
@@ -317,7 +320,7 @@ export default function CalendarScreen({ navigation }: Props) {
                           activeOpacity={0.85}
                         >
                           <Image
-                            source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+                            source={itemThumbSource(item)}
                             style={styles.comboImg}
                             contentFit="contain"
                             cachePolicy="memory-disk"
@@ -341,7 +344,7 @@ export default function CalendarScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
           <View style={styles.lightboxContainer}>
             {selectedLightboxItem?.processedImageUrl && (
-              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
+              <Image source={itemImageSource(selectedLightboxItem)} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
             <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />

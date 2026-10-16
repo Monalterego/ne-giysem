@@ -16,6 +16,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
+import { itemThumbSource, itemImageRefs, useSignedImages } from '../../lib/storageUrls';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { ClothingCategory, WardrobeItem } from '../../types';
@@ -98,6 +99,8 @@ const SUBCATEGORIES: Partial<Record<ClothingCategory, { value: string; label: st
 
 export default function WardrobeScreen({ navigation }: Props) {
   const items      = useWardrobeStore((s) => s.items);
+  // Tüm parçalar tek createSignedUrls çağrısında (fetchItems önceden imzaladıysa 0)
+  const imgVersion = useSignedImages('wardrobe-items', itemImageRefs(items));
   const isLoading  = useWardrobeStore((s) => s.isLoading);
   const fetchItems = useWardrobeStore((s) => s.fetchItems);
   const removeItem = useWardrobeStore((s) => s.removeItem);
@@ -284,7 +287,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         delayLongPress={350}
       >
         <Image
-          source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+          source={itemThumbSource(item)}
           style={styles.gridImage}
           contentFit="contain"
           cachePolicy="memory-disk"
@@ -323,7 +326,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         delayLongPress={350}
       >
         <Image
-          source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+          source={itemThumbSource(item)}
           style={styles.listImage}
           contentFit="contain"
           cachePolicy="memory-disk"
@@ -491,6 +494,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         contentContainerStyle={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}
         columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
+        extraData={imgVersion}
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>

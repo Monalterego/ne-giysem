@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
+import { imageSource, useSignedImages } from '../../lib/storageUrls';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
@@ -74,6 +75,8 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
     existingItem?: WardrobeItem;
   };
   const isEditMode = !!existingItem;
+  // Düzenleme modunda görsel private storage'dan — imzala (genelde dolaptan önbellekli gelir)
+  useSignedImages('wardrobe-items', [existingItem?.processedImageUrl]);
 
   const user       = useUserStore((s) => s.user);
   const addItem    = useWardrobeStore((s) => s.addItem);
@@ -212,11 +215,9 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         .upload(`${basePath}.jpg`, bytes, { contentType: 'image/jpeg', upsert: true });
       if (procError) throw new Error(procError.message);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('wardrobe-items')
-        .getPublicUrl(`${basePath}.jpg`);
-      const originalImageUrl  = publicUrl;
-      const processedImageUrl = publicUrl;
+      // DB'ye URL değil bucket içi YOL yazılır — görüntülemede imzalanır (storageUrls)
+      const originalImageUrl  = `${basePath}.jpg`;
+      const processedImageUrl = `${basePath}.jpg`;
 
       // ── Thumbnail (400px) — liste ekranlarında kullanılır, egress'i ~10x düşürür
       let thumbUrl: string | null = null;
@@ -234,12 +235,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
               contentType: 'image/jpeg',
               upsert: true,
             });
-          if (!thumbErr) {
-            const { data } = supabase.storage
-              .from('wardrobe-items')
-              .getPublicUrl(`${basePath}_thumb.jpg`);
-            thumbUrl = data.publicUrl;
-          }
+          if (!thumbErr) thumbUrl = `${basePath}_thumb.jpg`;
         }
       } catch {
         // thumbnail üretilemezse sorun değil — ekranlar asıl görsele düşer
@@ -347,11 +343,11 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         {/* İşlenmiş görsel */}
         <View style={styles.imageContainer}>
           <Image
-            source={{
-              uri: isEditMode
-                ? existingItem!.processedImageUrl
-                : `data:image/jpeg;base64,${processedBase64}`,
-            }}
+            source={
+              isEditMode
+                ? imageSource('wardrobe-items', existingItem!.processedImageUrl)
+                : { uri: `data:image/jpeg;base64,${processedBase64}` }
+            }
             style={styles.image}
             contentFit="contain"
             cachePolicy="memory-disk"

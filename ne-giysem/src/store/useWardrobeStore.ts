@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { signImages } from '../lib/storageUrls';
 import type { WardrobeItem } from '../types';
 import { fetchWeather as fetchWeatherApi, getCoords } from '../utils/weatherService';
 import type { WeatherData } from '../utils/weatherService';
@@ -112,7 +113,11 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      set({ items: data.map(mapRow) });
+      const items = data.map(mapRow);
+      // Görselleri tek createSignedUrls çağrısıyla önceden imzala — ekranlar ilk
+      // çizimde önbellekten okusun (memo'lu kartlar boş görselle takılmasın)
+      await signImages('wardrobe-items', items.flatMap((i) => [i.thumbUrl, i.processedImageUrl]));
+      set({ items });
     }
     set({ isLoading: false });
   },

@@ -1,5 +1,6 @@
 import type { WardrobeItem } from '../types';
 import { callEdge, edgeError, EdgeError } from '../lib/edgeFunctions';
+import { signedUrlForFashn } from '../lib/storageUrls';
 
 // ─── Açıklama eşlemeleri ──────────────────────────────────────────────────────
 
@@ -195,19 +196,20 @@ export function profileToPrompt(profile: PhysicalProfile): string {
 
 // ─── Manken görseli kaynağı ───────────────────────────────────────────────────
 
+/** Manken kaynağı: storage yolu (ya da eski tam URL / harici FASHN URL'i) + bucket'ı */
+export type ModelSource = { bucket: 'avatars' | 'mannequin-cache'; ref: string };
+
 /**
- * Öncelik: avatarUrl → savedMannequinUrl → FASHN model-create
- * Kalıcı kayıt Aşama C'de; burada sadece URL döndürülür.
+ * Öncelik: verilen kaynak (avatar / kayıtlı manken) → FASHN model-create.
+ * Kaynak storage'daysa FASHN'a 10 dk'lık imzalı URL gider (FASHN URL'leri saklıyor).
  * Manken üretimi kotadan düşmez ama render'ın çağrı bütçesine dahildir.
  */
 export async function getModelImage(
   profile: PhysicalProfile,
   renderId: string,
-  avatarUrl?: string,
-  savedMannequinUrl?: string,
+  source?: ModelSource | null,
 ): Promise<string> {
-  if (avatarUrl)          return avatarUrl;
-  if (savedMannequinUrl)  return savedMannequinUrl;
+  if (source) return signedUrlForFashn(source.bucket, source.ref);
 
   console.log('[fashn] manken üretiliyor (model-create)...');
   const url = await runFashn('model-create', {
@@ -286,7 +288,8 @@ export async function layeredTryOn(
 
     current = await runFashn('tryon-v1.6', {
       model_image:        current,
-      garment_image:      g.processedImageUrl,
+      // Katmandan hemen önce imzalanır — 10 dk TTL uzun render'da da geçerli kalsın
+      garment_image:      await signedUrlForFashn('wardrobe-items', g.processedImageUrl),
       // 'flat-lay' sadece düz serili/ghost manken görselleri için; kullanıcılar
       // askıda/yatakta/mankende çekiyor → 'auto' otomatik tespit etsin
       garment_photo_type: 'auto',
@@ -326,10 +329,9 @@ export async function generateVirtualModelImage(
   profile: PhysicalProfile,
   items: WardrobeItem[],
   renderId: string,
-  avatarUrl?: string,
-  savedMannequinUrl?: string,
+  source?: ModelSource | null,
 ): Promise<string> {
-  const model    = await getModelImage(profile, renderId, avatarUrl, savedMannequinUrl);
+  const model    = await getModelImage(profile, renderId, source);
   const garments = selectAndOrderGarments(items);
   if (!garments.length) throw new Error('Giydirilecek parça yok');
 
@@ -342,7 +344,7 @@ export async function generateVirtualModelImage(
     console.log('[fashn] tryon-max: ayakkabı ekleniyor...');
     result = await runFashn('tryon-max', {
       model_image:     result,
-      product_image:   shoe.processedImageUrl,
+      product_image:   await signedUrlForFashn('wardrobe-items', shoe.processedImageUrl),
       prompt:          'shoes worn on feet',
       resolution:      '1k',
       generation_mode: 'quality',
@@ -427,7 +429,7 @@ if (require.main === module) {
       console.log('[4] tryon-max: ayakkabı ekleniyor...');
       const shoesUrl = await runFashn('tryon-max', {
         model_image:     layeredUrl,
-        product_image:   TEST_SHOES_URL,
+        product_image:   await signedUrlForFashn('wardrobe-items', TEST_SHOES_URL),
         prompt:          'shoes worn on feet',
         resolution:      '1k',
         generation_mode: 'quality',

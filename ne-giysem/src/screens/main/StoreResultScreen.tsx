@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ScanStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
+import { itemImageRefs, itemImageSource, itemThumbSource, useSignedImages } from '../../lib/storageUrls';
 import { useUserStore } from '../../store/useUserStore';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
 import { friendlyError } from '../../utils/errorMessage';
@@ -118,7 +119,7 @@ function WardrobeComboCard({ items, onItemPress }: { items: WardrobeItem[]; onIt
             activeOpacity={0.85}
           >
             <Image
-              source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+              source={itemThumbSource(item)}
               style={styles.comboImg}
               contentFit="contain"
               cachePolicy="memory-disk"
@@ -139,6 +140,8 @@ function WardrobeComboCard({ items, onItemPress }: { items: WardrobeItem[]; onIt
 export default function StoreResultScreen({ route, navigation }: Props) {
   const { processedBase64, originalUri } = route.params;
   const items   = useWardrobeStore((s) => s.items);
+  // Görseller private storage'da — ekrandaki tüm parçalar tek createSignedUrls çağrısında
+  useSignedImages('wardrobe-items', itemImageRefs(items));
   const weather = useWardrobeStore((s) => s.weather);
   const user    = useUserStore((s) => s.user);
 
@@ -292,7 +295,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
           <View style={styles.lightboxContainer}>
             {selectedLightboxItem?.processedImageUrl && (
-              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
+              <Image source={itemImageSource(selectedLightboxItem)} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
             <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />

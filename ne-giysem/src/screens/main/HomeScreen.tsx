@@ -17,6 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore, toDateStr } from '../../store/useWardrobeStore';
+import { imageSource, itemImageRefs, itemImageSource, itemThumbSource, useSignedImages } from '../../lib/storageUrls';
 import type { WornEntry, PlannedEntry } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import type { Combo, WardrobeItem } from '../../types';
@@ -72,7 +73,7 @@ function TodayComboCard({ combo, onItemPress }: { combo: Combo; onItemPress: (it
             activeOpacity={0.85}
           >
             <Image
-              source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+              source={itemThumbSource(item)}
               style={styles.comboImage}
               contentFit="contain"
               cachePolicy="memory-disk"
@@ -129,6 +130,8 @@ function QuickAction({
 export default function HomeScreen({ navigation }: Props) {
   const user           = useUserStore((s) => s.user);
   const items          = useWardrobeStore((s) => s.items);
+  // Görseller private storage'da — ekrandaki tüm parçalar tek createSignedUrls çağrısında
+  useSignedImages('wardrobe-items', itemImageRefs(items));
   const fetchItems     = useWardrobeStore((s) => s.fetchItems);
   const weather        = useWardrobeStore((s) => s.weather);
   const weatherLoading = useWardrobeStore((s) => s.weatherLoading);
@@ -343,7 +346,7 @@ export default function HomeScreen({ navigation }: Props) {
                     <Text style={styles.weekDayLabel}>{t(`calendar.wd${wdIdx}`)}</Text>
                     <View style={[styles.weekThumbWrap, isToday && styles.weekThumbToday, isPlanned && styles.weekPlanned]}>
                       {thumb ? (
-                        <Image source={{ uri: thumb }} style={[styles.weekThumb, isPlanned && { opacity: 0.45 }]} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+                        <Image source={imageSource('wardrobe-items', thumb)} style={[styles.weekThumb, isPlanned && { opacity: 0.45 }]} contentFit="cover" cachePolicy="memory-disk" transition={150} />
                       ) : null}
                       {thumb ? (
                         <View style={styles.weekNumBackdrop}>
@@ -373,7 +376,7 @@ export default function HomeScreen({ navigation }: Props) {
               {preview.map((item) => (
                 <View key={item.id} style={styles.previewItem}>
                   <Image
-                    source={{ uri: item.thumbUrl ?? item.processedImageUrl }}
+                    source={itemThumbSource(item)}
                     style={styles.previewImage}
                     contentFit="contain"
                     cachePolicy="memory-disk"
@@ -393,7 +396,7 @@ export default function HomeScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxItemId(null)}>
           <View style={styles.lightboxContainer}>
             {selectedLightboxItem?.processedImageUrl && (
-              <Image source={{ uri: selectedLightboxItem.processedImageUrl }} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
+              <Image source={itemImageSource(selectedLightboxItem)} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
             <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />
