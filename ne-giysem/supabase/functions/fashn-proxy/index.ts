@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
         try { upstreamError = JSON.parse(text)?.error; } catch { /* JSON değil */ }
         if (upstreamError === "OutOfCredits") {
           await reportOpsEvent(admin, "fashn-proxy", "fashn_out_of_credits", {
-            status: res.status, model: modelName, user: user.id,
+            status: res.status, model: modelName,
           });
           return serviceUnavailable();
         }

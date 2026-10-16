@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
       // 400 invalid_request_error + "Your credit balance is too low…" ile döndürür)
       if (res.status === 402 || /credit[ _]balance/i.test(data)) {
         await reportOpsEvent(admin, "anthropic-proxy", "anthropic_out_of_credits", {
-          status: res.status, model: outgoing.model, user: user.id,
+          status: res.status, model: outgoing.model,
         });
         return serviceUnavailable();
       }
