@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { deleteAccount } from '../../lib/socialAuth';
+import { clearLocalSession } from '../../lib/session';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
@@ -17,7 +19,6 @@ import { t } from '../../i18n';
 export default function AgeGateScreen() {
   const user        = useUserStore((s: UserState) => s.user);
   const setConsents = useUserStore((s: UserState) => s.setConsents);
-  const logout      = useUserStore((s: UserState) => s.logout);
 
   const [loading, setLoading] = useState(user?.ageConfirmedAt === undefined);
   const [checked, setChecked] = useState(false);
@@ -62,9 +63,33 @@ export default function AgeGateScreen() {
     setConsents({ ageConfirmedAt: at });   // RootNavigator kapıyı kaldırır
   };
 
-  // 18 yaşından küçük: uygulama kullanılamaz — oturumu kapat
+  // 18 yaşından küçük: uygulama kullanılamaz → hesap ve veriler silinir.
+  // Silme Profil'deki "Hesabımı Sil" ile aynı akış (Apple hesabında Apple ekranı açılır).
+  // Başarısız/iptal → yine de oturum kapatılır (kullanıcı uygulamada kalamaz), loglanır.
   const handleUnder18 = () => {
-    supabase.auth.signOut().catch(() => {}).finally(logout);
+    Alert.alert(t('ageGate.under18Title'), t('ageGate.under18Body'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('ageGate.under18Confirm'), style: 'destructive', onPress: runUnder18Delete },
+    ]);
+  };
+
+  const runUnder18Delete = async () => {
+    setSaving(true);
+    try {
+      const r = await deleteAccount();
+      if (r === 'deleted') {
+        Alert.alert(t('profile.deleteAccountDone'));
+        clearLocalSession();
+        return;
+      }
+      console.warn('[AgeGate] 18 yaş altı hesap silme iptal edildi (Apple ekranı) — oturum kapatılıyor');
+    } catch (err) {
+      console.warn('[AgeGate] 18 yaş altı hesap silinemedi — oturum kapatılıyor:', err);
+    } finally {
+      setSaving(false);
+    }
+    await supabase.auth.signOut().catch((e) => console.warn('[AgeGate] signOut:', e));
+    clearLocalSession();
   };
 
   if (loading) {
@@ -105,7 +130,7 @@ export default function AgeGateScreen() {
             : <Text style={styles.primaryBtnText}>{t('ageGate.continue')}</Text>}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={handleUnder18} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={handleUnder18} activeOpacity={0.7} disabled={saving}>
           <Text style={styles.secondaryBtnText}>{t('ageGate.under18')}</Text>
         </TouchableOpacity>
       </View>

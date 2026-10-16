@@ -16,7 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
-import { imageSource, useSignedImages, clearSignedUrlCache } from '../../lib/storageUrls';
+import { imageSource, useSignedImages } from '../../lib/storageUrls';
+import { clearLocalSession } from '../../lib/session';
 import { deleteAccount } from '../../lib/socialAuth';
 import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { useUserStore } from '../../store/useUserStore';
@@ -45,7 +46,6 @@ function initials(name: string): string {
 
 export default function ProfileScreen() {
   const user                      = useUserStore((s: UserState) => s.user);
-  const logout                    = useUserStore((s: UserState) => s.logout);
   const setUser                   = useUserStore((s: UserState) => s.setUser);
   const setOnboarded              = useUserStore((s: UserState) => s.setOnboarded);
   const setPhysicalProfile        = useUserStore((s: UserState) => s.setPhysicalProfile);
@@ -56,11 +56,9 @@ export default function ProfileScreen() {
   const locale                    = useUserStore((s: UserState) => s.locale);
   const setUserLocale             = useUserStore((s: UserState) => s.setUserLocale);
   const items    = useWardrobeStore((s) => s.items);
-  const setItems = useWardrobeStore((s) => s.setItems);
   const navigation     = useNavigation<any>();
   const favorites      = useFavoritesStore((s) => s.favorites);
   const fetchFavorites = useFavoritesStore((s) => s.fetchFavorites);
-  const resetFavorites = useFavoritesStore((s) => s.reset);
   // Kombin > Favoriler listesiyle AYNI kural: parçası silinmiş favori sayılmaz
   const favoriteCount  = useMemo(() => resolveFavorites(favorites, items).length, [favorites, items]);
   // Avatar private storage'da — tek imza (1 createSignedUrls çağrısı, önbellekliyse 0)
@@ -301,13 +299,6 @@ export default function ProfileScreen() {
   };
 
   // Çıkış ve hesap silme ortak yerel temizliği — iki yer de bunu çağırır
-  const clearLocalSession = () => {
-    setItems([]);
-    resetFavorites();   // App SIGNED_OUT da sıfırlar; çevrimdışı signOut event üretmezse diye burada da
-    clearSignedUrlCache();
-    logout();
-  };
-
   const handleLogout = () => {
     supabase.auth.signOut()
       .catch((err) => console.warn('[ProfileScreen] signOut exception:', err))

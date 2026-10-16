@@ -16,11 +16,17 @@ export default function SensitiveConsentModal({
   saving,
   onAccept,
   onCancel,
+  intro,
+  cancelLabel,
 }: {
   visible: boolean;
   saving?: boolean;
   onAccept: () => void;
   onCancel: () => void;
+  /** Mevcut kullanıcı kapısında farklı giriş metni */
+  intro?: string;
+  /** Kapıda 'Vazgeç' yerine 'Kabul etmiyorum' (red → veriler silinir) */
+  cancelLabel?: string;
 }) {
   const [checked, setChecked] = useState(false);
   // Her açılışta işaretsiz başla
@@ -39,7 +45,7 @@ export default function SensitiveConsentModal({
         <View style={styles.sheet}>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>{t('consent.title')}</Text>
-            <Text style={styles.intro}>{t('consent.intro')}</Text>
+            <Text style={styles.intro}>{intro ?? t('consent.intro')}</Text>
 
             <Section title={t('consent.whatTitle')} body={t('consent.whatBody')} />
             <Section title={t('consent.whyTitle')}  body={t('consent.whyBody')} />
@@ -76,7 +82,7 @@ export default function SensitiveConsentModal({
                 : <Text style={styles.primaryBtnText}>{t('consent.accept')}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.7} disabled={saving}>
-              <Text style={styles.cancelText}>{t('consent.cancel')}</Text>
+              <Text style={styles.cancelText}>{cancelLabel ?? t('consent.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>

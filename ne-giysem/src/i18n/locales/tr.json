@@ -764,6 +764,9 @@
     "checkbox": "18 yaşından büyüğüm",
     "continue": "Devam Et",
     "under18": "18 yaşından küçüğüm",
+    "under18Title": "Hesabın silinecek",
+    "under18Body": "Sestina 18 yaş ve üzeri içindir. Hesabın ve tüm verilerin kalıcı olarak silinecek. Apple ile giriş yaptıysan onay için Apple ekranı açılacak.",
+    "under18Confirm": "Hesabımı Sil",
     "saveError": "Onay kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene."
   },
   "consent": {
@@ -781,6 +784,9 @@
     "checkbox": "Yukarıdakileri okudum; fiziksel bilgilerimin ve fotoğrafımın bu amaçlarla işlenmesine ve FASHN'a aktarılmasına açık rıza veriyorum.",
     "accept": "Kabul Ediyorum",
     "cancel": "Vazgeç",
-    "saveError": "Rıza kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene."
+    "saveError": "Rıza kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene.",
+    "existingIntro": "Daha önce kaydettiğin fiziksel bilgiler ve fotoğrafın için açık rızanı istiyoruz. Kabul etmezsen bu bilgiler silinir; uygulamayı kullanmaya devam edebilirsin.",
+    "decline": "Kabul etmiyorum (bilgilerimi sil)",
+    "declineConfirm": "Kabul Etmiyorum, Sil"
   }
 }

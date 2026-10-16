@@ -764,6 +764,9 @@
     "checkbox": "I am over 18",
     "continue": "Continue",
     "under18": "I am under 18",
+    "under18Title": "Your account will be deleted",
+    "under18Body": "Sestina is for people aged 18 and over. Your account and all your data will be permanently deleted. If you signed in with Apple, the Apple screen will appear to confirm.",
+    "under18Confirm": "Delete My Account",
     "saveError": "Couldn't save your confirmation. Check your connection and try again."
   },
   "consent": {
@@ -781,6 +784,9 @@
     "checkbox": "I have read the above and give my explicit consent to my physical details and photo being processed for these purposes and shared with FASHN.",
     "accept": "I Agree",
     "cancel": "Cancel",
-    "saveError": "Couldn't save your consent. Check your connection and try again."
+    "saveError": "Couldn't save your consent. Check your connection and try again.",
+    "existingIntro": "We need your explicit consent for the physical details and photo you saved earlier. If you don't agree, this data will be deleted; you can keep using the app.",
+    "decline": "I don't agree (delete my data)",
+    "declineConfirm": "Don't Agree, Delete"
   }
 }
