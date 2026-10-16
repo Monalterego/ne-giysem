@@ -8,7 +8,9 @@ export async function getCoords(): Promise<{ lat: number; lon: number } | null> 
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return null;
     const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
-    return { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    // 2 ondalık (~1 km): hava durumu için yeterli; hassas konum cihazdan çıkmaz
+    const round2 = (x: number) => Math.round(x * 100) / 100;
+    return { lat: round2(pos.coords.latitude), lon: round2(pos.coords.longitude) };
   } catch {
     return null;
   }

@@ -125,11 +125,19 @@ export default function ScanScreen({ navigation }: Props) {
       const processedBase64 = await processBase64(imageBase64);
       navigation.navigate('StoreResult', { processedBase64, originalUri: url });
     } catch (err) {
-      // Proxy hataları (oturum, sınır, boyut) anlamlı mesaja; scraper'ın kendi Türkçe
-      // mesajları (og:image yok vb.) olduğu gibi kalır
-      const msg = err instanceof EdgeError
-        ? friendlyError(err)
-        : ((err as Error)?.message ?? t('errors.productImageFailed'));
+      // fetch-product kodları → anlamlı mesaj; diğerleri (oturum, sınır, boyut,
+      // zaman aşımı) friendlyError; teknik mesaj gösterilmez
+      let msg = t('errors.productImageFailed');
+      if (err instanceof EdgeError) {
+        if (err.code === 'og-image-not-found') msg = t('errors.productImageNotFound');
+        else if (err.code === 'invalid-url' || err.code === 'blocked-host' || err.code === 'too-many-redirects') {
+          msg = t('errors.productUrlInvalid');
+        } else if (err.code === 'upstream-error' || err.code === 'not-an-image') {
+          msg = t('errors.productImageFailed');
+        } else {
+          msg = friendlyError(err);
+        }
+      }
       Alert.alert(t('combos.errorTitle'), msg);
     } finally {
       setLoading(false);

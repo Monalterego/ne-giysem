@@ -12,7 +12,10 @@ export interface UserState {
   setUser: (user: User | null) => void;
   setStyleProfile: (profile: StyleProfile) => void;
   setPhysicalProfile: (fields: Partial<Pick<User, 'height' | 'weight' | 'age' | 'bodyType' | 'skinTone' | 'hairColor' | 'hairLength' | 'hairType'>>) => void;
-  setAvatarUrl: (url: string) => void;
+  setAvatarUrl: (url: string | null) => void;
+  setConsents: (fields: Partial<Pick<User, 'ageConfirmedAt' | 'sensitiveConsentAt'>>) => void;
+  /** Rıza geri çekildi: fiziksel alanlar + avatar + rıza zamanı temizlenir */
+  clearSensitiveData: () => void;
   setOnboarded: (value: boolean) => void;
   setTargetOnboardingScreen: (screen: keyof OnboardingStackParamList | null) => void;
   setUserLocale: (l: 'tr' | 'en') => void;
@@ -36,7 +39,24 @@ export const useUserStore = create<UserState>((set) => ({
     })),
   setAvatarUrl: (url) =>
     set((state) => ({
-      user: state.user ? { ...state.user, avatarUrl: url } : null,
+      user: state.user ? { ...state.user, avatarUrl: url ?? undefined } : null,
+    })),
+  setConsents: (fields) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...fields } : null,
+    })),
+  clearSensitiveData: () =>
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            height: undefined, weight: undefined, age: undefined,
+            bodyType: undefined, skinTone: undefined,
+            hairColor: undefined, hairLength: undefined, hairType: undefined,
+            avatarUrl: undefined,
+            sensitiveConsentAt: null,
+          }
+        : null,
     })),
   setOnboarded: (value) =>
     set({ isOnboarded: value, ...(value ? { targetOnboardingScreen: null } : {}) }),

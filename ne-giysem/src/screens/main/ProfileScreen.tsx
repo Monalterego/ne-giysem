@@ -27,6 +27,8 @@ import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
+import SensitiveConsentModal from '../../components/SensitiveConsentModal';
+import { recordSensitiveConsent, removeAvatarAndTryOns, withdrawSensitiveConsent } from '../../lib/privacyActions';
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -48,6 +50,8 @@ export default function ProfileScreen() {
   const setOnboarded              = useUserStore((s: UserState) => s.setOnboarded);
   const setPhysicalProfile        = useUserStore((s: UserState) => s.setPhysicalProfile);
   const setAvatarUrl              = useUserStore((s: UserState) => s.setAvatarUrl);
+  const setConsents               = useUserStore((s: UserState) => s.setConsents);
+  const clearSensitiveData        = useUserStore((s: UserState) => s.clearSensitiveData);
   const setTargetOnboardingScreen = useUserStore((s: UserState) => s.setTargetOnboardingScreen);
   const locale                    = useUserStore((s: UserState) => s.locale);
   const setUserLocale             = useUserStore((s: UserState) => s.setUserLocale);
@@ -101,15 +105,21 @@ export default function ProfileScreen() {
   }, [user?.id]);
 
   // Fiziki profil store'da yoksa Supabase'den çek ve store'a yaz
+  // Alanlar artık tek tek boş bırakılabiliyor → "profil var" = herhangi bir alan dolu
+  const physFields = [user?.height, user?.weight, user?.age, user?.bodyType, user?.skinTone,
+                      user?.hairColor, user?.hairLength, user?.hairType];
+  const hasPhysProfile = physFields.some((v) => v != null);
+
   useEffect(() => {
-    if (!user || user.height != null) return;
+    if (!user || hasPhysProfile) return;
     supabase
       .from('profiles')
       .select('height, weight, age, body_type, skin_tone, hair_color, hair_length, hair_type')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.height != null) {
+        if (data && [data.height, data.weight, data.age, data.body_type, data.skin_tone,
+                     data.hair_color, data.hair_length, data.hair_type].some((v) => v != null)) {
           setPhysicalProfile({
             height:     data.height      ?? undefined,
             weight:     data.weight      ?? undefined,
@@ -124,8 +134,6 @@ export default function ProfileScreen() {
       });
   }, [user?.id]);
 
-  const hasPhysProfile = (user?.height ?? null) !== null;
-
   const physItems = [
     { label: t('profile.heightLabel'),     value: user?.height   ? `${user.height} cm` : null },
     { label: t('profile.ageLabel'),        value: user?.age      ? `${user.age}`       : null },
@@ -139,7 +147,82 @@ export default function ProfileScreen() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [guideVisible,    setGuideVisible]    = useState(false);
 
-  const handlePickAvatar = async () => {
+  const [consentVisible, setConsentVisible] = useState(false);
+  const [consentSaving,  setConsentSaving]  = useState(false);
+  const [privacyBusy,    setPrivacyBusy]    = useState(false);
+
+  // İlk avatar yüklemesinden önce açık rıza (geri çekildiyse yeniden)
+  const handlePickAvatar = () => {
+    if (!user) return;
+    if (!user.sensitiveConsentAt) { setConsentVisible(true); return; }
+    pickAndUploadAvatar();
+  };
+
+  const handleConsentAccept = async () => {
+    if (!user) return;
+    setConsentSaving(true);
+    try {
+      const at = await recordSensitiveConsent(user.id);
+      setConsents({ sensitiveConsentAt: at });
+      setConsentVisible(false);
+      pickAndUploadAvatar();
+    } catch {
+      Alert.alert(t('combos.errorTitle'), t('consent.saveError'));
+    } finally {
+      setConsentSaving(false);
+    }
+  };
+
+  // Fotoğrafı kaldır: dosya + avatar_url + avatarla üretilmiş try-on'lar (yapay manken kalır)
+  const handleRemovePhoto = () => {
+    if (!user) return;
+    Alert.alert(t('profile.removePhotoTitle'), t('profile.removePhotoBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.removePhoto'),
+        style: 'destructive',
+        onPress: async () => {
+          setPrivacyBusy(true);
+          try {
+            await removeAvatarAndTryOns(user.id, user.avatarUrl);
+            setAvatarUrl(null);
+          } catch (err) {
+            console.warn('[ProfileScreen] removePhoto:', err);
+            Alert.alert(t('combos.errorTitle'), t('profile.removePhotoError'));
+          } finally {
+            setPrivacyBusy(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  // Rızayı geri çek: fiziksel profil NULL + avatar ve tüm try-on/manken dosyaları + rıza NULL
+  const handleWithdrawConsent = () => {
+    if (!user) return;
+    Alert.alert(t('profile.withdrawConsentTitle'), t('profile.withdrawConsentBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.withdrawConsent'),
+        style: 'destructive',
+        onPress: async () => {
+          setPrivacyBusy(true);
+          try {
+            await withdrawSensitiveConsent(user.id, user.avatarUrl);
+            clearSensitiveData();
+            Alert.alert(t('profile.withdrawConsentDone'));
+          } catch (err) {
+            console.warn('[ProfileScreen] withdrawConsent:', err);
+            Alert.alert(t('combos.errorTitle'), t('profile.withdrawConsentError'));
+          } finally {
+            setPrivacyBusy(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const pickAndUploadAvatar = async () => {
     if (!user) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -283,11 +366,18 @@ export default function ProfileScreen() {
                 <Feather name="user" size={48} color={colors.border} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7} disabled={uploadingAvatar}>
+            <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7} disabled={uploadingAvatar || privacyBusy}>
               <Text style={styles.avatarPickerBtn}>
                 {user?.avatarUrl ? t('profile.changePhoto') : t('profile.addPhoto')}
               </Text>
             </TouchableOpacity>
+            {user?.avatarUrl && (
+              <TouchableOpacity onPress={handleRemovePhoto} activeOpacity={0.7} disabled={uploadingAvatar || privacyBusy}>
+                <Text style={styles.avatarPickerBtn}>
+                  {privacyBusy ? t('common.loading') : t('profile.removePhoto')}
+                </Text>
+              </TouchableOpacity>
+            )}
             <Text style={styles.avatarPickerHint}>{t('profile.avatarTip')}</Text>
             <TouchableOpacity onPress={() => setGuideVisible(true)} activeOpacity={0.7}>
               <Text style={styles.guideLink}>{t('profile.photoGuideLink')}</Text>
@@ -523,6 +613,24 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          {/* Hassas veri rızası verilmişse ya da hassas veri varsa geri çekilebilir */}
+          {(user.sensitiveConsentAt || hasPhysProfile || user.avatarUrl) && (
+            <>
+              <View style={styles.listDivider} />
+              <TouchableOpacity
+                style={styles.listItem}
+                onPress={handleWithdrawConsent}
+                activeOpacity={0.7}
+                disabled={privacyBusy}
+              >
+                <Text style={styles.listItemText}>{t('profile.withdrawConsent')}</Text>
+                {privacyBusy
+                  ? <ActivityIndicator color={colors.textSecondary} size="small" />
+                  : <Feather name="chevron-right" size={16} color={colors.textSecondary} />}
+              </TouchableOpacity>
+            </>
+          )}
+
           <View style={styles.listDivider} />
 
           <TouchableOpacity style={styles.listItem} onPress={handleLogout} activeOpacity={0.7}>
@@ -552,6 +660,13 @@ export default function ProfileScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <SensitiveConsentModal
+        visible={consentVisible}
+        saving={consentSaving}
+        onAccept={handleConsentAccept}
+        onCancel={() => setConsentVisible(false)}
+      />
 
       <PhotoGuideModal
         visible={guideVisible}

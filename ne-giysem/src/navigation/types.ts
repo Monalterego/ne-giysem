@@ -45,6 +45,7 @@ export type MainTabParamList = {
 };
 
 export type RootStackParamList = {
+  AgeGate: undefined;
   Onboarding: undefined;
   Main: undefined;
 };

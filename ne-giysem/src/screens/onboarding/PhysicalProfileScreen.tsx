@@ -16,6 +16,8 @@ import type { OnboardingStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
+import { recordSensitiveConsent } from '../../lib/privacyActions';
+import SensitiveConsentModal from '../../components/SensitiveConsentModal';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
@@ -56,7 +58,8 @@ function NumberStepper({
   onDecrement,
   onIncrement,
 }: {
-  value: number;
+  /** null = kullanıcı henüz seçmedi (kaydedilmez); ilk dokunuş varsayılandan başlar */
+  value: number | null;
   unit?: string;
   onDecrement: () => void;
   onIncrement: () => void;
@@ -68,7 +71,7 @@ function NumberStepper({
       </TouchableOpacity>
 
       <View style={stepperStyles.center}>
-        <Text style={stepperStyles.value}>{value}</Text>
+        <Text style={[stepperStyles.value, value === null && stepperStyles.valueUnset]}>{value ?? '—'}</Text>
         {unit ? <Text style={stepperStyles.unit}>{upper(unit)}</Text> : null}
       </View>
 
@@ -102,6 +105,9 @@ const stepperStyles = StyleSheet.create({
     ...typography.hero,
     color: colors.text,
   },
+  valueUnset: {
+    color: colors.textTertiary,
+  },
   unit: {
     ...typography.label,
     color: colors.textTertiary,
@@ -115,6 +121,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
   const user                = useUserStore((s: UserState) => s.user);
   const setOnboarded        = useUserStore((s: UserState) => s.setOnboarded);
   const setPhysicalProfile  = useUserStore((s: UserState) => s.setPhysicalProfile);
+  const setConsents         = useUserStore((s: UserState) => s.setConsents);
   const locale              = useUserStore((s: UserState) => s.locale);
 
   // İsim/açıklama içeren diziler component içinde — dil değişince güncellenir (key değerleri sabit)
@@ -140,50 +147,82 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
     { key: 'afro',     name: t('hairType.afro') },
   ], [locale]);
 
-  const [height,     setHeight]     = useState(165);
-  const [weight,     setWeight]     = useState(60);
-  const [age,        setAge]        = useState(25);
-  const [bodyType,   setBodyType]   = useState<string | null>(null);
-  const [skinTone,   setSkinTone]   = useState<string | null>(null);
-  const [hairColor,  setHairColor]  = useState<string | null>(null);
-  const [hairLength, setHairLength] = useState<string | null>(null);
-  const [hairType,   setHairType]   = useState<string | null>(null);
+  // Yalnızca kullanıcının fiilen seçtiği değerler kaydedilir — dokunulmayan alan NULL.
+  // Düzenlemede (Profil → Düzenle) mevcut değerlerden başlar; ilk kurulumda boş.
+  const [height,     setHeight]     = useState<number | null>(user?.height ?? null);
+  const [weight,     setWeight]     = useState<number | null>(user?.weight ?? null);
+  const [age,        setAge]        = useState<number | null>(user?.age ?? null);
+  const [bodyType,   setBodyType]   = useState<string | null>(user?.bodyType ?? null);
+  const [skinTone,   setSkinTone]   = useState<string | null>(user?.skinTone ?? null);
+  const [hairColor,  setHairColor]  = useState<string | null>(user?.hairColor ?? null);
+  const [hairLength, setHairLength] = useState<string | null>(user?.hairLength ?? null);
+  const [hairType,   setHairType]   = useState<string | null>(user?.hairType ?? null);
   const [saving,     setSaving]     = useState(false);
+  const [consentVisible, setConsentVisible] = useState(false);
 
-  const handleContinue = async () => {
+  // Stepper: boşsa ilk dokunuş bu değerden başlar (kaydedilen değer DEĞİL)
+  const step = (seed: number, min: number, max: number, delta: number) =>
+    (v: number | null) => Math.min(max, Math.max(min, (v ?? seed) + (v === null ? 0 : delta)));
+
+  const anySelected = [height, weight, age, bodyType, skinTone, hairColor, hairLength, hairType]
+    .some((v) => v !== null);
+
+  const save = async () => {
+    if (!user) { setOnboarded(true); return; }
     setSaving(true);
-    if (user) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          height,
-          weight,
-          age,
-          body_type:   bodyType,
-          skin_tone:   skinTone,
-          hair_color:  hairColor,
-          hair_length: hairLength,
-          hair_type:   hairType,
-        })
-        .eq('id', user.id);
-      if (error) {
-        Alert.alert(t('combos.errorTitle'), t('physicalProfile.saveError'));
-        setSaving(false);
-        return;
-      }
-      setPhysicalProfile({
+    const { error } = await supabase
+      .from('profiles')
+      .update({
         height,
         weight,
         age,
-        bodyType:   bodyType   ?? undefined,
-        skinTone:   skinTone   ?? undefined,
-        hairColor:  hairColor  ?? undefined,
-        hairLength: hairLength ?? undefined,
-        hairType:   hairType   ?? undefined,
-      });
+        body_type:   bodyType,
+        skin_tone:   skinTone,
+        hair_color:  hairColor,
+        hair_length: hairLength,
+        hair_type:   hairType,
+      })
+      .eq('id', user.id);
+    if (error) {
+      Alert.alert(t('combos.errorTitle'), t('physicalProfile.saveError'));
+      setSaving(false);
+      return;
     }
+    setPhysicalProfile({
+      height:     height     ?? undefined,
+      weight:     weight     ?? undefined,
+      age:        age        ?? undefined,
+      bodyType:   bodyType   ?? undefined,
+      skinTone:   skinTone   ?? undefined,
+      hairColor:  hairColor  ?? undefined,
+      hairLength: hairLength ?? undefined,
+      hairType:   hairType   ?? undefined,
+    });
     setSaving(false);
     setOnboarded(true);
+  };
+
+  const handleContinue = () => {
+    // Hiç seçim yoksa kaydedilecek hassas veri yok → rıza da gerekmez
+    if (!anySelected) { handleSkip(); return; }
+    // İlk kayıttan önce açık rıza (geri çekildiyse yeniden)
+    if (!user?.sensitiveConsentAt) { setConsentVisible(true); return; }
+    save();
+  };
+
+  const handleConsentAccept = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const at = await recordSensitiveConsent(user.id);
+      setConsents({ sensitiveConsentAt: at });
+      setConsentVisible(false);
+      setSaving(false);
+      await save();
+    } catch {
+      setSaving(false);
+      Alert.alert(t('combos.errorTitle'), t('consent.saveError'));
+    }
   };
 
   const handleSkip = () => setOnboarded(true);
@@ -207,8 +246,8 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
           <NumberStepper
             value={height}
             unit="cm"
-            onDecrement={() => setHeight((v) => Math.max(150, v - 1))}
-            onIncrement={() => setHeight((v) => Math.min(195, v + 1))}
+            onDecrement={() => setHeight(step(165, 150, 195, -1))}
+            onIncrement={() => setHeight(step(165, 150, 195, +1))}
           />
         </View>
 
@@ -218,18 +257,18 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
           <NumberStepper
             value={weight}
             unit="kg"
-            onDecrement={() => setWeight((v) => Math.max(40, v - 1))}
-            onIncrement={() => setWeight((v) => Math.min(150, v + 1))}
+            onDecrement={() => setWeight(step(60, 40, 150, -1))}
+            onIncrement={() => setWeight(step(60, 40, 150, +1))}
           />
         </View>
 
-        {/* ── Yaş ── */}
+        {/* ── Yaş ── (alt sınır 18: uygulama 18+ — AgeGate) */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{upper(t('physicalProfile.age'))}</Text>
           <NumberStepper
             value={age}
-            onDecrement={() => setAge((v) => Math.max(16, v - 1))}
-            onIncrement={() => setAge((v) => Math.min(80, v + 1))}
+            onDecrement={() => setAge(step(25, 18, 80, -1))}
+            onIncrement={() => setAge(step(25, 18, 80, +1))}
           />
         </View>
 
@@ -343,6 +382,13 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
           <Text style={styles.skipBtnText}>{t('physicalProfile.skip')}</Text>
         </TouchableOpacity>
       </View>
+
+      <SensitiveConsentModal
+        visible={consentVisible}
+        saving={saving}
+        onAccept={handleConsentAccept}
+        onCancel={() => setConsentVisible(false)}
+      />
     </SafeAreaView>
   );
 }

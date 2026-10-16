@@ -301,6 +301,15 @@
     "deleteAccountConfirm": "Delete Permanently",
     "deleteAccountDone": "Your account has been deleted.",
     "deleteAccountError": "Couldn't delete your account. Check your connection and try again.",
+    "removePhoto": "Remove Photo",
+    "removePhotoTitle": "Remove photo",
+    "removePhotoBody": "Your photo and the virtual try-on images created with it will be deleted.",
+    "removePhotoError": "Couldn't remove the photo. Please try again.",
+    "withdrawConsent": "Withdraw My Consent",
+    "withdrawConsentTitle": "Withdraw consent",
+    "withdrawConsentBody": "Your physical details, your photo and all virtual try-on images created with them will be deleted. Your wardrobe and outfits stay.",
+    "withdrawConsentDone": "Consent withdrawn, your data has been deleted.",
+    "withdrawConsentError": "Couldn't complete this. Check your connection and try again.",
     "changePhoto": "Change Photo",
     "addPhoto": "Add Photo",
     "styleDna": "STYLE DNA",
@@ -567,7 +576,9 @@
     "genericRetry": "Something went wrong. Please try again.",
     "sessionExpired": "Your session has expired. Please sign in again.",
     "dailyLimit": "You've reached today's usage limit. You can try again tomorrow.",
-    "updateRequired": "The app has been updated. Please fully close and reopen it."
+    "updateRequired": "The app has been updated. Please fully close and reopen it.",
+    "productImageNotFound": "No product image was found on this page. You can try uploading a screenshot of the product instead.",
+    "productUrlInvalid": "This link can't be opened. Make sure you pasted the store's product page link."
   },
   "scan": {
     "preparingImage": "Preparing image…",
@@ -746,5 +757,30 @@
     "removePlanMsg": "Remove this plan?",
     "tomorrow": "Tomorrow",
     "alreadyPlanned": "This outfit is already planned for that day"
+  },
+  "ageGate": {
+    "title": "Confirm your age",
+    "body": "Sestina is for users aged 18 and over. Confirm that you are over 18 to continue.",
+    "checkbox": "I am over 18",
+    "continue": "Continue",
+    "under18": "I am under 18",
+    "saveError": "Couldn't save your confirmation. Check your connection and try again."
+  },
+  "consent": {
+    "title": "Explicit consent",
+    "intro": "Virtual try-on needs some personal details from you. We only save them with your consent.",
+    "whatTitle": "What we collect",
+    "whatBody": "The physical details you fill in (height, weight, age, body type, skin tone, hair colour, length and type) and, if you upload one, your full-length photo.",
+    "whyTitle": "Why",
+    "whyBody": "To dress clothes on your photo or on a mannequin that looks like you in virtual try-on, and to tailor outfit suggestions to you.",
+    "whoTitle": "Who receives it",
+    "whoBody": "To create the try-on image, these details and your photo are sent to the image-generation service FASHN; your photo goes there via a link that is valid for 10 minutes. Your clothing photos are sent to Anthropic (Claude) to detect category and colour; your physical details and your own photo are not sent to Anthropic.",
+    "controlTitle": "You're in control",
+    "controlBody": "You can withdraw your consent at any time in Profile → Withdraw My Consent; your physical details, your photo and the images created with them will be deleted.",
+    "policyLink": "Privacy Policy",
+    "checkbox": "I have read the above and give my explicit consent to my physical details and photo being processed for these purposes and shared with FASHN.",
+    "accept": "I Agree",
+    "cancel": "Cancel",
+    "saveError": "Couldn't save your consent. Check your connection and try again."
   }
 }

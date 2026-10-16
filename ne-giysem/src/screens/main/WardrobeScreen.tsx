@@ -17,6 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
 import { itemThumbSource, itemImageRefs, useSignedImages } from '../../lib/storageUrls';
+import { deleteWardrobeItemFiles } from '../../lib/privacyActions';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import type { ClothingCategory, WardrobeItem } from '../../types';
@@ -197,12 +198,15 @@ export default function WardrobeScreen({ navigation }: Props) {
   const deleteSelected = async () => {
     setDeleting(true);
     const ids = Array.from(selectedIds);
+    const doomed = items.filter((i) => selectedIds.has(i.id));
     const { error } = await supabase.from('wardrobe_items').delete().in('id', ids);
     if (error) {
       Alert.alert(t('combos.errorTitle'), t('wardrobe.deleteFailed'));
     } else {
       ids.forEach((id) => removeItem(id));
       cancelSelection();
+      // Dosyalar + bu parçaları içeren try-on sonuçları (en iyi çaba; hata akışı durdurmaz)
+      if (user?.id) await deleteWardrobeItemFiles(user.id, doomed).catch((e) => console.warn('[wardrobe] dosya silme:', e));
     }
     setDeleting(false);
   };
@@ -219,9 +223,11 @@ export default function WardrobeScreen({ navigation }: Props) {
   };
 
   const deleteSingle = async (id: string) => {
+    const doomed = items.filter((i) => i.id === id);
     const { error } = await supabase.from('wardrobe_items').delete().eq('id', id);
-    if (error) Alert.alert(t('combos.errorTitle'), t('wardrobe.deleteFailed'));
-    else removeItem(id);
+    if (error) { Alert.alert(t('combos.errorTitle'), t('wardrobe.deleteFailed')); return; }
+    removeItem(id);
+    if (user?.id) deleteWardrobeItemFiles(user.id, doomed).catch((e) => console.warn('[wardrobe] dosya silme:', e));
   };
 
   // ─── "…" menü ────────────────────────────────────────────────────────────────

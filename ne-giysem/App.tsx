@@ -41,10 +41,11 @@ export default function App() {
         const u = session.user;
         supabase
           .from('profiles')
-          .select('name, height, age, body_type, skin_tone, hair_color, hair_length, hair_type')
+          // avatar_url/weight eksikti: soğuk açılışta avatar "yok" görünüyordu
+          .select('name, avatar_url, height, weight, age, body_type, skin_tone, hair_color, hair_length, hair_type, age_confirmed_at, sensitive_consent_at')
           .eq('id', u.id)
           .maybeSingle()
-          .then(({ data: profile }: { data: { name: string; avatar_url: string | null; height: number | null; age: number | null; body_type: string | null; skin_tone: string | null; hair_color: string | null; hair_length: string | null; hair_type: string | null } | null }) => {
+          .then(({ data: profile }: { data: { name: string; avatar_url: string | null; height: number | null; weight: number | null; age: number | null; body_type: string | null; skin_tone: string | null; hair_color: string | null; hair_length: string | null; hair_type: string | null; age_confirmed_at: string | null; sensitive_consent_at: string | null } | null }) => {
             console.log('[App] INITIAL_SESSION setUser — name:', profile?.name ?? '(yok)');
             const { setUser, setPhysicalProfile, setOnboarded } = useUserStore.getState();
             setUser({
@@ -54,10 +55,16 @@ export default function App() {
               isPremium: false,
               createdAt: u.created_at,
               avatarUrl: profile?.avatar_url ?? undefined,
+              // Profil okunamadıysa undefined bırak → AgeGate kendisi okur
+              ageConfirmedAt:     profile ? profile.age_confirmed_at : undefined,
+              sensitiveConsentAt: profile ? profile.sensitive_consent_at : undefined,
             });
-            if (profile?.height != null) {
+            // Alanlar tek tek boş olabilir — herhangi biri doluysa yükle
+            if (profile && [profile.height, profile.weight, profile.age, profile.body_type, profile.skin_tone,
+                            profile.hair_color, profile.hair_length, profile.hair_type].some((v) => v != null)) {
               setPhysicalProfile({
                 height:     profile.height      ?? undefined,
+                weight:     profile.weight      ?? undefined,
                 age:        profile.age         ?? undefined,
                 bodyType:   profile.body_type   ?? undefined,
                 skinTone:   profile.skin_tone   ?? undefined,

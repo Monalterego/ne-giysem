@@ -75,6 +75,9 @@ export interface User {
   hairColor?: string;
   hairLength?: string;
   hairType?: string;
+  // Onaylar — undefined: henüz DB'den okunmadı; null: yok; string: zaman (ISO)
+  ageConfirmedAt?: string | null;
+  sensitiveConsentAt?: string | null;
 }
 
 export interface Combo {

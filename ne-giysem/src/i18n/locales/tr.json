@@ -301,6 +301,15 @@
     "deleteAccountConfirm": "Kalıcı Olarak Sil",
     "deleteAccountDone": "Hesabın silindi.",
     "deleteAccountError": "Hesap silinemedi. İnternet bağlantını kontrol edip tekrar dene.",
+    "removePhoto": "Fotoğrafı Kaldır",
+    "removePhotoTitle": "Fotoğrafı kaldır",
+    "removePhotoBody": "Fotoğrafın ve onunla oluşturulan sanal deneme görselleri silinecek.",
+    "removePhotoError": "Fotoğraf kaldırılamadı. Tekrar dene.",
+    "withdrawConsent": "Rızamı Geri Çek",
+    "withdrawConsentTitle": "Rızanı geri çek",
+    "withdrawConsentBody": "Fiziksel bilgilerin, fotoğrafın ve onlarla oluşturulan tüm sanal deneme görselleri silinecek. Dolabın ve kombinlerin kalır.",
+    "withdrawConsentDone": "Rızan geri çekildi, bilgilerin silindi.",
+    "withdrawConsentError": "İşlem tamamlanamadı. İnternet bağlantını kontrol edip tekrar dene.",
     "changePhoto": "Fotoğrafı Değiştir",
     "addPhoto": "Fotoğraf Ekle",
     "styleDna": "STİL DNA",
@@ -567,7 +576,9 @@
     "genericRetry": "Bir şeyler ters gitti. Lütfen tekrar dene.",
     "sessionExpired": "Oturumun sona erdi. Lütfen tekrar giriş yap.",
     "dailyLimit": "Bugünkü kullanım sınırına ulaştın. Yarın tekrar deneyebilirsin.",
-    "updateRequired": "Uygulama güncellendi. Lütfen uygulamayı tamamen kapatıp yeniden aç."
+    "updateRequired": "Uygulama güncellendi. Lütfen uygulamayı tamamen kapatıp yeniden aç.",
+    "productImageNotFound": "Bu sayfada ürün görseli bulunamadı. Ürün fotoğrafını ekran görüntüsüyle yüklemeyi deneyebilirsin.",
+    "productUrlInvalid": "Bu bağlantı açılamıyor. Mağazanın ürün sayfası linkini yapıştırdığından emin ol."
   },
   "scan": {
     "preparingImage": "Görsel hazırlanıyor…",
@@ -746,5 +757,30 @@
     "removePlanMsg": "Bu plan kaldırılsın mı?",
     "tomorrow": "Yarın",
     "alreadyPlanned": "Bu kombin zaten bu güne planlı"
+  },
+  "ageGate": {
+    "title": "Yaşını onayla",
+    "body": "Sestina 18 yaş ve üzeri kullanıcılar içindir. Devam etmek için 18 yaşından büyük olduğunu onayla.",
+    "checkbox": "18 yaşından büyüğüm",
+    "continue": "Devam Et",
+    "under18": "18 yaşından küçüğüm",
+    "saveError": "Onay kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene."
+  },
+  "consent": {
+    "title": "Açık rıza",
+    "intro": "Sanal deneme için senden bazı kişisel bilgiler istiyoruz. Bunları yalnızca senin onayınla kaydederiz.",
+    "whatTitle": "Ne topluyoruz?",
+    "whatBody": "Doldurduğun fiziksel bilgiler (boy, kilo, yaş, vücut tipi, ten rengi, saç rengi, uzunluğu ve tipi) ve yüklersen tam boy fotoğrafın.",
+    "whyTitle": "Ne için?",
+    "whyBody": "Sanal denemede kıyafetleri senin fotoğrafına ya da sana benzeyen bir mankene giydirmek ve kombin önerilerini sana göre ayarlamak için.",
+    "whoTitle": "Kime gidiyor?",
+    "whoBody": "Sanal deneme görselini oluşturmak için bu bilgiler ve fotoğrafın görsel üretim hizmeti FASHN'a gönderilir; fotoğrafın oraya 10 dakika geçerli bir bağlantıyla gider. Kıyafet fotoğrafların kategori ve renk tespiti için Anthropic'e (Claude) gönderilir; fiziksel bilgilerin ve kendi fotoğrafın Anthropic'e gönderilmez.",
+    "controlTitle": "Kontrol sende",
+    "controlBody": "Rızanı istediğin zaman Profil → Rızamı Geri Çek ile geri alabilirsin; fiziksel bilgilerin, fotoğrafın ve onlarla oluşturulan görseller silinir.",
+    "policyLink": "Gizlilik Politikası",
+    "checkbox": "Yukarıdakileri okudum; fiziksel bilgilerimin ve fotoğrafımın bu amaçlarla işlenmesine ve FASHN'a aktarılmasına açık rıza veriyorum.",
+    "accept": "Kabul Ediyorum",
+    "cancel": "Vazgeç",
+    "saveError": "Rıza kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene."
   }
 }
