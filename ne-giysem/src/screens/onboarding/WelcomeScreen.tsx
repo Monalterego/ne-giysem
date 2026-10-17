@@ -19,9 +19,15 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
+interface Slide {
+  emojis: string[];
+  title: string;
+  subtitle: string;
+}
+
 export default function WelcomeScreen({ navigation }: Props) {
   // Component içinde tanımlı — dil değişince render'da t() yeniden çalışır
-  const SLIDES = [
+  const SLIDES: Slide[] = [
     {
       emojis: ['👕', '👗', '👠', '🧥'],
       title: t('welcome.slide1Title'),
@@ -40,7 +46,7 @@ export default function WelcomeScreen({ navigation }: Props) {
   ];
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<Slide>>(null);
 
   const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
@@ -70,7 +76,7 @@ export default function WelcomeScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <View style={styles.slide}>
             <View style={styles.emojiGrid}>
-              {item.emojis.map((emoji, i) => (
+              {item.emojis.map((emoji: string, i: number) => (
                 <View
                   key={i}
                   style={[

@@ -20,6 +20,14 @@ import { callEdge, edgeError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
+// Statik import — Metro dinamik yolu çözemez
+import garmentDoTop from '../../../assets/guide/garment_do_top.jpg';
+import garmentDoBottom from '../../../assets/guide/garment_do_bottom.jpg';
+import garmentDoDress from '../../../assets/guide/garment_do_dress.jpg';
+import garmentDontFolded from '../../../assets/guide/garment_dont_folded.jpg';
+import garmentDontCrumpled from '../../../assets/guide/garment_dont_crumpled.jpg';
+import garmentDontOverlap from '../../../assets/guide/garment_dont_overlap.jpg';
+import garmentDontDark from '../../../assets/guide/garment_dont_dark.jpg';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
@@ -222,15 +230,14 @@ export default function UploadScreen({ navigation }: Props) {
         // Katlanmış paça en sık vision hatası (tulum/şort → "üst") — listenin başında
         donts={[t('upload.guideDontFolded'), t('upload.guideDontCrumpled'), t('upload.guideDontOverlap'),
                 t('upload.guideDontDark'), t('upload.guideDontCrop')]}
-        // Statik require — Metro dinamik yolu çözemez
         examples={[
-          { source: require('../../../assets/guide/garment_do_top.jpg'),        ok: true,  label: t('upload.exampleTop') },
-          { source: require('../../../assets/guide/garment_do_bottom.jpg'),     ok: true,  label: t('upload.exampleBottom') },
-          { source: require('../../../assets/guide/garment_do_dress.jpg'),      ok: true,  label: t('upload.exampleDress') },
-          { source: require('../../../assets/guide/garment_dont_folded.jpg'),   ok: false, label: t('upload.exampleFolded') },
-          { source: require('../../../assets/guide/garment_dont_crumpled.jpg'), ok: false, label: t('upload.exampleCrumpled') },
-          { source: require('../../../assets/guide/garment_dont_overlap.jpg'),  ok: false, label: t('upload.exampleOverlap') },
-          { source: require('../../../assets/guide/garment_dont_dark.jpg'),     ok: false, label: t('upload.exampleDark') },
+          { source: garmentDoTop,        ok: true,  label: t('upload.exampleTop') },
+          { source: garmentDoBottom,     ok: true,  label: t('upload.exampleBottom') },
+          { source: garmentDoDress,      ok: true,  label: t('upload.exampleDress') },
+          { source: garmentDontFolded,   ok: false, label: t('upload.exampleFolded') },
+          { source: garmentDontCrumpled, ok: false, label: t('upload.exampleCrumpled') },
+          { source: garmentDontOverlap,  ok: false, label: t('upload.exampleOverlap') },
+          { source: garmentDontDark,     ok: false, label: t('upload.exampleDark') },
         ]}
       />
     </SafeAreaView>

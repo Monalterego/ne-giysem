@@ -12,6 +12,9 @@ import CombosScreen from '../screens/main/CombosScreen';
 import ScanNavigator from './ScanNavigator';
 import ProfileScreen from '../screens/main/ProfileScreen';
 
+import comboIcon from '../../assets/icons/combo.png';
+import comboActiveIcon from '../../assets/icons/combo_active.png';
+
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
@@ -66,9 +69,7 @@ export default function MainTabNavigator() {
           tabBarIcon: ({ focused, color, size }) => (
             // Özel "kombin seti" ikonu (PNG + tint — react-native-svg native build ister)
             <Image
-              source={focused
-                ? require('../../assets/icons/combo_active.png')
-                : require('../../assets/icons/combo.png')}
+              source={focused ? comboActiveIcon : comboIcon}
               style={{ width: size, height: size }}
               tintColor={color}
               contentFit="contain"

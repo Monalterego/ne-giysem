@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { signImages } from '../lib/storageUrls';
-import type { WardrobeItem } from '../types';
+import type { Season, WardrobeItem } from '../types';
 import { fetchWeather as fetchWeatherApi, getCoords } from '../utils/weatherService';
 import type { WeatherData } from '../utils/weatherService';
 
@@ -64,6 +64,13 @@ function parseJsonArray(v: unknown): string[] {
   return [];
 }
 
+const SEASONS: readonly Season[] = ['spring', 'summer', 'fall', 'winter'];
+
+// DB'deki season jsonb'si serbest metin — yalnızca bilinen değerler Season[]'e geçer
+function parseSeasons(v: unknown): Season[] {
+  return parseJsonArray(v).filter((s): s is Season => (SEASONS as readonly string[]).includes(s));
+}
+
 function mapRow(row: any): WardrobeItem {
   return {
     id: row.id,
@@ -76,7 +83,7 @@ function mapRow(row: any): WardrobeItem {
     colors:       parseJsonArray(row.colors),
     pattern:      row.pattern        ?? undefined,
     fabric:       row.fabric         ?? undefined,
-    seasons:      parseJsonArray(row.season),
+    seasons:      parseSeasons(row.season),
     brand:        row.brand          ?? undefined,
     price:        row.price          ?? undefined,
     itemName:     row.item_name      ?? undefined,

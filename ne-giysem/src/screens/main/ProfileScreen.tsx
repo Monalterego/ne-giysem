@@ -30,6 +30,12 @@ import { colors, fonts, typography, spacing, radius, shadows, layout } from '../
 import PhotoGuideModal from '../../components/PhotoGuideModal';
 import SensitiveConsentModal from '../../components/SensitiveConsentModal';
 import { recordSensitiveConsent, removeAvatarAndTryOns, withdrawSensitiveConsent } from '../../lib/privacyActions';
+// Statik import — Metro dinamik yolu çözemez
+import avatarDo from '../../../assets/guide/avatar_do.jpg';
+import avatarDontBaggy from '../../../assets/guide/avatar_dont_baggy.jpg';
+import avatarDontBusy from '../../../assets/guide/avatar_dont_busy.jpg';
+import avatarDontAngle from '../../../assets/guide/avatar_dont_angle.jpg';
+import avatarDontDark from '../../../assets/guide/avatar_dont_dark.jpg';
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
@@ -91,15 +97,19 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('style_profiles')
-      .select('styles')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
+    // Sorgu builder'ı PromiseLike döner (.finally yok) → async/try-finally
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('style_profiles')
+          .select('styles')
+          .eq('user_id', user.id)
+          .maybeSingle();
         if (data?.styles) setStyleEntries(data.styles);
-      })
-      .finally(() => setLoadingStyles(false));
+      } finally {
+        setLoadingStyles(false);
+      }
+    })();
   }, [user?.id]);
 
   // Fiziki profil store'da yoksa Supabase'den çek ve store'a yaz
@@ -668,13 +678,12 @@ export default function ProfileScreen() {
               t('profile.guideDoPlain'), t('profile.guideDoFitted')]}
         donts={[t('profile.guideDontBaggy'), t('profile.guideDontBusy'),
                 t('profile.guideDontAngle'), t('profile.guideDontDark')]}
-        // Statik require — Metro dinamik yolu çözemez
         examples={[
-          { source: require('../../../assets/guide/avatar_do.jpg'),         ok: true,  label: t('profile.exampleDo') },
-          { source: require('../../../assets/guide/avatar_dont_baggy.jpg'), ok: false, label: t('profile.exampleBaggy') },
-          { source: require('../../../assets/guide/avatar_dont_busy.jpg'),  ok: false, label: t('profile.exampleBusy') },
-          { source: require('../../../assets/guide/avatar_dont_angle.jpg'), ok: false, label: t('profile.exampleAngle') },
-          { source: require('../../../assets/guide/avatar_dont_dark.jpg'),  ok: false, label: t('profile.exampleDark') },
+          { source: avatarDo,        ok: true,  label: t('profile.exampleDo') },
+          { source: avatarDontBaggy, ok: false, label: t('profile.exampleBaggy') },
+          { source: avatarDontBusy,  ok: false, label: t('profile.exampleBusy') },
+          { source: avatarDontAngle, ok: false, label: t('profile.exampleAngle') },
+          { source: avatarDontDark,  ok: false, label: t('profile.exampleDark') },
         ]}
       />
 
