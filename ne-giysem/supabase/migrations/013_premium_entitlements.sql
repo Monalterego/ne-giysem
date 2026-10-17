@@ -32,7 +32,7 @@ begin;
 -- ─── entitlements ────────────────────────────────────────────────────────────
 create table if not exists public.entitlements (
   user_id        uuid primary key references auth.users(id) on delete cascade,
-  entitlement    text not null default 'premium',
+  entitlement    text not null default 'premium',  -- bilgi amaçlı: RevenueCat entitlement identifier'ı; karar bunu kullanmaz
   product_id     text,
   store          text,                -- 'app_store' | 'play_store' | 'promotional' | ...
   period_type    text,                -- 'normal' | 'trial' | 'intro' | ...
@@ -82,6 +82,7 @@ $$;
 -- ─── is_premium_user / is_premium ────────────────────────────────────────────
 -- is_premium_user: başkasının durumunu sızdırmasın diye yalnızca service_role.
 -- SECURITY DEFINER fonksiyonlar sahibi (postgres) olarak çalıştığından onlar da çağırabilir.
+-- Kullanıcı başına tek satır (PK) → karar yalnızca expires_at > now().
 create or replace function public.is_premium_user(p_user uuid)
 returns boolean
 language sql
@@ -92,7 +93,6 @@ as $$
   select exists (
     select 1 from entitlements
      where user_id = p_user
-       and entitlement = 'premium'
        and expires_at > now()
   );
 $$;

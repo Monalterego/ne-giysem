@@ -4,11 +4,11 @@
 // ve abone silme (delete-account).
 //
 // Olay içeriğine güvenilmez: her seferinde REST v1 GET /subscribers/{id} ile güncel
-// durum çekilir, 'premium' entitlement'ı entitlements tablosuna yazılır.
+// durum çekilir, ENTITLEMENT_ID'li entitlement entitlements tablosuna yazılır.
 // app_user_id = Supabase auth.users.id (istemci Purchases.logIn(uid) ile bağlar).
 //
 // Gerekli secret: REVENUECAT_SECRET_API_KEY (sk_..., v1 REST)
-// Opsiyonel:      REVENUECAT_ENTITLEMENT_ID (varsayılan 'premium')
+// Opsiyonel:      REVENUECAT_ENTITLEMENT_ID (varsayılan 'sestina_premium')
 //
 // Hata mesajlarına kullanıcı kimliği YAZILMAZ — çağıranlar bunları ops_events'e iletir.
 
@@ -24,7 +24,7 @@ export function revenueCatKey(): string | null {
 }
 
 function entitlementId(): string {
-  return Deno.env.get("REVENUECAT_ENTITLEMENT_ID") || "premium";
+  return Deno.env.get("REVENUECAT_ENTITLEMENT_ID") || "sestina_premium";
 }
 
 export interface EntitlementState {
@@ -131,7 +131,7 @@ export async function syncEntitlement(
   const now = new Date().toISOString();
   const { error } = await admin.from("entitlements").upsert({
     user_id:        userId,
-    entitlement:    "premium",   // SQL kuralı bu değeri arar (RC'deki kimlik farklı olsa da)
+    entitlement:    entitlementId(),   // bilgi amaçlı; premium kararı yalnızca expires_at
     product_id:     state.product_id,
     store:          state.store,
     period_type:    state.period_type,
