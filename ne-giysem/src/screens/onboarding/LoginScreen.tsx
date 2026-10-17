@@ -221,9 +221,6 @@ export default function LoginScreen({ navigation }: Props) {
             }
           </TouchableOpacity>
 
-          {/* Yasal onay notu — e-posta, Apple ve Google yolları */}
-          <LegalConsentNote />
-
           {/* Kayıt linki */}
           <View style={styles.signupRow}>
             <Text style={styles.signupHint}>{t('auth.noAccount')}</Text>
@@ -232,6 +229,12 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        {/* Yasal onay notu — ScrollView DIŞINDA sabit: Apple, Google ve e-posta butonlarının
+            hepsinin altında, küçük ekranda kaydırmadan görünür */}
+        <View style={styles.legalFooter}>
+          <LegalConsentNote />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -240,6 +243,13 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
+    backgroundColor: colors.white,
+  },
+  legalFooter: {
+    paddingHorizontal: layout.screenPaddingH,
+    paddingBottom: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
     backgroundColor: colors.white,
   },
   flex: {

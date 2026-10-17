@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "Bulunduğun yerin hava durumuna göre kombin önermek için konum izni gerekiyor.",
+    "NSCameraUsageDescription": "Ürün fotoğrafı çekmek ve taramak için kamera erişimi gerekiyor.",
+    "NSPhotoLibraryUsageDescription": "Dolabına ürün eklemek için galeri erişimi gerekiyor."
+  }
+}

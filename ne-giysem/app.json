@@ -7,13 +7,18 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "locales": {
+      "tr": "./locales/tr.json",
+      "en": "./locales/en.json"
+    },
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Bulunduğun yerin hava durumuna göre kombin önermek için konum izni gerekiyor.",
         "NSLocationDefaultAccuracyReduced": true,
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
       },
       "bundleIdentifier": "com.monalterego.sestina"
     },
@@ -59,7 +64,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Dolabına ürün eklemek için galeri erişimi gerekiyor.",
-          "cameraPermission": "Ürün fotoğrafı çekmek ve taramak için kamera erişimi gerekiyor."
+          "cameraPermission": "Ürün fotoğrafı çekmek ve taramak için kamera erişimi gerekiyor.",
+          "microphonePermission": false
         }
       ],
       "expo-font",

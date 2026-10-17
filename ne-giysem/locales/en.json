@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "Sestina uses your location to suggest outfits for today's weather.",
+    "NSCameraUsageDescription": "Sestina uses the camera to photograph items for your wardrobe and scan products in stores.",
+    "NSPhotoLibraryUsageDescription": "Sestina uses your photo library to add items to your wardrobe."
+  }
+}
