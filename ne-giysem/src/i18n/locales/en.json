@@ -882,5 +882,14 @@
     "tryonPremiumBodyNoDate": "You've used this month's %{limit} try-ons. They renew at the start of the month.",
     "planLocked": "Planning is a Premium feature",
     "deleteSubscriptionWarning": "Your subscription is not cancelled automatically; you need to cancel it in the store. Otherwise you'll keep being charged."
+  },
+  "legal": {
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Use",
+    "consentPrefix": "By continuing, you agree to our ",
+    "termsInline": "Terms of Use",
+    "consentMiddle": " and ",
+    "privacyInline": "Privacy Policy",
+    "consentSuffix": "."
   }
 }

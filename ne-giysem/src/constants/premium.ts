@@ -3,8 +3,7 @@ import { Platform } from 'react-native';
 // RevenueCat entitlement identifier — sunucu (_shared/revenuecat.ts) ile AYNI olmalı
 export const ENTITLEMENT_ID = 'sestina_premium';
 
-export const TERMS_URL   = 'https://sestinaapp.com/kosullar';
-export const PRIVACY_URL = 'https://sestinaapp.com/gizlilik';
+// Kullanım Koşulları / Gizlilik linkleri dile bağlı → constants/legal.ts
 
 const ANDROID_PACKAGE = 'com.monalterego.sestina';
 

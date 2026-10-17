@@ -21,7 +21,8 @@ import { usePlanStore } from '../../store/usePlanStore';
 import { loadPaywallPackages, purchase, purchasesAvailable } from '../../lib/purchases';
 import type { PaywallPackages } from '../../lib/purchases';
 import { formatIstanbulDay, restoreWithFeedback, wardrobeLimitMessage } from '../../lib/premiumGate';
-import { PRIVACY_URL, TERMS_URL, manageSubscriptionUrl } from '../../constants/premium';
+import { manageSubscriptionUrl } from '../../constants/premium';
+import { openLegal } from '../../constants/legal';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { getLocale, t } from '../../i18n';
 import { upper } from '../../utils/text';
@@ -245,11 +246,11 @@ export default function PaywallScreen({ route, navigation }: Props) {
         {/* Yasal */}
         <Text style={styles.legal}>{autoRenew}</Text>
         <View style={styles.legalLinks}>
-          <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL)} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => openLegal('terms')} activeOpacity={0.7}>
             <Text style={styles.legalLink}>{t('premium.terms')}</Text>
           </TouchableOpacity>
           <Text style={styles.legalDot}>·</Text>
-          <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL)} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => openLegal('privacy')} activeOpacity={0.7}>
             <Text style={styles.legalLink}>{t('premium.privacy')}</Text>
           </TouchableOpacity>
         </View>

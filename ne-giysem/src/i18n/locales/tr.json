@@ -882,5 +882,14 @@
     "tryonPremiumBodyNoDate": "Bu ayki %{limit} deneme hakkın bitti, ay başında yenilenir.",
     "planLocked": "Planlama Premium'a özel",
     "deleteSubscriptionWarning": "Aboneliğin otomatik iptal olmaz; mağazadan iptal etmelisin. Aksi halde ücretlendirilmeye devam edersin."
+  },
+  "legal": {
+    "privacy": "Gizlilik Politikası",
+    "terms": "Kullanım Koşulları",
+    "consentPrefix": "Devam ederek ",
+    "termsInline": "Kullanım Koşulları",
+    "consentMiddle": "'nı ve ",
+    "privacyInline": "Gizlilik Politikası",
+    "consentSuffix": "'nı kabul etmiş olursun."
   }
 }

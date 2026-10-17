@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase';
 import { useUserStore } from '../../store/useUserStore';
 import { isAppleAvailable, signInWithApple, signInWithGoogle, type SocialResult } from '../../lib/socialAuth';
 import { t } from '../../i18n';
+import LegalConsentNote from '../../components/LegalConsentNote';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Login'>;
 
@@ -219,6 +220,9 @@ export default function LoginScreen({ navigation }: Props) {
               : <Text style={styles.primaryBtnText}>{t('auth.loginButton')}</Text>
             }
           </TouchableOpacity>
+
+          {/* Yasal onay notu — e-posta, Apple ve Google yolları */}
+          <LegalConsentNote />
 
           {/* Kayıt linki */}
           <View style={styles.signupRow}>

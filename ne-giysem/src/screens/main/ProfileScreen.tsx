@@ -28,6 +28,7 @@ import type { Usage } from '../../store/usePlanStore';
 import { formatLocalDay, restoreWithFeedback } from '../../lib/premiumGate';
 import { openPaywall } from '../../navigation/navigationRef';
 import { manageSubscriptionUrl } from '../../constants/premium';
+import { openLegal } from '../../constants/legal';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { t } from '../../i18n';
@@ -408,6 +409,8 @@ export default function ProfileScreen({ navigation }: Props) {
               loading={privacyBusy}
             />
           )}
+          <Row label={t('legal.privacy')} onPress={() => openLegal('privacy')} />
+          <Row label={t('legal.terms')}   onPress={() => openLegal('terms')} />
           <Row label={t('profile.logout')} onPress={handleLogout} danger chevron={false} last />
         </View>
 

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking, ActivityIndicator } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { openLegal } from '../constants/legal';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, typography, spacing, radius, layout } from '../constants/theme';
 import { t } from '../i18n';
 
-export const PRIVACY_URL = 'https://sestinaapp.com/gizlilik';
 
 /**
  * Hassas veri açık rızası — fiziksel profil ilk kez kaydedilmeden ve avatar ilk
@@ -55,7 +55,7 @@ export default function SensitiveConsentModal({
             <Section title={t('consent.whoTitle')}  body={t('consent.whoBody')} />
             <Section title={t('consent.controlTitle')} body={t('consent.controlBody')} />
 
-            <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL)} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => openLegal('privacy')} activeOpacity={0.7}>
               <Text style={styles.link}>{t('consent.policyLink')}</Text>
             </TouchableOpacity>
 
