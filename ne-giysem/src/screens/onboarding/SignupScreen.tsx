@@ -60,7 +60,6 @@ export default function SignupScreen({ navigation }: Props) {
       id: user.id,
       email: user.email ?? '',
       name,
-      isPremium: false,
       createdAt: user.created_at,
       avatarUrl:   profile?.avatar_url  ?? undefined,
       height:      profile?.height      ?? undefined,
@@ -133,7 +132,6 @@ export default function SignupScreen({ navigation }: Props) {
         id: data.user.id,
         email: data.user.email ?? '',
         name: trimmedName,
-        isPremium: false,
         createdAt: data.user.created_at,
       });
       Keyboard.dismiss();

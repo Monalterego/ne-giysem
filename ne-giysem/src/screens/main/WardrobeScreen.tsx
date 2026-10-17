@@ -20,6 +20,9 @@ import { itemThumbSource, itemImageRefs, useSignedImages } from '../../lib/stora
 import { deleteWardrobeItemFiles } from '../../lib/privacyActions';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
+import { usePlanStore, premiumExpired } from '../../store/usePlanStore';
+import { guardWardrobeAdd } from '../../lib/premiumGate';
+import { openPaywall } from '../../navigation/navigationRef';
 import type { ClothingCategory, WardrobeItem } from '../../types';
 import { CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -107,6 +110,18 @@ export default function WardrobeScreen({ navigation }: Props) {
   const removeItem = useWardrobeStore((s) => s.removeItem);
   const user       = useUserStore((s) => s.user);
   const locale     = useUserStore((s) => s.locale);
+  const usage      = usePlanStore((s) => s.usage);
+
+  // Ücretsiz plan: limit dolu (premium bitmiş ve 50 üstü dahil) → parçalar görünür,
+  // düzenleme/silme serbest, yalnızca ekleme kilitli
+  const wardrobeLimit = usage?.wardrobe.limit ?? null;
+  const addLocked     = wardrobeLimit !== null && items.length >= wardrobeLimit;
+  const expired       = premiumExpired(usage);
+
+  // "Ekle": yüklemeye başlamadan sunucudan ön kontrol (limit doluysa paywall)
+  const handleAdd = async () => {
+    if (await guardWardrobeAdd()) navigation.navigate('Upload');
+  };
 
   // Kategori filtreleri — locale'e bağlı (dil değişince etiketler güncellenir)
   const FILTERS = useMemo(
@@ -270,7 +285,7 @@ export default function WardrobeScreen({ navigation }: Props) {
           </Text>
           <TouchableOpacity
             style={styles.cta}
-            onPress={() => navigation.navigate('Upload')}
+            onPress={handleAdd}
             activeOpacity={0.85}
           >
             <Text style={styles.ctaText}>{t('wardrobe.addFirst')}</Text>
@@ -395,7 +410,10 @@ export default function WardrobeScreen({ navigation }: Props) {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>{t('wardrobe.title')}</Text>
-            <Text style={styles.headerCount}>{t('wardrobe.itemsCount', { count: filteredItems.length })}</Text>
+            <Text style={styles.headerCount}>
+              {t('wardrobe.itemsCount', { count: filteredItems.length })}
+              {wardrobeLimit !== null && ` · ${t('premium.wardrobeCount', { used: items.length, limit: wardrobeLimit })}`}
+            </Text>
           </View>
           <View style={styles.viewToggle}>
             <TouchableOpacity
@@ -420,13 +438,26 @@ export default function WardrobeScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => navigation.navigate('Upload')}
+            style={[styles.addBtn, addLocked && styles.addBtnLocked]}
+            onPress={handleAdd}
             activeOpacity={0.82}
           >
+            {addLocked && <Feather name="lock" size={11} color={colors.white} />}
             <Text style={styles.addBtnText}>{t('wardrobe.addNew')}</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Limit dolu: neden eklenemediğini söyle (premium bitmişse parçaların durduğunu da) */}
+      {!selectionMode && addLocked && (
+        <TouchableOpacity style={styles.limitNote} onPress={() => openPaywall('wardrobe')} activeOpacity={0.8}>
+          <Text style={styles.limitNoteText}>
+            {expired
+              ? t('premium.wardrobeExpiredNote')
+              : t('premium.wardrobeFullNote', { limit: wardrobeLimit })}
+          </Text>
+          <Feather name="chevron-right" size={14} color={colors.textSecondary} />
+        </TouchableOpacity>
       )}
 
       {/* Kategori filtre barı */}
@@ -586,10 +617,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
     borderRadius: radius.sm,
     backgroundColor: colors.black,
+  },
+  addBtnLocked: {
+    opacity: 0.55,
+  },
+  limitNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: layout.screenPaddingH,
+    marginBottom: spacing.sm,
+    padding: spacing.sm + 4,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  limitNoteText: {
+    ...typography.bodySmall,
+    color: colors.text,
+    flex: 1,
   },
   addBtnText: {
     ...typography.bodySmall,

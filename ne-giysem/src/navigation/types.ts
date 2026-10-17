@@ -44,9 +44,13 @@ export type MainTabParamList = {
   Profile: undefined;
 };
 
+/** Paywall'un hangi giriş noktasından açıldığı — üstteki açıklama metnini seçer */
+export type PaywallReason = 'generic' | 'wardrobe' | 'scan' | 'planning' | 'tryon';
+
 export type RootStackParamList = {
   AgeGate: undefined;
   ConsentGate: undefined;
   Onboarding: undefined;
   Main: undefined;
+  Paywall: { reason?: PaywallReason } | undefined;
 };

@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,6 +26,10 @@ import type { UserState } from '../../store/useUserStore';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
+import { usePlanStore, premiumExpired } from '../../store/usePlanStore';
+import { formatLocalDay, restoreWithFeedback } from '../../lib/premiumGate';
+import { openPaywall } from '../../navigation/navigationRef';
+import { manageSubscriptionUrl } from '../../constants/premium';
 import { generateCombos } from '../../utils/comboEngine';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
@@ -69,6 +74,19 @@ export default function ProfileScreen() {
   const favoriteCount  = useMemo(() => resolveFavorites(favorites, items).length, [favorites, items]);
   // Avatar private storage'da — tek imza (1 createSignedUrls çağrısı, önbellekliyse 0)
   useSignedImages('avatars', [user?.avatarUrl]);
+
+  // Abonelik kartı — plan + kullanım sunucudan; Profil her açıldığında tazele
+  const plan    = usePlanStore((s) => s.plan);
+  const usage   = usePlanStore((s) => s.usage);
+  const expired = premiumExpired(usage);
+  useEffect(() => { usePlanStore.getState().refresh(); }, []);
+  const expiresDay  = formatLocalDay(usage?.premium_expires_at);
+  // 'infinity' (süresiz) → tarih yok
+  const subDateText = plan !== 'premium' ? null
+    : !expiresDay ? t('premium.lifetime')
+    : usage?.will_renew ? t('premium.renewsOn', { date: expiresDay })
+    : t('premium.endsOn', { date: expiresDay });
+  const expiredDate = expired ? expiresDay : null;
 
   // Favori sayısı için — Kombin sekmesi henüz hiç açılmamış olabilir
   useEffect(() => {
@@ -334,10 +352,30 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteAccount = () => {
+    // Otomatik yenilenen abonelik hesap silmeyle iptal OLMAZ (mağaza faturalamaya devam eder)
+    if (plan === 'premium' && usage?.will_renew) {
+      Alert.alert(
+        t('profile.deleteAccountTitle'),
+        `${t('profile.deleteAccountBody')}\n\n${t('premium.deleteSubscriptionWarning')}`,
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('premium.manage'), onPress: () => Linking.openURL(manageSubscriptionUrl()) },
+          { text: t('profile.deleteAccountConfirm'), style: 'destructive', onPress: runDelete },
+        ],
+      );
+      return;
+    }
     Alert.alert(t('profile.deleteAccountTitle'), t('profile.deleteAccountBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('profile.deleteAccountConfirm'), style: 'destructive', onPress: runDelete },
     ]);
+  };
+
+  const [restoring, setRestoring] = useState(false);
+  const handleRestore = async () => {
+    setRestoring(true);
+    await restoreWithFeedback();
+    setRestoring(false);
   };
 
   if (!user) return null;
@@ -548,6 +586,73 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* ABONELİK — Hesap kartının üstünde; plan ve kullanım sunucudan (get_usage) */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>{upper(t('premium.cardLabel'))}</Text>
+
+          <View style={styles.subPlanRow}>
+            <Text style={styles.subPlanName}>
+              {plan === 'premium' ? t('premium.planPremium') : t('premium.planFree')}
+            </Text>
+            {plan === 'premium' && subDateText && (
+              <Text style={styles.subPlanDate}>{subDateText}</Text>
+            )}
+          </View>
+
+          {expired && (
+            <Text style={styles.subNote}>
+              {expiredDate
+                ? t('premium.expiredNote', { date: expiredDate })
+                : t('premium.expiredNoteNoDate')}
+            </Text>
+          )}
+
+          {plan !== 'premium' && usage && (
+            <View style={styles.subUsage}>
+              {[
+                { label: t('premium.usageWardrobe'), used: usage.wardrobe.used, limit: usage.wardrobe.limit },
+                { label: t('premium.usageTryon'),    used: usage.tryon.used,    limit: usage.tryon.limit },
+                { label: t('premium.usageScan'),     used: usage.scan.used,     limit: usage.scan.limit },
+              ].map((r) => (
+                <View key={r.label} style={styles.subUsageRow}>
+                  <Text style={styles.subUsageLabel}>{r.label}</Text>
+                  <Text style={styles.subUsageValue}>
+                    {r.limit === null ? r.used : t('premium.usageValue', { used: r.used, limit: r.limit })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {plan === 'premium' ? (
+            <TouchableOpacity
+              style={styles.listItem}
+              onPress={() => Linking.openURL(manageSubscriptionUrl())}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.listItemText}>{t('premium.manage')}</Text>
+              <Feather name="external-link" size={15} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.subCta} onPress={() => openPaywall()} activeOpacity={0.85}>
+              <Text style={styles.subCtaText}>{t('premium.goPremium')}</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.listDivider} />
+          <TouchableOpacity
+            style={styles.listItem}
+            onPress={handleRestore}
+            disabled={restoring}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.listItemText}>{t('premium.restore')}</Text>
+            {restoring
+              ? <ActivityIndicator color={colors.textSecondary} size="small" />
+              : <Feather name="rotate-ccw" size={15} color={colors.textSecondary} />}
+          </TouchableOpacity>
         </View>
 
         {/* 5 ── HESAP ── */}
@@ -888,6 +993,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.xs,
+  },
+  subPlanRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  subPlanName: {
+    ...typography.h3,
+    color: colors.text,
+  },
+  subPlanDate: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  subNote: {
+    ...typography.bodySmall,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.sm + 2,
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
+  subUsage: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  subUsageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  subUsageLabel: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  subUsageValue: {
+    ...typography.bodySmall,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.text,
+  },
+  subCta: {
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  subCtaText: {
+    ...typography.body,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.white,
   },
   listItemText: {
     ...typography.body,

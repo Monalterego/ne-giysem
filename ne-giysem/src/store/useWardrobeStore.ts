@@ -46,7 +46,8 @@ interface WardrobeState {
   fetchWornToday: (userId: string) => Promise<void>;
   fetchWornHistory: (userId: string, from: Date, to: Date) => Promise<WornEntry[]>;
   fetchPlannedRange: (userId: string, from: Date, to: Date) => Promise<PlannedEntry[]>;
-  planCombo: (userId: string, itemIds: string[], score: number, date: Date) => Promise<boolean>;
+  /** 'premium' = sunucu 'planning-premium' ile reddetti (013 trigger'ı) */
+  planCombo: (userId: string, itemIds: string[], score: number, date: Date) => Promise<'ok' | 'premium' | 'error'>;
   removePlan: (id: string) => Promise<boolean>;
   fetchWeather: () => Promise<void>;
 }
@@ -207,7 +208,8 @@ export const useWardrobeStore = create<WardrobeState>((set) => ({
       planned_for: toDateStr(date),
       created_at: new Date().toISOString(),
     });
-    return !error;
+    if (!error) return 'ok';
+    return error.message?.includes('planning-premium') ? 'premium' : 'error';
   },
 
   removePlan: async (id) => {

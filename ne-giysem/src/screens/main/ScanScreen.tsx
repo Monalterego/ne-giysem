@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import type { ScanStackParamList } from '../../navigation/types';
+import { usePlanStore } from '../../store/usePlanStore';
+import { guardScan } from '../../lib/premiumGate';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -62,7 +65,17 @@ export default function ScanScreen({ navigation }: Props) {
   const [loadingUri,   setLoadingUri]   = useState<string | null>(null);
   const [loadingStep,  setLoadingStep]  = useState('');
 
+  // Ücretsiz plan: bu ayki kalan "Uyar mı?" hakkı (limit null = sınırsız → gösterilmez)
+  const scanUsage = usePlanStore((s) => s.usage?.scan ?? null);
+  const scanLeft  = scanUsage && scanUsage.limit !== null
+    ? Math.max(0, scanUsage.limit - scanUsage.used)
+    : null;
+  useFocusEffect(useCallback(() => { usePlanStore.getState().refresh(); }, []));
+
   const handlePick = async (source: 'camera' | 'gallery') => {
+    // Ön kontrol (hak harcamaz) — hak bittiyse kamera/galeri hiç açılmaz
+    if (!(await guardScan())) return;
+
     let result: ImagePicker.ImagePickerResult;
 
     if (source === 'camera') {
@@ -112,6 +125,7 @@ export default function ScanScreen({ navigation }: Props) {
   const handleUrlAnalyze = async () => {
     const url = urlInput.trim();
     if (!url) return;
+    if (!(await guardScan())) return;
     setLoading(true);
     setLoadingUri(null);
     try {
@@ -162,6 +176,11 @@ export default function ScanScreen({ navigation }: Props) {
             <Text style={styles.subtitle}>
               {t('scan.subtitle')}
             </Text>
+            {scanLeft !== null && scanUsage?.limit != null && (
+              <Text style={styles.scanQuota}>
+                {t('premium.scanRemaining', { left: scanLeft, limit: scanUsage.limit })}
+              </Text>
+            )}
           </View>
 
           {/* Kamera */}
@@ -312,6 +331,12 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+  scanQuota: {
+    ...typography.bodySmall,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.text,
+    marginTop: spacing.sm,
   },
 
   // Kart

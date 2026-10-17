@@ -16,6 +16,8 @@ import type { ScanStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { itemImageRefs, itemImageSource, itemThumbSource, useSignedImages } from '../../lib/storageUrls';
 import { useUserStore } from '../../store/useUserStore';
+import { spendScan } from '../../lib/premiumGate';
+import { openPaywall } from '../../navigation/navigationRef';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
 import { friendlyError } from '../../utils/errorMessage';
 import type { VisionResult } from '../../utils/visionAnalysis';
@@ -154,12 +156,22 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   // — scannedItem artık gereksiz; sadece scannedUri gösterimi yeterli
   const [_detectedCategory, setDetectedCategory] = useState<ClothingCategory>('upper');
 
-  // 1. Vision analizi
+  // 1. Vision analizi → hak harcama → sonuç
+  // "Uyar mı?" hakkı Poof (ScanScreen) + vision BAŞARIYLA bittikten SONRA, sonucu
+  // göstermeden hemen önce harcanır: başarısız tarama hak yakmaz. Reddedilirse sonuç
+  // gösterilmez, limit ekranı açılır.
   useEffect(() => {
     let cancelled = false;
     analyzeClothingImage(processedBase64)
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled) return;
+        const allowed = await spendScan();
+        if (cancelled) return;
+        if (!allowed) {
+          navigation.goBack();
+          openPaywall('scan');
+          return;
+        }
         setVisionResult(result);
         setDetectedCategory(result.category);
       })

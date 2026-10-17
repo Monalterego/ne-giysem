@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { AppState, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,6 +9,18 @@ import { useFavoritesStore } from './src/store/useFavoritesStore';
 import { clearSignedUrlCache } from './src/lib/storageUrls';
 import { initI18n, getLocale } from './src/i18n';
 import RootNavigator from './src/navigation/RootNavigator';
+import { navigationRef } from './src/navigation/navigationRef';
+import { configurePurchases, identifyPurchaser, resetPurchaser } from './src/lib/purchases';
+import { usePlanStore } from './src/store/usePlanStore';
+
+// RevenueCat — native modül / anahtar yoksa sessizce devre dışı (lib/purchases güvenlik ağı)
+configurePurchases();
+
+/** Oturum açık: RevenueCat kimliğini bağla, planı sunucudan oku */
+function onSessionUser(uid: string): void {
+  identifyPurchaser(uid);
+  usePlanStore.getState().refresh();
+}
 
 export default function App() {
   // i18n hazır olmadan render etme — çeviriler ilk boyamadan önce yüklenmeli
@@ -33,12 +45,15 @@ export default function App() {
         // Mahremiyet: aynı cihazda sonraki kullanıcının fetch'i başarısız olursa öncekinin favorileri görünmesin
         useFavoritesStore.getState().reset();
         clearSignedUrlCache();   // önceki kullanıcının imzalı URL'leri bellekte kalmasın
+        usePlanStore.getState().reset();
+        resetPurchaser();
         return;
       }
 
       if (event === 'INITIAL_SESSION' && session?.user) {
         // Uygulama açılışında mevcut oturum — profiles tablosundan profil çek
         const u = session.user;
+        onSessionUser(u.id);
         supabase
           .from('profiles')
           // avatar_url/weight eksikti: soğuk açılışta avatar "yok" görünüyordu
@@ -52,7 +67,6 @@ export default function App() {
               id: u.id,
               email: u.email ?? '',
               name: profile?.name ?? '',
-              isPremium: false,
               createdAt: u.created_at,
               avatarUrl: profile?.avatar_url ?? undefined,
               // Profil okunamadıysa undefined bırak → AgeGate kendisi okur
@@ -82,6 +96,7 @@ export default function App() {
         // Login sonrası — isOnboarded'a dokunma, ekranlar yönetiyor
         // (LoginScreen setOnboarded(true), SignupScreen onboarding'e yönlendiriyor)
         const u = session.user;
+        onSessionUser(u.id);
         const { user: current, setUser } = useUserStore.getState();
         if (!current) {
           // Sadece store henüz boşsa set et (LoginScreen zaten doldurmuşsa üzerine yazma)
@@ -90,7 +105,6 @@ export default function App() {
             id: u.id,
             email: u.email ?? '',
             name: '',
-            isPremium: false,
             createdAt: u.created_at,
           });
         } else {
@@ -105,12 +119,22 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Ön plana gelişte plan/kullanımı tazele (abonelik mağazada iptal/yenilenmiş olabilir)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && useUserStore.getState().isAuthenticated) {
+        usePlanStore.getState().refresh();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   // i18n yüklenirken boş değil, splash + uygulama ile aynı #FAFAFA — açılış kesintisiz akar
   if (!i18nReady) return <View style={{ flex: 1, backgroundColor: '#FAFAFA' }} />;
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer key={locale}>
+      <NavigationContainer key={locale} ref={navigationRef}>
         <RootNavigator />
         <StatusBar style="auto" />
       </NavigationContainer>

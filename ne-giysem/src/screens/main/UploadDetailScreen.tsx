@@ -17,6 +17,8 @@ import { supabase } from '../../lib/supabase';
 import { imageSource, useSignedImages } from '../../lib/storageUrls';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
+import { usePlanStore } from '../../store/usePlanStore';
+import { openPaywall } from '../../navigation/navigationRef';
 import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
 import { CATEGORY_META, CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
 import { uuidv4 } from '../../utils/uuid';
@@ -268,7 +270,21 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         thumb_url:           thumbUrl,
         created_at:          now,
       });
-      if (dbError) throw new Error(dbError.message);
+      if (dbError) {
+        // Satır yazılmadı → yüklenen dosyalar yetim kalmasın
+        const uploaded = [`${basePath}.jpg`, ...(thumbUrl ? [thumbUrl] : [])];
+        const { error: rmErr } = await supabase.storage.from('wardrobe-items').remove(uploaded);
+        if (rmErr) console.warn('[UploadDetail] yetim dosya silinemedi:', rmErr.message);
+
+        // 013 trigger'ı: ücretsiz plan 50 parça limiti (ön kontrol sonrası doldu / yarış)
+        if (dbError.message?.includes('wardrobe-limit')) {
+          usePlanStore.getState().refresh();
+          navigation.navigate('WardrobeList');
+          openPaywall('wardrobe');
+          return;   // finally saving'i kapatır
+        }
+        throw new Error(dbError.message);
+      }
 
       // Yerel store'a ekle
       addItem({

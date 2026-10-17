@@ -64,7 +64,7 @@ export interface User {
   name: string;
   avatarUrl?: string;
   styleProfile?: StyleProfile;
-  isPremium: boolean;
+  // Premium durumu burada DEĞİL — tek kaynak sunucu: usePlanStore (get_usage)
   createdAt: string;
   // Fiziki profil (onboarding sırasında doldurulur)
   height?: number;

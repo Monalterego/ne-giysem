@@ -7,6 +7,7 @@ import OnboardingNavigator from './OnboardingNavigator';
 import MainTabNavigator from './MainTabNavigator';
 import AgeGateScreen from '../screens/onboarding/AgeGateScreen';
 import ConsentGateScreen from '../screens/onboarding/ConsentGateScreen';
+import PaywallScreen from '../screens/main/PaywallScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -34,7 +35,15 @@ export default function RootNavigator() {
       ) : isAuthenticated && needsConsent ? (
         <Stack.Screen name="ConsentGate" component={ConsentGateScreen} />
       ) : isAuthenticated && isOnboarded ? (
-        <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Group>
+          <Stack.Screen name="Main" component={MainTabNavigator} />
+          {/* Tam ekran paywall — her yerden openPaywall() (navigationRef) ile açılır */}
+          <Stack.Screen
+            name="Paywall"
+            component={PaywallScreen}
+            options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+          />
+        </Stack.Group>
       ) : (
         <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
       )}
