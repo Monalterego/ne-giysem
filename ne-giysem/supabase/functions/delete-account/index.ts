@@ -8,15 +8,20 @@
 //      Supabase bunu yapmıyor (supabase/auth#1308). Başarısız olursa silme YİNE DE sürer
 //      (Apple TN3194: token elde edilemese de silme talebi yerine getirilmeli).
 //   3. Storage: 3 bucket'taki <user_id>/ dosyalarını sil (storage cascade olmaz).
-//   4. auth.users kaydını sil → profiles / style_profiles / wardrobe_items / combos /
-//      favorite_combos ON DELETE CASCADE ile otomatik gider.
+//   4. RevenueCat abone kaydını sil (DELETE /subscribers/{uid}). Başarısız olursa silme
+//      YİNE DE sürer — log + ops_events (kimliksiz).
+//   5. auth.users kaydını sil → profiles / style_profiles / wardrobe_items / combos /
+//      favorite_combos / entitlements ON DELETE CASCADE ile otomatik gider.
 //
 // Gerekli secret'lar (npx supabase secrets set ...):
 //   APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_CLIENT_ID (= bundle id), APPLE_PRIVATE_KEY (.p8 içeriği)
+//   REVENUECAT_SECRET_API_KEY (yoksa RevenueCat adımı atlanır + ops_events)
 // Otomatik gelenler: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@5.9.6";
+import { reportOpsEvent } from "../_shared/ops.ts";
+import { deleteSubscriber, revenueCatKey } from "../_shared/revenuecat.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -146,12 +151,27 @@ Deno.serve(async (req) => {
     // 3) Storage
     const removed = await purgeStorage(admin, user.id);
 
-    // 4) Kullanıcı → tüm tablolar cascade
+    // 4) RevenueCat — en iyi çaba, silmeyi engellemez
+    let revenuecat = "skipped";
+    const rcKey = revenueCatKey();
+    if (!rcKey) {
+      await reportOpsEvent(admin, "delete-account", "revenuecat_secrets_missing", { api_key: false });
+    } else {
+      try {
+        await deleteSubscriber(rcKey, user.id);
+        revenuecat = "deleted";
+      } catch (e) {
+        revenuecat = `error:${e instanceof Error ? e.message : String(e)}`;
+        await reportOpsEvent(admin, "delete-account", "revenuecat_delete_failed", { error: revenuecat });
+      }
+    }
+
+    // 5) Kullanıcı → tüm tablolar cascade
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
     if (delErr) return json({ error: "delete-failed", detail: delErr.message }, 500);
 
-    console.log(`[delete-account] ${user.id} silindi · dosya:${removed} · apple:${apple}`);
-    return json({ ok: true, removedFiles: removed, apple });
+    console.log(`[delete-account] ${user.id} silindi · dosya:${removed} · apple:${apple} · revenuecat:${revenuecat}`);
+    return json({ ok: true, removedFiles: removed, apple, revenuecat });
   } catch (e) {
     console.error("[delete-account]", e);
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

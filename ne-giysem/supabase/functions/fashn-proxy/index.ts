@@ -3,6 +3,7 @@
 // FASHN proxy'si — kimlik + kota + izin listesi sunucuda.
 //
 // action 'start'  → start_tryon: kota kontrolü + render_id (limit doluysa 402)
+//                   ücretsiz 3 ömür boyu · premium 8 / takvim ayı (013)
 // action 'run'    → render_id zorunlu; model + girdi anahtarları izin listesinde,
 //                   görsel URL'leri kullanıcının kendi storage'ı veya kendi FASHN çıktısı
 // action 'status' → prediction id kullanıcının bir render'ına ait olmalı (403);
@@ -123,7 +124,13 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.rpc("start_tryon", { p_user: user.id });
       if (error) throw new Error(`start_tryon: ${error.message}`);
       if (!data?.allowed) {
-        return json({ error: "quota-exceeded", used: data?.used ?? null, limit: data?.limit ?? null }, 402);
+        return json({
+          error: "quota-exceeded",
+          used: data?.used ?? null,
+          limit: data?.limit ?? null,
+          plan: data?.plan ?? null,
+          reset_at: data?.reset_at ?? null,   // premium: sonraki ayın 1'i (Istanbul); free: null
+        }, 402);
       }
       return json(data);
     }
