@@ -346,7 +346,7 @@ export default function CalendarScreen({ navigation }: Props) {
             {selectedLightboxItem?.processedImageUrl && (
               <Image source={itemImageSource(selectedLightboxItem)} style={styles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
-            <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.lightboxClose} hitSlop={6} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>

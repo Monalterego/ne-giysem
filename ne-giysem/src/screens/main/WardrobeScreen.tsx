@@ -20,8 +20,8 @@ import { itemThumbSource, itemImageRefs, useSignedImages } from '../../lib/stora
 import { deleteWardrobeItemFiles } from '../../lib/privacyActions';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
-import { usePlanStore, premiumExpired } from '../../store/usePlanStore';
-import { guardWardrobeAdd } from '../../lib/premiumGate';
+import { usePlanStore } from '../../store/usePlanStore';
+import { guardWardrobeAdd, wardrobeCountLabel, wardrobeLimitMessage } from '../../lib/premiumGate';
 import { openPaywall } from '../../navigation/navigationRef';
 import type { ClothingCategory, WardrobeItem } from '../../types';
 import { CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
@@ -114,9 +114,13 @@ export default function WardrobeScreen({ navigation }: Props) {
 
   // Ücretsiz plan: limit dolu (premium bitmiş ve 50 üstü dahil) → parçalar görünür,
   // düzenleme/silme serbest, yalnızca ekleme kilitli
-  const wardrobeLimit = usage?.wardrobe.limit ?? null;
-  const addLocked     = wardrobeLimit !== null && items.length >= wardrobeLimit;
-  const expired       = premiumExpired(usage);
+  // Parça eklenip silindikçe sunucu sayısını tazele (ilk açılış dahil)
+  useEffect(() => { usePlanStore.getState().refresh(); }, [items.length]);
+
+  // Sayı get_usage'tan (ekleme/silme sonrası tazelenir); limit üstünde "103/50" yazılmaz
+  const countLabel    = wardrobeCountLabel(usage);
+  const limitMessage  = wardrobeLimitMessage(usage);   // dolu/üstündeyse dolu
+  const addLocked     = limitMessage !== null;
 
   // "Ekle": yüklemeye başlamadan sunucudan ön kontrol (limit doluysa paywall)
   const handleAdd = async () => {
@@ -411,8 +415,12 @@ export default function WardrobeScreen({ navigation }: Props) {
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>{t('wardrobe.title')}</Text>
             <Text style={styles.headerCount}>
-              {t('wardrobe.itemsCount', { count: filteredItems.length })}
-              {wardrobeLimit !== null && ` · ${t('premium.wardrobeCount', { used: items.length, limit: wardrobeLimit })}`}
+              {/* Ücretsiz planda "Tümü" filtresinde sınır etiketi; filtre seçiliyse filtre sayısı önce */}
+              {countLabel === null
+                ? t('wardrobe.itemsCount', { count: filteredItems.length })
+                : activeFilter === 'all'
+                  ? countLabel
+                  : `${t('wardrobe.itemsCount', { count: filteredItems.length })} · ${countLabel}`}
             </Text>
           </View>
           <View style={styles.viewToggle}>
@@ -449,13 +457,9 @@ export default function WardrobeScreen({ navigation }: Props) {
       )}
 
       {/* Limit dolu: neden eklenemediğini söyle (premium bitmişse parçaların durduğunu da) */}
-      {!selectionMode && addLocked && (
+      {!selectionMode && limitMessage && (
         <TouchableOpacity style={styles.limitNote} onPress={() => openPaywall('wardrobe')} activeOpacity={0.8}>
-          <Text style={styles.limitNoteText}>
-            {expired
-              ? t('premium.wardrobeExpiredNote')
-              : t('premium.wardrobeFullNote', { limit: wardrobeLimit })}
-          </Text>
+          <Text style={styles.limitNoteText}>{limitMessage}</Text>
           <Feather name="chevron-right" size={14} color={colors.textSecondary} />
         </TouchableOpacity>
       )}

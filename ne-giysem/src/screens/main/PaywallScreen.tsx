@@ -7,18 +7,20 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  BackHandler,
   Linking,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { PurchasesPackage } from 'react-native-purchases';
 import type { RootStackParamList } from '../../navigation/types';
-import { usePlanStore, premiumExpired } from '../../store/usePlanStore';
+import { usePlanStore } from '../../store/usePlanStore';
 import { loadPaywallPackages, purchase, purchasesAvailable } from '../../lib/purchases';
 import type { PaywallPackages } from '../../lib/purchases';
-import { formatIstanbulDay, restoreWithFeedback } from '../../lib/premiumGate';
+import { formatIstanbulDay, restoreWithFeedback, wardrobeLimitMessage } from '../../lib/premiumGate';
 import { PRIVACY_URL, TERMS_URL, manageSubscriptionUrl } from '../../constants/premium';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { getLocale, t } from '../../i18n';
@@ -57,7 +59,19 @@ function annualMath(pkgs: PaywallPackages | null) {
 
 export default function PaywallScreen({ route, navigation }: Props) {
   const reason = route.params?.reason ?? 'generic';
+  // fullScreenModal içinde native SafeAreaView iOS'ta 0 inset verebiliyor (X çentiğin
+  // altında kalıyordu) → kök sağlayıcının inset'leri elle uygulanır
+  const insets = useSafeAreaInsets();
   const usage  = usePlanStore((s) => s.usage);
+
+  // Android geri tuşu paywall'ı kapatsın (satın alma sürerken de — sonuç yine işlenir)
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (navigation.canGoBack()) navigation.goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [navigation]));
   const plan   = usePlanStore((s) => s.plan);
   const syncAfterPurchase = usePlanStore((s) => s.syncAfterPurchase);
 
@@ -90,10 +104,8 @@ export default function PaywallScreen({ route, navigation }: Props) {
   const reasonText = useMemo(() => {
     switch (reason) {
       case 'wardrobe':
-        if (premiumExpired(usage)) return t('premium.reasonWardrobeExpired');
-        return t('premium.reasonWardrobe', {
-          used: usage?.wardrobe.used ?? 50, limit: usage?.wardrobe.limit ?? 50,
-        });
+        // Dolap banner'ıyla aynı metin (sayılar get_usage'tan); okunamadıysa sayısız genel metin
+        return wardrobeLimitMessage(usage) ?? t('premium.reasonWardrobeGeneric');
       case 'scan': {
         const date = formatIstanbulDay(usage?.scan.reset_at);
         const limit = usage?.scan.limit ?? 3;
@@ -140,11 +152,12 @@ export default function PaywallScreen({ route, navigation }: Props) {
   const autoRenew = Platform.OS === 'android' ? t('premium.autoRenewAndroid') : t('premium.autoRenewIos');
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.topBar}>
         <TouchableOpacity
+          style={styles.closeBtn}
           onPress={() => navigation.goBack()}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
           accessibilityLabel={t('premium.close')}
         >
           <Feather name="x" size={22} color={colors.text} />
@@ -267,7 +280,7 @@ export default function PaywallScreen({ route, navigation }: Props) {
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -311,8 +324,15 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingHorizontal: layout.screenPaddingH,
-    paddingTop: spacing.sm,
+    paddingHorizontal: layout.screenPaddingH - spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  // En az 44x44 dokunma alanı (HIG)
+  closeBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scroll: {
     paddingHorizontal: layout.screenPaddingH,

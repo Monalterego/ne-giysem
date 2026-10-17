@@ -10,7 +10,7 @@ import HomeNavigator from './HomeNavigator';
 import WardrobeNavigator from './WardrobeNavigator';
 import CombosScreen from '../screens/main/CombosScreen';
 import ScanNavigator from './ScanNavigator';
-import ProfileScreen from '../screens/main/ProfileScreen';
+import ProfileNavigator from './ProfileNavigator';
 
 import comboIcon from '../../assets/icons/combo.png';
 import comboActiveIcon from '../../assets/icons/combo_active.png';
@@ -89,7 +89,7 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileNavigator}
         options={{
           tabBarLabel: t('nav.profile'),
           tabBarIcon: ({ focused, color, size }) => (

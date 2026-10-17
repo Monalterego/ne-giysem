@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type StyleEntry = { name: string; weight: number };
 
 export type OnboardingStackParamList = {
@@ -36,12 +38,19 @@ export type ScanStackParamList = {
   };
 };
 
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  ProfilePhoto: undefined;      // fotoğraf ekle/değiştir/kaldır + rehber
+  ProfileStyle: undefined;      // Stil DNA detayı + yeniden belirle
+  ProfilePhysical: undefined;   // fiziksel bilgiler + düzenle
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Wardrobe: undefined;
   Combos: { focusComboKey?: string; occasion?: string } | undefined;
   Scan: undefined;
-  Profile: undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 /** Paywall'un hangi giriş noktasından açıldığı — üstteki açıklama metnini seçer */

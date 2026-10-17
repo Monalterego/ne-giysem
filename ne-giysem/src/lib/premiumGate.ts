@@ -1,7 +1,8 @@
 import { Alert } from 'react-native';
 import { supabase } from './supabase';
 import { restore } from './purchases';
-import { usePlanStore } from '../store/usePlanStore';
+import { usePlanStore, premiumExpired } from '../store/usePlanStore';
+import type { Usage } from '../store/usePlanStore';
 import { openPaywall } from '../navigation/navigationRef';
 import { t } from '../i18n';
 
@@ -50,6 +51,26 @@ export async function spendScan(): Promise<boolean> {
     console.warn('[scan] start_scan exception:', e);
     return true;
   }
+}
+
+// ─── Dolap limiti metinleri (başlık, banner, paywall gerekçesi) ──────────────
+// Sayı ve sınır get_usage'tan; limit üstündeki kullanıcıya "103/50" gösterilmez.
+
+/** Başlık: limit altında/eşit "23/50", üstünde "103 parça · ücretsiz sınır 50". Premium/okunamadı → null */
+export function wardrobeCountLabel(usage: Usage | null): string | null {
+  const w = usage?.wardrobe;
+  if (!w || w.limit === null) return null;
+  return w.used > w.limit
+    ? t('premium.wardrobeOverCount', { count: w.used, limit: w.limit })
+    : t('premium.wardrobeCount', { used: w.used, limit: w.limit });
+}
+
+/** Ekleme kilitliyken açıklama (banner + paywall). Limit dolu değilse / okunamadıysa null */
+export function wardrobeLimitMessage(usage: Usage | null): string | null {
+  const w = usage?.wardrobe;
+  if (!w || w.limit === null || w.used < w.limit) return null;
+  const body = t('premium.wardrobeLimitBody', { count: w.used, limit: w.limit });
+  return premiumExpired(usage) ? `${t('premium.wardrobeExpiredPrefix')} ${body}` : body;
 }
 
 // ─── Geri yükleme (Paywall + Profil) ─────────────────────────────────────────

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, typography, spacing, radius, layout } from '../constants/theme';
 import { t } from '../i18n';
 
@@ -29,6 +30,8 @@ export default function SensitiveConsentModal({
   cancelLabel?: string;
 }) {
   const [checked, setChecked] = useState(false);
+  // Alt sayfa: butonlar ev göstergesinin (home indicator) altında kalmasın
+  const insets = useSafeAreaInsets();
   // Her açılışta işaretsiz başla
   useEffect(() => { if (visible) setChecked(false); }, [visible]);
 
@@ -70,7 +73,7 @@ export default function SensitiveConsentModal({
             </TouchableOpacity>
           </ScrollView>
 
-          <View style={styles.actions}>
+          <View style={[styles.actions, { paddingBottom: spacing.lg + insets.bottom }]}>
             <TouchableOpacity
               style={[styles.primaryBtn, (!checked || saving) && styles.disabled]}
               onPress={onAccept}
@@ -94,7 +97,7 @@ export default function SensitiveConsentModal({
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },   // diğer modallarla aynı (PhotoGuideModal)
   sheet: {
-    maxHeight: '88%',
+    maxHeight: '88%',   // üstte çentik payı: sayfa ekranın %12'sinden aşağıda başlar
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,

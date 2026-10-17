@@ -295,8 +295,9 @@ function ModelModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-      <SafeAreaView style={modalStyles.safe}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+      {/* RN Modal ayrı native pencere: SafeAreaView burada 0 inset verebiliyor → elle */}
+      <View style={[modalStyles.safe, { paddingBottom: insets.bottom }]}>
 
         {/* Kapat butonu — çentik güvenli alan */}
         <View style={[modalStyles.header, { paddingTop: insets.top + spacing.sm }]}>
@@ -379,7 +380,7 @@ function ModelModal({
           </>
         )}
 
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -401,7 +402,7 @@ function PremiumModal({
   onUpgrade: () => void;
 }) {
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={premiumStyles.overlay}>
         <View style={premiumStyles.card}>
           <Text style={premiumStyles.title}>{t('premium.tryonFreeTitle')}</Text>
@@ -434,7 +435,7 @@ function NoAvatarModal({
   onUseAiModel: () => void;
 }) {
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={noAvatarStyles.overlay}>
         <View style={noAvatarStyles.card}>
           <Text style={noAvatarStyles.title}>{t('combos.photoRequired')}</Text>
@@ -1044,7 +1045,7 @@ export default function CombosScreen() {
             {selectedLightboxItem?.processedImageUrl && (
               <Image source={itemImageSource(selectedLightboxItem)} style={modalStyles.lightboxImage} contentFit="contain" cachePolicy="memory-disk" transition={150} />
             )}
-            <TouchableOpacity style={modalStyles.lightboxClose} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
+            <TouchableOpacity style={modalStyles.lightboxClose} hitSlop={6} onPress={() => setLightboxItemId(null)} activeOpacity={0.8}>
               <Feather name="x" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>
@@ -1104,7 +1105,8 @@ export default function CombosScreen() {
         onGoToProfile={() => {
           setNoAvatarModalVisible(false);
           setPendingCombo(null);
-          navigation.navigate('Profile');
+          // Fotoğraf yönetimi artık Profil'in alt ekranı
+          navigation.navigate('Profile', { screen: 'ProfilePhoto' });
         }}
         onUseAiModel={() => {
           setNoAvatarModalVisible(false);
