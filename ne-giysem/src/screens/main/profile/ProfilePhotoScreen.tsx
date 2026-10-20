@@ -9,8 +9,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { supabase } from '../../../lib/supabase';
 import { imageSource, useSignedImages } from '../../../lib/storageUrls';
-import { recordSensitiveConsent, removeAvatarAndTryOns } from '../../../lib/privacyActions';
+import { grantTryOnConsents, removeAvatarAndTryOns } from '../../../lib/privacyActions';
 import { useUserStore } from '../../../store/useUserStore';
+import { useConsentStore, isGranted } from '../../../store/useConsentStore';
 import PhotoGuideModal from '../../../components/PhotoGuideModal';
 import SensitiveConsentModal from '../../../components/SensitiveConsentModal';
 import { colors, fonts, typography, spacing, radius, layout } from '../../../constants/theme';
@@ -29,7 +30,7 @@ type Props = NativeStackScreenProps<ProfileStackParamList, 'ProfilePhoto'>;
 export default function ProfilePhotoScreen({ navigation }: Props) {
   const user         = useUserStore((s) => s.user);
   const setAvatarUrl = useUserStore((s) => s.setAvatarUrl);
-  const setConsents  = useUserStore((s) => s.setConsents);
+  const photoConsent = useConsentStore((s) => isGranted(s.records, 'tryon_photo'));
   useSignedImages('avatars', [user?.avatarUrl]);
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -38,10 +39,11 @@ export default function ProfilePhotoScreen({ navigation }: Props) {
   const [consentSaving,   setConsentSaving]   = useState(false);
   const [privacyBusy,     setPrivacyBusy]     = useState(false);
 
-  // İlk avatar yüklemesinden önce açık rıza (geri çekildiyse yeniden)
+  // İlk avatar yüklemesinden önce 'tryon_photo' açık rızası (geri çekildiyse yeniden).
+  // Fiziksel bilgi rızası burada sorulmaz — bu akış yalnızca fotoğrafı FASHN'a gönderir.
   const handlePickAvatar = () => {
     if (!user) return;
-    if (!user.sensitiveConsentAt) { setConsentVisible(true); return; }
+    if (!photoConsent) { setConsentVisible(true); return; }
     pickAndUploadAvatar();
   };
 
@@ -49,8 +51,7 @@ export default function ProfilePhotoScreen({ navigation }: Props) {
     if (!user) return;
     setConsentSaving(true);
     try {
-      const at = await recordSensitiveConsent(user.id);
-      setConsents({ sensitiveConsentAt: at });
+      await grantTryOnConsents(user.id, ['tryon_photo']);
       setConsentVisible(false);
       pickAndUploadAvatar();
     } catch {
@@ -194,8 +195,9 @@ export default function ProfilePhotoScreen({ navigation }: Props) {
 
       <SensitiveConsentModal
         visible={consentVisible}
+        kinds={['tryon_photo']}
         saving={consentSaving}
-        onAccept={handleConsentAccept}
+        onSubmit={handleConsentAccept}
         onCancel={() => setConsentVisible(false)}
       />
 

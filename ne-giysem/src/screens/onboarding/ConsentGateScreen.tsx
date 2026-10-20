@@ -3,57 +3,51 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
-import { recordSensitiveConsent, withdrawSensitiveConsent } from '../../lib/privacyActions';
+import { useConsentStore, requiredTryOnConsents } from '../../store/useConsentStore';
+import type { TryOnConsentKind } from '../../constants/consent';
+import { grantTryOnConsents, withdrawTryOnConsent } from '../../lib/privacyActions';
 import SensitiveConsentModal from '../../components/SensitiveConsentModal';
 import { colors } from '../../constants/theme';
 import { t } from '../../i18n';
 
 /**
- * Mevcut kullanıcılardan rıza: rıza kaydı yokken hassas veri (fiziksel profil ya
- * da avatar) zaten varsa RootNavigator, AgeGate'ten hemen sonra bunu bir kez gösterir.
- * Kabul → sensitive_consent_at = now. Red → "Rızamı geri çek" akışı (veriler
- * silinir), sonra uygulamaya devam. Her iki durumda koşul kalkar, kapı kapanır.
+ * Mevcut kullanıcılardan rıza: elinde fotoğraf ve/veya fiziksel bilgi olup ilgili açık
+ * rızası consent_events'te olmayan kullanıcıya RootNavigator, AgeGate'ten hemen sonra
+ * bunu gösterir. YALNIZCA eksik rızalar sorulur (requiredTryOnConsents).
+ * İşaretlenen → rıza kaydı. İşaretlenmeyen → onaydan sonra o rızaya bağlı veri silinir
+ * (geri çekme kaydıyla). Her durumda koşul kalkar, kapı kapanır.
  */
 export default function ConsentGateScreen() {
-  const user               = useUserStore((s: UserState) => s.user);
-  const setConsents        = useUserStore((s: UserState) => s.setConsents);
-  const clearSensitiveData = useUserStore((s: UserState) => s.clearSensitiveData);
-  const [busy, setBusy]    = useState(false);
+  const user     = useUserStore((s: UserState) => s.user);
+  const records  = useConsentStore((s) => s.records);
+  const required = requiredTryOnConsents(user, records);
+  const [busy, setBusy] = useState(false);
 
-  const handleAccept = async () => {
+  const run = async (granted: TryOnConsentKind[], declined: TryOnConsentKind[]) => {
     if (!user) return;
     setBusy(true);
     try {
-      const at = await recordSensitiveConsent(user.id);
-      setConsents({ sensitiveConsentAt: at });
-    } catch {
+      if (granted.length) await grantTryOnConsents(user.id, granted);
+      for (const k of declined) await withdrawTryOnConsent(user.id, k, user.avatarUrl);
+      // koşul kalkar → RootNavigator devam eder
+    } catch (err) {
+      console.warn('[ConsentGate] kaydedilemedi:', err);
       Alert.alert(t('combos.errorTitle'), t('consent.saveError'));
     } finally {
       setBusy(false);
     }
   };
 
-  // Red silme demek — yanlışlıkla basılmasın diye onay iste
-  const handleDecline = () => {
-    if (!user) return;
-    Alert.alert(t('profile.withdrawConsentTitle'), t('profile.withdrawConsentBody'), [
+  // Reddedilen rızanın verisi silinir — yanlışlıkla basılmasın diye onay iste
+  const confirmAndRun = (granted: TryOnConsentKind[]) => {
+    const declined = required.filter((k) => !granted.includes(k));
+    if (!declined.length) { run(granted, []); return; }
+    const body = declined
+      .map((k) => (k === 'tryon_photo' ? t('privacy.photoWithdrawEffect') : t('privacy.physicalWithdrawEffect')))
+      .join('\n\n');
+    Alert.alert(t('consent.declineTitle'), body, [
       { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('consent.declineConfirm'),
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await withdrawSensitiveConsent(user.id, user.avatarUrl);
-            clearSensitiveData();   // koşul kalkar → RootNavigator devam eder
-          } catch (err) {
-            console.warn('[ConsentGate] red akışı başarısız:', err);
-            Alert.alert(t('combos.errorTitle'), t('profile.withdrawConsentError'));
-          } finally {
-            setBusy(false);
-          }
-        },
-      },
+      { text: t('consent.declineConfirm'), style: 'destructive', onPress: () => run(granted, declined) },
     ]);
   };
 
@@ -61,12 +55,13 @@ export default function ConsentGateScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.fill} />
       <SensitiveConsentModal
-        visible
+        visible={required.length > 0}
+        kinds={required}
         saving={busy}
         intro={t('consent.existingIntro')}
         cancelLabel={t('consent.decline')}
-        onAccept={handleAccept}
-        onCancel={handleDecline}
+        onSubmit={confirmAndRun}
+        onCancel={() => confirmAndRun([])}
       />
     </SafeAreaView>
   );

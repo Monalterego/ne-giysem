@@ -19,7 +19,8 @@ import { supabase } from '../../lib/supabase';
 import { imageSource, useSignedImages } from '../../lib/storageUrls';
 import { clearLocalSession } from '../../lib/session';
 import { deleteAccount } from '../../lib/socialAuth';
-import { withdrawSensitiveConsent } from '../../lib/privacyActions';
+import { exportMyData } from '../../lib/privacyActions';
+import { friendlyError } from '../../utils/errorMessage';
 import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
@@ -98,7 +99,6 @@ function Row({
 export default function ProfileScreen({ navigation }: Props) {
   const user               = useUserStore((s) => s.user);
   const setUser            = useUserStore((s) => s.setUser);
-  const clearSensitiveData = useUserStore((s) => s.clearSensitiveData);
   const locale             = useUserStore((s) => s.locale);
   const setUserLocale      = useUserStore((s) => s.setUserLocale);
   const items          = useWardrobeStore((s) => s.items);
@@ -150,30 +150,18 @@ export default function ProfileScreen({ navigation }: Props) {
   const hasPhys = hasPhysicalProfile(user);
   useEnsurePhysicalProfile();   // "Eksik" değeri ve rıza satırı doğru görünsün
 
-  // ── Rızayı geri çek: fiziksel profil NULL + avatar ve tüm try-on/manken dosyaları + rıza NULL
-  const [privacyBusy, setPrivacyBusy] = useState(false);
-  const handleWithdrawConsent = () => {
-    if (!user) return;
-    Alert.alert(t('profile.withdrawConsentTitle'), t('profile.withdrawConsentBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('profile.withdrawConsent'),
-        style: 'destructive',
-        onPress: async () => {
-          setPrivacyBusy(true);
-          try {
-            await withdrawSensitiveConsent(user.id, user.avatarUrl);
-            clearSensitiveData();
-            Alert.alert(t('profile.withdrawConsentDone'));
-          } catch (err) {
-            console.warn('[ProfileScreen] withdrawConsent:', err);
-            Alert.alert(t('combos.errorTitle'), t('profile.withdrawConsentError'));
-          } finally {
-            setPrivacyBusy(false);
-          }
-        },
-      },
-    ]);
+  // ── Verilerimi indir: JSON (fotoğraflar 1 saatlik linklerle) → paylaş menüsü
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportMyData();
+    } catch (err) {
+      console.warn('[ProfileScreen] exportMyData:', err);
+      Alert.alert(t('combos.errorTitle'), friendlyError(err));
+    } finally {
+      setExporting(false);
+    }
   };
 
   // ── İsim düzenleme (başlıkta, yerinde)
@@ -265,7 +253,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
   if (!user) return null;
 
-  const showWithdraw = !!(user.sensitiveConsentAt || hasPhys || user.avatarUrl);
   const statLine = [
     t('profile.statItems', { count: items.length }),
     t('profile.statCombos', { count: comboStats?.count ?? '…' }),
@@ -402,13 +389,16 @@ export default function ProfileScreen({ navigation }: Props) {
             loading={restoring}
             chevron={false}
           />
-          {showWithdraw && (
-            <Row
-              label={t('profile.withdrawConsent')}
-              onPress={handleWithdrawConsent}
-              loading={privacyBusy}
-            />
-          )}
+          <Row
+            label={t('privacy.title')}
+            onPress={() => navigation.navigate('ProfilePrivacy')}
+          />
+          <Row
+            label={t('privacy.exportData')}
+            onPress={handleExport}
+            loading={exporting}
+            chevron={false}
+          />
           <Row label={t('legal.privacy')} onPress={() => openLegal('privacy')} />
           <Row label={t('legal.terms')}   onPress={() => openLegal('terms')} />
           <Row label={t('profile.logout')} onPress={handleLogout} danger chevron={false} last />

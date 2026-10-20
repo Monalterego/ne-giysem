@@ -20,10 +20,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { ScanStackParamList } from '../../navigation/types';
 import { usePlanStore } from '../../store/usePlanStore';
 import { guardScan } from '../../lib/premiumGate';
+import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
+import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { callEdge, edgeError, EdgeError } from '../../lib/edgeFunctions';
+import { callEdge, edgeError, EdgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
@@ -72,7 +74,12 @@ export default function ScanScreen({ navigation }: Props) {
     : null;
   useFocusEffect(useCallback(() => { usePlanStore.getState().refresh(); }, []));
 
+  // Tarama yapay zekâ olmadan çalışmaz: ilk taramadan önce izin ekranı; reddedildiyse kapalı
+  const aiDeclined = useConsentStore((s) => aiStatus(s.records) === 'declined');
+  const ensureAi = async (): Promise<boolean> => (await ensureAiDecision()) === 'granted';
+
   const handlePick = async (source: 'camera' | 'gallery') => {
+    if (!(await ensureAi())) return;
     // Ön kontrol (hak harcamaz) — hak bittiyse kamera/galeri hiç açılmaz
     if (!(await guardScan())) return;
 
@@ -114,6 +121,8 @@ export default function ScanScreen({ navigation }: Props) {
       const processedBase64 = await processBase64(base64Input);
       navigation.navigate('StoreResult', { processedBase64, originalUri: uri });
     } catch (err) {
+      // 403: izin başka yerde geri çekilmiş → durumu tazele, ekran "kapalı"ya döner
+      if (isAiConsentError(err)) useConsentStore.getState().refresh();
       Alert.alert(t('combos.errorTitle'), friendlyError(err));
     } finally {
       setLoading(false);
@@ -125,6 +134,7 @@ export default function ScanScreen({ navigation }: Props) {
   const handleUrlAnalyze = async () => {
     const url = urlInput.trim();
     if (!url) return;
+    if (!(await ensureAi())) return;
     if (!(await guardScan())) return;
     setLoading(true);
     setLoadingUri(null);
@@ -183,6 +193,28 @@ export default function ScanScreen({ navigation }: Props) {
             )}
           </View>
 
+          {aiDeclined ? (
+            // Yapay zekâ izni yok → tarama kapalı; nedeni ve açma yolu
+            <View style={styles.card}>
+              <View style={styles.cardTop}>
+                <View style={styles.iconBox}>
+                  <Feather name="lock" size={20} color={colors.text} />
+                </View>
+                <View style={styles.cardTextWrap}>
+                  <Text style={styles.cardTitle}>{t('scan.disabledTitle')}</Text>
+                  <Text style={styles.cardDesc}>{t('scan.disabledBody')}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                onPress={() => openAiConsent()}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.primaryBtnText}>{t('scan.enableAi')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+          <>
           {/* Kamera */}
           <View style={styles.card}>
             <View style={styles.cardTop}>
@@ -279,6 +311,8 @@ export default function ScanScreen({ navigation }: Props) {
               <Text style={styles.secondaryBtnText}>{t('scan.pickFromGallery')}</Text>
             </TouchableOpacity>
           </View>
+          </>
+          )}
 
           <View style={styles.bottomPad} />
         </ScrollView>

@@ -19,6 +19,8 @@ import { useUserStore } from '../../store/useUserStore';
 import { spendScan } from '../../lib/premiumGate';
 import { openPaywall } from '../../navigation/navigationRef';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
+import { isAiConsentError } from '../../lib/edgeFunctions';
+import { useConsentStore } from '../../store/useConsentStore';
 import { friendlyError } from '../../utils/errorMessage';
 import type { VisionResult } from '../../utils/visionAnalysis';
 import { analyzeStoreItem } from '../../utils/comboEngine';
@@ -176,6 +178,13 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         setDetectedCategory(result.category);
       })
       .catch((err) => {
+        // İzin başka yerde geri çekilmiş (sunucu 403) → tarama kapalı; Tara ekranı nedenini yazar
+        if (!cancelled && isAiConsentError(err)) {
+          useConsentStore.getState().refresh();
+          Alert.alert(t('combos.errorTitle'), friendlyError(err));
+          navigation.goBack();
+          return;
+        }
         // Oturum yok / günlük sınır → nedenini göster (diğer hatalarda eski sessiz davranış)
         if (!cancelled && isUserFacingEdgeError(err)) {
           Alert.alert(t('combos.errorTitle'), friendlyError(err));

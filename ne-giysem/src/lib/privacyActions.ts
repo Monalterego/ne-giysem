@@ -1,6 +1,12 @@
+import { Share } from 'react-native';
 import { supabase } from './supabase';
 import { toStoragePath } from './storageUrls';
 import type { PrivateBucket } from './storageUrls';
+import { callEdge, edgeError } from './edgeFunctions';
+import { useConsentStore, isGranted } from '../store/useConsentStore';
+import { useUserStore } from '../store/useUserStore';
+import { TRYON_CONSENT_KINDS } from '../constants/consent';
+import type { TryOnConsentKind } from '../constants/consent';
 
 // ─── Kullanıcı verisini storage'dan da silen işlemler ────────────────────────
 // DB satırını silmek dosyayı silmez (storage cascade yok). Silme izni:
@@ -62,14 +68,13 @@ export async function deleteWardrobeItemFiles(
 }
 
 /**
- * Avatarı kaldır: dosya + avatar_url = null + avatarla üretilmiş olabilecek tüm
- * try-on sonuçları. includeBaseMannequin: fiziksel profilden üretilen yapay manken
- * de silinsin mi (rıza geri çekmede evet; yalnız avatar kaldırmada hayır).
+ * Avatarı kaldır: dosya + avatar_url = null + avatarla üretilmiş try-on sonuçları.
+ * Yapay manken (base_mannequin.png) ve mankenle üretilenler (`_m.jpg`) fotoğraftan
+ * türemediği için kalır — onlar fiziksel bilgi rızasına bağlı (removePhysicalData).
  */
 export async function removeAvatarAndTryOns(
   uid: string,
   avatarRef: string | null | undefined,
-  opts: { includeBaseMannequin?: boolean } = {},
 ): Promise<void> {
   const avatarPath = toStoragePath('avatars', avatarRef) ?? `${uid}/avatar.jpg`;
   if (avatarPath.startsWith(`${uid}/`)) await removeFiles('avatars', [avatarPath]);
@@ -79,18 +84,17 @@ export async function removeAvatarAndTryOns(
 
   const names = await listMannequinCache(uid);
   const toDelete = names
-    .filter((n) => opts.includeBaseMannequin || n !== BASE_MANNEQUIN)
+    .filter((n) => n !== BASE_MANNEQUIN && !n.endsWith('_m.jpg'))
     .map((n) => `${uid}/${n}`);
   await removeFiles('mannequin-cache', toDelete);
 }
 
 /**
- * Hassas veri rızasını geri çek: fiziksel profil alanları NULL, avatar ve tüm
- * try-on/manken dosyaları silinir, sensitive_consent_at NULL.
- * Yapay manken de silinir: fiziksel profilden (ten, vücut, saç) üretildiği için
- * geri çekilen veriden türemiş sayılır.
+ * Fiziksel profil verisini sil: alanlar + mannequin_url NULL; yapay manken ve onunla
+ * üretilen try-on'lar (ad sonu `_m.jpg` — CombosScreen modelVersion 'm') silinir.
+ * Avatar ve avatarla üretilen try-on'lar KALIR.
  */
-export async function withdrawSensitiveConsent(uid: string, avatarRef: string | null | undefined): Promise<void> {
+async function removePhysicalData(uid: string): Promise<void> {
   const { error } = await supabase
     .from('profiles')
     .update({
@@ -98,18 +102,81 @@ export async function withdrawSensitiveConsent(uid: string, avatarRef: string | 
       body_type: null, skin_tone: null,
       hair_color: null, hair_length: null, hair_type: null,
       mannequin_url: null,
-      sensitive_consent_at: null,
     })
     .eq('id', uid);
   if (error) throw error;
 
-  await removeAvatarAndTryOns(uid, avatarRef, { includeBaseMannequin: true });
+  const names = await listMannequinCache(uid);
+  const toDelete = names
+    .filter((n) => n === BASE_MANNEQUIN || n.endsWith('_m.jpg'))
+    .map((n) => `${uid}/${n}`);
+  await removeFiles('mannequin-cache', toDelete);
 }
 
-/** Rıza kaydı (ilk fiziksel profil kaydı / ilk avatar yüklemesi öncesi) */
-export async function recordSensitiveConsent(uid: string): Promise<string> {
-  const at = new Date().toISOString();
+/**
+ * profiles.sensitive_consent_at aynası (011) — karar consent_events'ten okunur, kolon
+ * yalnızca geriye dönük uyumluluk için: iki sanal deneme rızasından biri verildiyse
+ * zaman, ikisi de yoksa NULL.
+ */
+async function mirrorSensitiveConsent(uid: string): Promise<void> {
+  const { records } = useConsentStore.getState();
+  const any = TRYON_CONSENT_KINDS.some((k) => isGranted(records, k));
+  const at = any ? new Date().toISOString() : null;
   const { error } = await supabase.from('profiles').update({ sensitive_consent_at: at }).eq('id', uid);
-  if (error) throw error;
-  return at;
+  if (error) console.warn('[privacy] sensitive_consent_at aynası yazılamadı:', error.message);
+  else useUserStore.getState().setConsents({ sensitiveConsentAt: at });
+}
+
+/** Sanal deneme açık rızaları — her biri ayrı satır (consent_events) */
+export async function grantTryOnConsents(uid: string, kinds: TryOnConsentKind[]): Promise<void> {
+  const { record } = useConsentStore.getState();
+  for (const k of kinds) await record(uid, k, true);
+  await mirrorSensitiveConsent(uid);
+}
+
+/**
+ * Bir sanal deneme rızasını geri çek. Önce geri çekme kaydı (işleme hemen durur),
+ * sonra o rızaya bağlı veriler silinir:
+ *   tryon_photo    → fotoğraf + onunla üretilen try-on'lar (fiziksel bilgiler kalır)
+ *   tryon_physical → fiziksel bilgiler + yapay manken + mankenle üretilen try-on'lar
+ */
+export async function withdrawTryOnConsent(
+  uid: string, kind: TryOnConsentKind, avatarRef: string | null | undefined,
+): Promise<void> {
+  await useConsentStore.getState().record(uid, kind, false);
+
+  if (kind === 'tryon_photo') {
+    await removeAvatarAndTryOns(uid, avatarRef);
+    useUserStore.getState().setAvatarUrl(null);
+  } else {
+    await removePhysicalData(uid);
+    useUserStore.getState().clearPhysicalData();
+  }
+  await mirrorSensitiveConsent(uid);
+}
+
+/**
+ * Yapay zekâ ile fotoğraf işleme izni (Poof + Anthropic). Geri çekmek mevcut veriyi
+ * SİLMEZ: dolap kalır, yeni yüklemeler elle devam eder, "Uyar mı?" kapanır.
+ */
+export async function setAiProcessingConsent(uid: string, granted: boolean): Promise<void> {
+  await useConsentStore.getState().record(uid, 'ai_processing', granted);
+}
+
+/** Aydınlatma metni okundu ("Okudum") */
+export async function acknowledgeNotice(uid: string): Promise<void> {
+  await useConsentStore.getState().record(uid, 'notice_shown', true);
+}
+
+/**
+ * Verilerimi indir: export-my-data JSON'u paylaş menüsüyle. Fotoğraflar 1 saatlik
+ * imzalı link olarak JSON'un içinde (files). Günlük 3 sınırı sunucuda (429).
+ */
+export async function exportMyData(): Promise<'shared' | 'dismissed'> {
+  const res = await callEdge('export-my-data', {});
+  if (!res.ok) throw await edgeError(res);
+  const data = await res.json();
+  const text = JSON.stringify(data, null, 2);
+  const result = await Share.share({ message: text, title: 'sestina-data.json' });
+  return result.action === Share.dismissedAction ? 'dismissed' : 'shared';
 }

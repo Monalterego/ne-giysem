@@ -12,14 +12,16 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import { configurePurchases, identifyPurchaser, resetPurchaser } from './src/lib/purchases';
 import { usePlanStore } from './src/store/usePlanStore';
+import { useConsentStore } from './src/store/useConsentStore';
 
 // RevenueCat — native modül / anahtar yoksa sessizce devre dışı (lib/purchases güvenlik ağı)
 configurePurchases();
 
-/** Oturum açık: RevenueCat kimliğini bağla, planı sunucudan oku */
+/** Oturum açık: RevenueCat kimliğini bağla, planı ve rıza durumlarını sunucudan oku */
 function onSessionUser(uid: string): void {
   identifyPurchaser(uid);
   usePlanStore.getState().refresh();
+  useConsentStore.getState().refresh();
 }
 
 export default function App() {
@@ -46,6 +48,7 @@ export default function App() {
         useFavoritesStore.getState().reset();
         clearSignedUrlCache();   // önceki kullanıcının imzalı URL'leri bellekte kalmasın
         usePlanStore.getState().reset();
+        useConsentStore.getState().reset();
         resetPurchaser();
         return;
       }
@@ -124,6 +127,8 @@ export default function App() {
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active' && useUserStore.getState().isAuthenticated) {
         usePlanStore.getState().refresh();
+        // Açılışta okunamadıysa (çevrimdışı) tekrar dene — rıza kapısı buna bağlı
+        if (!useConsentStore.getState().loaded) useConsentStore.getState().refresh();
       }
     });
     return () => sub.remove();

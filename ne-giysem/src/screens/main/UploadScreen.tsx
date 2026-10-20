@@ -16,8 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
-import { callEdge, edgeError } from '../../lib/edgeFunctions';
+import { callEdge, edgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
+import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
+import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { t } from '../../i18n';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
 // Statik import — Metro dinamik yolu çözemez
@@ -44,8 +46,17 @@ export default function UploadScreen({ navigation }: Props) {
   const [processedBase64, setProcessedBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [guideVisible, setGuideVisible] = useState(false);
+  // Yapay zekâ izni yok → fotoğraf olduğu gibi, otomatik tanıma yok (elle akış)
+  const [manual, setManual] = useState(false);
+  const aiDeclined = useConsentStore((s) => aiStatus(s.records) === 'declined');
 
   const pick = async (source: 'camera' | 'gallery') => {
+    // İlk eklemeden önce yapay zekâ izni (karar verildiyse ekran açılmaz).
+    // Karar verilmeden kapandıysa hiçbir şey yapma.
+    const decision = await ensureAiDecision();
+    if (decision === 'dismissed') return;
+    const useAi = decision === 'granted';
+
     let result: ImagePicker.ImagePickerResult;
 
     if (source === 'camera') {
@@ -97,8 +108,15 @@ export default function UploadScreen({ navigation }: Props) {
 
     setOriginalUri(uri);
     setProcessedBase64(null);
-    setLoading(true);
+    setManual(!useAi);
 
+    // İzin yok: arka plan kaldırılmaz, fotoğraf olduğu gibi kaydedilir
+    if (!useAi) {
+      setProcessedBase64(base64Input);
+      return;
+    }
+
+    setLoading(true);
     try {
       if (Platform.OS === 'web') {
         // Web: Remove.bg atla, picker'dan gelen base64'ü direkt kullan
@@ -108,8 +126,15 @@ export default function UploadScreen({ navigation }: Props) {
         setProcessedBase64(processed);
       }
     } catch (err) {
-      Alert.alert(t('combos.errorTitle'), friendlyError(err));
-      setOriginalUri(null);
+      // İzin başka cihazda geri çekilmiş olabilir (sunucu 403) → elle akışa düş
+      if (isAiConsentError(err)) {
+        useConsentStore.getState().refresh();
+        setManual(true);
+        setProcessedBase64(base64Input);
+      } else {
+        Alert.alert(t('combos.errorTitle'), friendlyError(err));
+        setOriginalUri(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -117,7 +142,7 @@ export default function UploadScreen({ navigation }: Props) {
 
   const handleContinue = () => {
     if (!processedBase64 || !originalUri) return;
-    navigation.navigate('UploadDetail', { processedBase64, originalUri });
+    navigation.navigate('UploadDetail', { processedBase64, originalUri, manual });
   };
 
   return (
@@ -168,6 +193,16 @@ export default function UploadScreen({ navigation }: Props) {
             <Text style={styles.guideLink}>{t('upload.photoGuideLink')}</Text>
           </TouchableOpacity>
 
+          {/* İzin verilmedi: ne olduğunu söyle, istersen aç */}
+          {aiDeclined && (
+            <View style={styles.manualBox}>
+              <Text style={styles.tipText}>{t('upload.manualNote')}</Text>
+              <TouchableOpacity onPress={() => openAiConsent()} activeOpacity={0.7}>
+                <Text style={styles.guideLinkLeft}>{t('upload.enableAi')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={styles.tipBox}>
             <Text style={styles.tipTitle}>{t('upload.tipTitle')}</Text>
             <Text style={styles.tipText}>{t('upload.tip1')}</Text>
@@ -197,12 +232,18 @@ export default function UploadScreen({ navigation }: Props) {
               style={styles.previewImage}
               contentFit="contain"
             />
-            <View style={styles.badge}>
-              <Feather name="check" size={12} color={colors.white} />
-              <Text style={styles.badgeText}>
-                {Platform.OS === 'web' ? t('upload.bgCleanedWeb') : t('upload.bgCleaned')}
-              </Text>
-            </View>
+            {manual ? (
+              <View style={[styles.badge, styles.badgeMuted]}>
+                <Text style={[styles.badgeText, styles.badgeTextMuted]}>{t('upload.asIs')}</Text>
+              </View>
+            ) : (
+              <View style={styles.badge}>
+                <Feather name="check" size={12} color={colors.white} />
+                <Text style={styles.badgeText}>
+                  {Platform.OS === 'web' ? t('upload.bgCleanedWeb') : t('upload.bgCleaned')}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.actions}>
@@ -323,6 +364,28 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     marginTop: spacing.xs,
     textAlign: 'center',
+  },
+  manualBox: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    gap: spacing.xs,
+  },
+  guideLinkLeft: {
+    ...typography.bodySmall,
+    color: colors.text,
+    textDecorationLine: 'underline',
+  },
+  badgeMuted: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  badgeTextMuted: {
+    color: colors.text,
   },
   tipBox: {
     marginTop: spacing.lg,

@@ -14,8 +14,8 @@ export interface UserState {
   setPhysicalProfile: (fields: Partial<Pick<User, 'height' | 'weight' | 'age' | 'bodyType' | 'skinTone' | 'hairColor' | 'hairLength' | 'hairType'>>) => void;
   setAvatarUrl: (url: string | null) => void;
   setConsents: (fields: Partial<Pick<User, 'ageConfirmedAt' | 'sensitiveConsentAt'>>) => void;
-  /** Rıza geri çekildi: fiziksel alanlar + avatar + rıza zamanı temizlenir */
-  clearSensitiveData: () => void;
+  /** 'tryon_physical' geri çekildi: yalnızca fiziksel alanlar temizlenir (avatar kalır) */
+  clearPhysicalData: () => void;
   setOnboarded: (value: boolean) => void;
   setTargetOnboardingScreen: (screen: keyof OnboardingStackParamList | null) => void;
   setUserLocale: (l: 'tr' | 'en') => void;
@@ -45,7 +45,7 @@ export const useUserStore = create<UserState>((set) => ({
     set((state) => ({
       user: state.user ? { ...state.user, ...fields } : null,
     })),
-  clearSensitiveData: () =>
+  clearPhysicalData: () =>
     set((state) => ({
       user: state.user
         ? {
@@ -53,8 +53,6 @@ export const useUserStore = create<UserState>((set) => ({
             height: undefined, weight: undefined, age: undefined,
             bodyType: undefined, skinTone: undefined,
             hairColor: undefined, hairLength: undefined, hairType: undefined,
-            avatarUrl: undefined,
-            sensitiveConsentAt: null,
           }
         : null,
     })),

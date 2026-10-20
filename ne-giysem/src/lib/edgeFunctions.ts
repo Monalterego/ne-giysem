@@ -19,6 +19,11 @@ export class EdgeError extends Error {
   }
 }
 
+/** Proxy'ler (bg-removal, anthropic) yapay zekâ izni yoksa 403 'ai-consent-required' döner */
+export function isAiConsentError(err: unknown): err is EdgeError {
+  return err instanceof EdgeError && err.code === 'ai-consent-required';
+}
+
 /** Oturum yoksa çağrı YAPILMAZ — 401 sayılır. */
 async function accessToken(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();

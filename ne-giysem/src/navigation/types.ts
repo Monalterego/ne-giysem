@@ -26,8 +26,9 @@ export type WardrobeStackParamList = {
   WardrobeList: undefined;
   Upload: undefined;
   UploadDetail:
-    | { processedBase64: string; originalUri: string; existingItem?: undefined }
-    | { processedBase64?: undefined; originalUri?: undefined; existingItem: WardrobeItem };
+    // manual: yapay zekâ izni yok — fotoğraf olduğu gibi, otomatik tanıma yapılmaz
+    | { processedBase64: string; originalUri: string; manual?: boolean; existingItem?: undefined }
+    | { processedBase64?: undefined; originalUri?: undefined; manual?: undefined; existingItem: WardrobeItem };
 };
 
 export type ScanStackParamList = {
@@ -43,6 +44,7 @@ export type ProfileStackParamList = {
   ProfilePhoto: undefined;      // fotoğraf ekle/değiştir/kaldır + rehber
   ProfileStyle: undefined;      // Stil DNA detayı + yeniden belirle
   ProfilePhysical: undefined;   // fiziksel bilgiler + düzenle
+  ProfilePrivacy: undefined;    // Gizlilik ve izinler — üç izin, durum + geri çekme
 };
 
 export type MainTabParamList = {
@@ -62,4 +64,5 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Main: undefined;
   Paywall: { reason?: PaywallReason } | undefined;
+  AiConsent: undefined;   // lib/aiConsent openAiConsent() ile açılır
 };

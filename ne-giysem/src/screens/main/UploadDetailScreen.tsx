@@ -27,6 +27,9 @@ import { colors, fonts, typography, spacing, radius, shadows, layout } from '../
 import { Feather } from '@expo/vector-icons';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
 import { friendlyError } from '../../utils/errorMessage';
+import { isAiConsentError } from '../../lib/edgeFunctions';
+import { useConsentStore } from '../../store/useConsentStore';
+import { GARMENT_SWATCHES, MAX_ITEM_COLORS } from '../../constants/garmentColors';
 import { t } from '../../i18n';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'UploadDetail'>;
@@ -71,12 +74,16 @@ const SEASONS: { label: string; value: Season }[] = [
 ];
 
 export default function UploadDetailScreen({ route, navigation }: Props) {
-  const { processedBase64, originalUri, existingItem } = route.params as {
+  const { processedBase64, originalUri, existingItem, manual: manualParam } = route.params as {
     processedBase64?: string;
     originalUri?: string;
+    manual?: boolean;
     existingItem?: WardrobeItem;
   };
   const isEditMode = !!existingItem;
+  // Yapay zekâ izni yok → otomatik tanıma çağrılmaz; kategori/renk/mevsim elle.
+  // Sunucu 403 dönerse de (izin başka yerde geri çekildi) bu moda geçilir.
+  const [manual, setManual] = useState(!isEditMode && !!manualParam);
   // Düzenleme modunda görsel private storage'dan — imzala (genelde dolaptan önbellekli gelir)
   useSignedImages('wardrobe-items', [existingItem?.processedImageUrl]);
 
@@ -102,7 +109,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
     signals: existingItem.signals,
   } : null);
   const [saving,      setSaving]      = useState(false);
-  const [analyzing,   setAnalyzing]   = useState(!isEditMode);
+  const [analyzing,   setAnalyzing]   = useState(!isEditMode && !manualParam);
   const [aiDetected,  setAiDetected]  = useState(false);
   // Vision analizi başarısız — hiçbir alan otomatik doldurulmadı, kullanıcı elle seçmeli
   const [aiFailed,    setAiFailed]    = useState(false);
@@ -113,7 +120,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   const skipCategoryConfirm = useRef(false);
 
   useEffect(() => {
-    if (isEditMode || !processedBase64) return;
+    if (isEditMode || !processedBase64 || manualParam) return;
     let cancelled = false;
     analyzeClothingImage(processedBase64)
       .then((result) => {
@@ -141,6 +148,13 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         setAiDetected(true);
       })
       .catch((err) => {
+        if (cancelled) return;
+        // İzin yok (sunucu 403) → hata değil, elle akış
+        if (isAiConsentError(err)) {
+          useConsentStore.getState().refresh();
+          setManual(true);
+          return;
+        }
         // Beklenmedik hata — burada da sessiz kalma, kullanıcıya "sen seç" de
         if (!cancelled) { setAiFailed(true); setAiDetected(true); }
         // Oturum yok / günlük sınır → nedenini de söyle (alanları yine elle doldurabilir)
@@ -152,12 +166,27 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         if (!cancelled) setAnalyzing(false);
       });
     return () => { cancelled = true; };
-  }, [processedBase64, isEditMode]);
+  }, [processedBase64, isEditMode, manualParam]);
 
   const handleCategoryChange = (cat: ClothingCategory) => {
     setCategory(cat);
     setSubCategory(undefined);
   };
+
+  // Renk: en fazla 3; listede olmayan (AI'nın bulduğu) renkler de seçili kart olarak görünür
+  const toggleColor = (hex: string) => {
+    setItemColors((prev) => {
+      const has = prev.some((c) => c.toLowerCase() === hex.toLowerCase());
+      if (has) return prev.filter((c) => c.toLowerCase() !== hex.toLowerCase());
+      return prev.length >= MAX_ITEM_COLORS ? prev : [...prev, hex];
+    });
+  };
+  const colorOptions = [
+    ...GARMENT_SWATCHES,
+    ...itemColors
+      .filter((c) => !GARMENT_SWATCHES.some((s) => s.hex.toLowerCase() === c.toLowerCase()))
+      .map((c) => ({ key: '', hex: c })),
+  ];
 
   const toggleSeason = (season: Season) => {
     setSeasons((prev) =>
@@ -383,7 +412,13 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             <Text style={styles.aiBannerText}>{t('uploadDetail.aiAnalyzing')}</Text>
           </View>
         )}
-        {!analyzing && aiDetected && (
+        {manual && (
+          <View style={[styles.aiBanner, styles.aiBannerDone]}>
+            <Feather name="edit-3" size={14} color={colors.text} />
+            <Text style={styles.aiBannerText}>{t('uploadDetail.manualBanner')}</Text>
+          </View>
+        )}
+        {!manual && !analyzing && aiDetected && (
           <View style={[styles.aiBanner, styles.aiBannerDone]}>
             <Feather name={aiFailed ? 'alert-circle' : 'zap'} size={14} color={aiFailed ? colors.error : colors.text} />
             <Text style={[styles.aiBannerText, aiFailed && styles.aiBannerWarn]}>
@@ -472,6 +507,30 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
             </View>
           </>
         )}
+
+        {/* Renk — elle akışta tek kaynak; AI akışında düzeltme için */}
+        <Text style={styles.sectionTitle}>
+          {t('uploadDetail.color')}{' '}
+          <Text style={styles.optional}>{t('uploadDetail.colorMax', { max: MAX_ITEM_COLORS })}</Text>
+        </Text>
+        <View style={styles.chipRow}>
+          {colorOptions.map(({ key, hex }) => {
+            const on = itemColors.some((c) => c.toLowerCase() === hex.toLowerCase());
+            return (
+              <TouchableOpacity
+                key={hex}
+                style={[styles.swatchWrap, on && styles.swatchWrapOn]}
+                onPress={() => toggleColor(hex)}
+                activeOpacity={0.75}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={key ? t(`garmentColor.${key}`) : hex}
+              >
+                <View style={[styles.swatch, { backgroundColor: hex }]} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         {/* Kumaş */}
         <Text style={styles.sectionTitle}>{t('uploadDetail.fabric')}</Text>
@@ -703,6 +762,27 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: colors.white,
+  },
+  // Renk kartı: seçili → siyah çerçeve (renkli vurgu yok)
+  swatchWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swatchWrapOn: {
+    borderWidth: 2,
+    borderColor: colors.text,
+  },
+  swatch: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
   },
   aiBanner: {
     flexDirection: 'row',

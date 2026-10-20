@@ -14,6 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList, StyleEntry } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
+import { useConsentStore, isGranted } from '../../store/useConsentStore';
 import { supabase } from '../../lib/supabase';
 import { callEdge, edgeError } from '../../lib/edgeFunctions';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
@@ -98,6 +99,13 @@ export default function StyleResultScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    // Yapay zekâ izni yoksa stil adları da Anthropic'e gönderilmez → yerel ad
+    // (onboarding'de izin henüz sorulmamıştır; proxy de 403 döner)
+    if (!isGranted(useConsentStore.getState().records, 'ai_processing')) {
+      setDnaName(primary.name);
+      setAiLoading(false);
+      return;
+    }
     fetchDnaFromClaude(selectedStyles)
       .then(({ dnaName: name, traits: t }) => {
         if (cancelled) return;

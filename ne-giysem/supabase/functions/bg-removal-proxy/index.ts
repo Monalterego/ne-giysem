@@ -1,8 +1,9 @@
 // supabase/functions/bg-removal-proxy/index.ts
 //
-// Poof arka plan silme proxy'si — kimlik (getUser) + boyut tavanı + günlük sayaç.
+// Poof arka plan silme proxy'si — kimlik (getUser) + yapay zekâ izni + boyut tavanı + günlük sayaç.
 
 import { adminClient, requireUser, bumpUsage, json, CORS } from "../_shared/auth.ts";
+import { hasConsent, consentRequired } from "../_shared/consent.ts";
 
 // ─── Sınırlar (tek yer) ──────────────────────────────────────────────────────
 const DAILY_CAP     = 150;
@@ -28,6 +29,9 @@ Deno.serve(async (req) => {
     const admin = adminClient();
     const user  = await requireUser(req, admin);
     if (!user) return json({ error: "unauthorized" }, 401);
+
+    // Apple 5.1.2(i): güncel 'ai_processing' izni yoksa fotoğraf Poof'a gitmez
+    if (!(await hasConsent(admin, user.id, "ai_processing"))) return consentRequired();
 
     const body = await req.json().catch(() => null);
     const image_b64 = body?.image_b64;

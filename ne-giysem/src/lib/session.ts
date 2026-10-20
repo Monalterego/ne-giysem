@@ -2,6 +2,7 @@ import { useWardrobeStore } from '../store/useWardrobeStore';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { useUserStore } from '../store/useUserStore';
 import { usePlanStore } from '../store/usePlanStore';
+import { useConsentStore } from '../store/useConsentStore';
 import { clearSignedUrlCache } from './storageUrls';
 import { resetPurchaser } from './purchases';
 
@@ -15,6 +16,7 @@ export function clearLocalSession(): void {
   useFavoritesStore.getState().reset();   // App SIGNED_OUT da sıfırlar; çevrimdışı signOut event üretmezse diye burada da
   clearSignedUrlCache();
   usePlanStore.getState().reset();
+  useConsentStore.getState().reset();
   resetPurchaser();   // RevenueCat anonim kullanıcıya döner (sonraki hesap önceki aboneliği görmesin)
   useUserStore.getState().logout();
 }

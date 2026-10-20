@@ -76,7 +76,7 @@ export default function AgeGateScreen() {
   const runUnder18Delete = async () => {
     setSaving(true);
     try {
-      const r = await deleteAccount();
+      const r = await deleteAccount('under18');
       if (r === 'deleted') {
         Alert.alert(t('profile.deleteAccountDone'));
         clearLocalSession();

@@ -16,7 +16,8 @@ import type { OnboardingStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
 import { supabase } from '../../lib/supabase';
-import { recordSensitiveConsent } from '../../lib/privacyActions';
+import { grantTryOnConsents } from '../../lib/privacyActions';
+import { useConsentStore, isGranted } from '../../store/useConsentStore';
 import SensitiveConsentModal from '../../components/SensitiveConsentModal';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { t } from '../../i18n';
@@ -121,7 +122,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
   const user                = useUserStore((s: UserState) => s.user);
   const setOnboarded        = useUserStore((s: UserState) => s.setOnboarded);
   const setPhysicalProfile  = useUserStore((s: UserState) => s.setPhysicalProfile);
-  const setConsents         = useUserStore((s: UserState) => s.setConsents);
+  const physicalConsent     = useConsentStore((s) => isGranted(s.records, 'tryon_physical'));
   const locale              = useUserStore((s: UserState) => s.locale);
 
   // İsim/açıklama içeren diziler component içinde — dil değişince güncellenir (key değerleri sabit)
@@ -205,8 +206,9 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
   const handleContinue = () => {
     // Hiç seçim yoksa kaydedilecek hassas veri yok → rıza da gerekmez
     if (!anySelected) { handleSkip(); return; }
-    // İlk kayıttan önce açık rıza (geri çekildiyse yeniden)
-    if (!user?.sensitiveConsentAt) { setConsentVisible(true); return; }
+    // İlk kayıttan önce 'tryon_physical' açık rızası (geri çekildiyse yeniden).
+    // Fotoğraf rızası burada sorulmaz — bu akış yalnızca fiziksel bilgileri gönderir.
+    if (!physicalConsent) { setConsentVisible(true); return; }
     save();
   };
 
@@ -214,8 +216,7 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
     if (!user) return;
     setSaving(true);
     try {
-      const at = await recordSensitiveConsent(user.id);
-      setConsents({ sensitiveConsentAt: at });
+      await grantTryOnConsents(user.id, ['tryon_physical']);
       setConsentVisible(false);
       setSaving(false);
       await save();
@@ -385,8 +386,9 @@ export default function PhysicalProfileScreen({ navigation }: Props) {
 
       <SensitiveConsentModal
         visible={consentVisible}
+        kinds={['tryon_physical']}
         saving={saving}
-        onAccept={handleConsentAccept}
+        onSubmit={handleConsentAccept}
         onCancel={() => setConsentVisible(false)}
       />
     </SafeAreaView>

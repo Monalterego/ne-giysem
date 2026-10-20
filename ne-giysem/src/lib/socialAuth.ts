@@ -93,8 +93,9 @@ export async function signInWithGoogle(): Promise<SocialResult | null> {
  * Hesabı kalıcı olarak siler (App Store 5.1.1(v) / Google Play).
  * Kullanıcı Apple onay ekranında vazgeçerse 'cancelled' döner (hata DEĞİL).
  * Google yapılandırması bu modülde olduğu için burada duruyor.
+ * source: deletion_log'daki kaynak — Profil 'app', AgeGate (18 yaş altı) 'under18'.
  */
-export async function deleteAccount(): Promise<'deleted' | 'cancelled'> {
+export async function deleteAccount(source: 'app' | 'under18' = 'app'): Promise<'deleted' | 'cancelled'> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('no-session');
   const providers = (user.identities ?? []).map((i) => i.provider);
@@ -119,7 +120,7 @@ export async function deleteAccount(): Promise<'deleted' | 'cancelled'> {
 
   // c) Sunucu: storage + auth kullanıcısı (tablolar cascade)
   const { data, error } = await supabase.functions.invoke('delete-account', {
-    body: appleAuthCode ? { appleAuthCode } : {},
+    body: appleAuthCode ? { appleAuthCode, source } : { source },
   });
   if (error || !data?.ok) throw new Error(error?.message ?? data?.error ?? 'delete-failed');
 

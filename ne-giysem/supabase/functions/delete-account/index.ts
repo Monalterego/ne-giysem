@@ -11,7 +11,12 @@
 //   4. RevenueCat abone kaydını sil (DELETE /subscribers/{uid}). Başarısız olursa silme
 //      YİNE DE sürer — log + ops_events (kimliksiz).
 //   5. auth.users kaydını sil → profiles / style_profiles / wardrobe_items / combos /
-//      favorite_combos / entitlements ON DELETE CASCADE ile otomatik gider.
+//      favorite_combos / entitlements / consent_events ON DELETE CASCADE ile otomatik gider.
+//   6. deletion_log'a kimliksiz bir satır (kaynak, silinen veri türleri, RevenueCat/Apple
+//      sonucu). Yazılamazsa silme yine başarılı döner — log + ops_events.
+//
+// Gövde: { appleAuthCode?: string, source?: 'app' | 'under18' } — 'email' istemciden
+// kabul edilmez (destek talebiyle panelden silinir, satır elle eklenir; 014).
 //
 // Gerekli secret'lar (npx supabase secrets set ...):
 //   APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_CLIENT_ID (= bundle id), APPLE_PRIVATE_KEY (.p8 içeriği)
@@ -30,6 +35,15 @@ const CORS = {
 };
 
 const BUCKETS = ["wardrobe-items", "mannequin-cache", "avatars"];
+
+// deletion_log.categories — satırı olan tablolar (sayı değil, yalnızca tür)
+const LOGGED_TABLES = [
+  "style_profiles", "wardrobe_items", "combos", "favorite_combos",
+  "consent_events", "entitlements", "tryon_renders", "api_usage",
+] as const;
+const PHYSICAL_FIELDS = [
+  "height", "weight", "age", "body_type", "skin_tone", "hair_color", "hair_length", "hair_type",
+] as const;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -119,6 +133,34 @@ async function purgeStorage(admin: any, uid: string): Promise<number> {
   return removed;
 }
 
+// ── Silme kaydı ──────────────────────────────────────────────────────────
+
+/** Silinecek veri türleri — auth.users silinmeden ÖNCE okunur (sonra cascade ile gider) */
+// deno-lint-ignore no-explicit-any
+async function dataCategories(admin: any, uid: string, removedFiles: number): Promise<string[]> {
+  const cats = ["account"];
+
+  const { data: prof } = await admin
+    .from("profiles")
+    .select(`avatar_url, mannequin_url, ${PHYSICAL_FIELDS.join(", ")}`)
+    .eq("id", uid)
+    .maybeSingle();
+  // deno-lint-ignore no-explicit-any
+  if (prof && PHYSICAL_FIELDS.some((f) => (prof as any)[f] != null)) cats.push("physical_profile");
+  if (prof?.avatar_url)    cats.push("avatar");
+  if (prof?.mannequin_url) cats.push("mannequin");
+
+  const counts = await Promise.all(LOGGED_TABLES.map(async (table) => {
+    const { count, error } = await admin
+      .from(table).select("*", { count: "exact", head: true }).eq("user_id", uid);
+    return !error && (count ?? 0) > 0;
+  }));
+  LOGGED_TABLES.forEach((table, i) => { if (counts[i]) cats.push(table); });
+
+  if (removedFiles > 0) cats.push("storage_files");
+  return cats;
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -166,9 +208,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 5) Kullanıcı → tüm tablolar cascade
+    // 5) Kullanıcı → tüm tablolar cascade. Önce silinecek türleri oku (sonra yok olur)
+    const categories = await dataCategories(admin, user.id, removed).catch(() => ["account"]);
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
     if (delErr) return json({ error: "delete-failed", detail: delErr.message }, 500);
+
+    // 6) Kimliksiz silme kaydı — en iyi çaba
+    const source = body?.source === "under18" ? "under18" : "app";
+    const { error: logErr } = await admin.from("deletion_log").insert({
+      source,
+      categories,
+      revenuecat_ok:   revenuecat === "deleted",
+      apple_revoke_ok: apple === "skipped" ? null : apple === "revoked",
+    });
+    if (logErr) {
+      await reportOpsEvent(admin, "delete-account", "deletion_log_failed", { error: logErr.message });
+    }
 
     console.log(`[delete-account] ${user.id} silindi · dosya:${removed} · apple:${apple} · revenuecat:${revenuecat}`);
     return json({ ok: true, removedFiles: removed, apple, revenuecat });

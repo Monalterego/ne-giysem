@@ -5,6 +5,7 @@ import ProfileScreen from '../screens/main/ProfileScreen';
 import ProfilePhotoScreen from '../screens/main/profile/ProfilePhotoScreen';
 import StyleDnaScreen from '../screens/main/profile/StyleDnaScreen';
 import PhysicalInfoScreen from '../screens/main/profile/PhysicalInfoScreen';
+import PrivacyScreen from '../screens/main/profile/PrivacyScreen';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -15,6 +16,7 @@ export default function ProfileNavigator() {
       <Stack.Screen name="ProfilePhoto" component={ProfilePhotoScreen} />
       <Stack.Screen name="ProfileStyle" component={StyleDnaScreen} />
       <Stack.Screen name="ProfilePhysical" component={PhysicalInfoScreen} />
+      <Stack.Screen name="ProfilePrivacy" component={PrivacyScreen} />
     </Stack.Navigator>
   );
 }
