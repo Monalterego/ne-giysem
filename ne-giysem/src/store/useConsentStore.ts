@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { CONSENT_VERSIONS } from '../constants/consent';
+import { CONSENT_VERSIONS, majorVersion } from '../constants/consent';
 import type { ConsentKind, TryOnConsentKind } from '../constants/consent';
 import type { User } from '../types';
 
@@ -65,16 +65,33 @@ export const useConsentStore = create<ConsentState>((set) => ({
   reset: () => set({ loaded: false, records: {} }),
 }));
 
-/** Güncel durum = en son kayıt; kayıt yoksa izin yok */
-export function isGranted(records: ConsentMap, kind: ConsentKind): boolean {
-  return records[kind]?.granted === true;
+/**
+ * Kaydın metin sürümü güncelle nasıl ilişkili:
+ *   'current' aynı · 'minor' yalnız alt sürüm farklı (geçerli, not gösterilir)
+ *   'major'   ana sürüm farklı ya da biçim dışı (geçersiz, yeniden sorulur)
+ */
+export function versionState(rec: ConsentRecord | undefined, kind: ConsentKind): 'current' | 'minor' | 'major' {
+  if (!rec) return 'current';
+  if (rec.textVersion === CONSENT_VERSIONS[kind]) return 'current';
+  const mine = majorVersion(rec.textVersion);
+  return mine !== null && mine === majorVersion(CONSENT_VERSIONS[kind]) ? 'minor' : 'major';
 }
 
-/** 'undecided' → hiç sorulmadı (izin ekranı gösterilmeli) */
+/**
+ * Güncel durum = en son kayıt. İzin sayılması için o kayıt granted OLMALI ve ana
+ * sürümü güncel ana sürümle aynı olmalı (alt sürüm farkı sorun değil).
+ */
+export function isGranted(records: ConsentMap, kind: ConsentKind): boolean {
+  const r = records[kind];
+  return r?.granted === true && versionState(r, kind) !== 'major';
+}
+
+/** 'undecided' → hiç sorulmadı ya da onaylanan metnin ana sürümü eskidi (izin ekranı gösterilmeli) */
 export function aiStatus(records: ConsentMap): 'granted' | 'declined' | 'undecided' {
   const r = records.ai_processing;
   if (!r) return 'undecided';
-  return r.granted ? 'granted' : 'declined';
+  if (!r.granted) return 'declined';
+  return isGranted(records, 'ai_processing') ? 'granted' : 'undecided';
 }
 
 /**
@@ -93,8 +110,7 @@ export function requiredTryOnConsents(user: User | null | undefined, records: Co
   return out;
 }
 
-/** Aydınlatma bu sürümüyle okundu mu? (metin değişince yeniden "Okudum" istenir) */
+/** Aydınlatma güncel ana sürümüyle okundu mu? (ana sürüm değişince yeniden "Okudum" istenir) */
 export function noticeRead(records: ConsentMap): boolean {
-  const r = records.notice_shown;
-  return !!r && r.granted && r.textVersion === CONSENT_VERSIONS.notice_shown;
+  return isGranted(records, 'notice_shown');
 }

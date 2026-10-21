@@ -588,7 +588,8 @@
     "updateRequired": "The app has been updated. Please fully close and reopen it.",
     "productImageNotFound": "No product image was found on this page. You can try uploading a screenshot of the product instead.",
     "productUrlInvalid": "This link can't be opened. Make sure you pasted the store's product page link.",
-    "aiConsentRequired": "This needs AI permission. You can turn it on in Profile → Privacy & permissions."
+    "aiConsentRequired": "This needs AI permission. You can turn it on in Profile → Privacy & permissions.",
+    "tryOnConsentRequired": "Virtual try-on needs a consent you haven't given. You can give it in Profile → Privacy & permissions."
   },
   "scan": {
     "preparingImage": "Preparing image…",
@@ -858,7 +859,9 @@
     "withdraw": "Withdraw permission",
     "withdrawTitle": "Withdraw permission",
     "withdrawDone": "Permission withdrawn.",
-    "exportData": "Download my data"
+    "exportData": "Download my data",
+    "textUpdatedMajor": "The text you agreed to has changed; please give this permission again.",
+    "textUpdatedMinor": "The text you agreed to has had minor updates; your permission still applies."
   },
   "garmentColor": {
     "black": "Black",
@@ -962,6 +965,9 @@
   "legal": {
     "privacy": "Privacy Policy",
     "terms": "Terms of Use",
+    "notice": "Privacy Notice",
+    "consentText": "Explicit Consent Text",
+    "requests": "Data requests (exercise your rights)",
     "consentPrefix": "By continuing, you agree to our ",
     "termsInline": "Terms of Use",
     "consentMiddle": " and ",

@@ -588,7 +588,8 @@
     "updateRequired": "Uygulama güncellendi. Lütfen uygulamayı tamamen kapatıp yeniden aç.",
     "productImageNotFound": "Bu sayfada ürün görseli bulunamadı. Ürün fotoğrafını ekran görüntüsüyle yüklemeyi deneyebilirsin.",
     "productUrlInvalid": "Bu bağlantı açılamıyor. Mağazanın ürün sayfası linkini yapıştırdığından emin ol.",
-    "aiConsentRequired": "Bu işlem için yapay zekâ izni gerekiyor. Profil → Gizlilik ve izinler'den açabilirsin."
+    "aiConsentRequired": "Bu işlem için yapay zekâ izni gerekiyor. Profil → Gizlilik ve izinler'den açabilirsin.",
+    "tryOnConsentRequired": "Sanal deneme için gereken rıza verilmemiş. Profil → Gizlilik ve izinler'den verebilirsin."
   },
   "scan": {
     "preparingImage": "Görsel hazırlanıyor…",
@@ -858,7 +859,9 @@
     "withdraw": "İzni geri çek",
     "withdrawTitle": "İzni geri çek",
     "withdrawDone": "İzin geri çekildi.",
-    "exportData": "Verilerimi indir"
+    "exportData": "Verilerimi indir",
+    "textUpdatedMajor": "Onayladığın metin güncellendi; izni yeniden vermen gerekiyor.",
+    "textUpdatedMinor": "Onayladığın metinde küçük güncellemeler yapıldı; iznin geçerli."
   },
   "garmentColor": {
     "black": "Siyah",
@@ -962,6 +965,9 @@
   "legal": {
     "privacy": "Gizlilik Politikası",
     "terms": "Kullanım Koşulları",
+    "notice": "Aydınlatma Metni",
+    "consentText": "Açık Rıza Metni",
+    "requests": "Başvuru (haklarını kullan)",
     "consentPrefix": "Devam ederek ",
     "termsInline": "Kullanım Koşulları",
     "consentMiddle": "'nı ve ",

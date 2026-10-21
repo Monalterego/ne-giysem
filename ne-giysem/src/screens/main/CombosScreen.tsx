@@ -40,6 +40,10 @@ import type { Combo } from '../../types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { friendlyError, isModelImageError } from '../../utils/errorMessage';
 import { EdgeError } from '../../lib/edgeFunctions';
+import { grantTryOnConsents } from '../../lib/privacyActions';
+import { useConsentStore, isGranted } from '../../store/useConsentStore';
+import type { TryOnConsentKind } from '../../constants/consent';
+import SensitiveConsentModal from '../../components/SensitiveConsentModal';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
 import { catLabel, subcatLabel } from '../../constants/categories';
@@ -512,6 +516,11 @@ export default function CombosScreen() {
   const [renderLimit,          setRenderLimit]           = useState(FREE_RENDER_LIMIT);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
+  // Try-on öncesi eksik rıza: hangi kombin, hangi kaynak, hangi rıza
+  const [tryOnConsent, setTryOnConsent] = useState<
+    { combo: Combo; avatarUrl?: string; kind: TryOnConsentKind } | null
+  >(null);
+  const [tryOnConsentSaving, setTryOnConsentSaving] = useState(false);
   const [planTarget,           setPlanTarget]            = useState<Combo | null>(null);
   const [isFirstTryOn,         setIsFirstTryOn]          = useState(false);
 
@@ -611,6 +620,16 @@ export default function CombosScreen() {
 
   const handleVirtualModel = useCallback(async (combo: Combo, avatarUrl?: string) => {
     if (!user) return;
+
+    // Rıza ön kontrolü — fashn-proxy de 403 döner, ama start'tan sonra dönerse açılan
+    // render 30 dk kotada açık sayılır. Avatar → fotoğraf rızası; yoksa yapay manken →
+    // fiziksel bilgi rızası. Eksikse rıza penceresi, onaydan sonra yeniden başlar.
+    const consentKind: TryOnConsentKind = avatarUrl ? 'tryon_photo' : 'tryon_physical';
+    if (!isGranted(useConsentStore.getState().records, consentKind)) {
+      setTryOnConsent({ combo, avatarUrl, kind: consentKind });
+      return;
+    }
+
     setModelHasExtras(combo.items.some((i) => i.category === 'bag' || i.category === 'accessory'));
 
     // Fiziksel profil + kayıtlı manken URL'i. Kota istemcide kontrol EDİLMEZ:
@@ -755,6 +774,8 @@ export default function CombosScreen() {
       // ⚠️ Bozuk manken kalıcı: bir kez kaydedilirse her denemede aynı hata gelir.
       //    Pose hatasında cache'i temizle ki sonraki denemede YENİ manken üretilsin.
       //    Deploy öncesi kaydedilmiş FASHN URL'i proxy'nin izin listesinde değil (400) → aynı tedavi.
+      // 403: rıza başka yerde geri çekilmiş → yerel durumu tazele (mesaj friendlyError'da)
+      if (err instanceof EdgeError && err.code === 'consent-required') useConsentStore.getState().refresh();
       const staleMannequin = !avatarUrl && err instanceof EdgeError && err.code === 'image-not-allowed:model_image';
       if ((isModelImageError(err) || staleMannequin) && user?.id) {
         await supabase.from('profiles').update({ mannequin_url: null }).eq('id', user.id);
@@ -767,6 +788,23 @@ export default function CombosScreen() {
       setModelLoading(false);
     }
   }, [user]);
+
+  // Rıza verildi → kayıt, pencereyi kapat, try-on'u aynı parametrelerle yeniden başlat
+  const handleTryOnConsentSubmit = useCallback(async (granted: TryOnConsentKind[]) => {
+    if (!user || !tryOnConsent) return;
+    setTryOnConsentSaving(true);
+    try {
+      await grantTryOnConsents(user.id, granted);
+      const { combo, avatarUrl } = tryOnConsent;
+      setTryOnConsent(null);
+      // iOS: RN Modal kapanırken ikinci modal açılamaz → kapanış animasyonunu bekle
+      setTimeout(() => handleVirtualModel(combo, avatarUrl), 350);
+    } catch {
+      Alert.alert(t('combos.errorTitle'), t('consent.saveError'));
+    } finally {
+      setTryOnConsentSaving(false);
+    }
+  }, [user, tryOnConsent, handleVirtualModel]);
 
   // Avatar kontrolü: varsa direkt IDM-VTON, yoksa seçenek modalı
   // (handleVirtualModel'den SONRA tanımlı — bağımlılık dizisi render sırasında okunur)
@@ -1113,6 +1151,14 @@ export default function CombosScreen() {
           if (pendingCombo) handleVirtualModel(pendingCombo, undefined);
           setPendingCombo(null);
         }}
+      />
+      {/* Sanal deneme rızası eksik — yalnız bu akışın gerektirdiği rıza sorulur */}
+      <SensitiveConsentModal
+        visible={tryOnConsent !== null}
+        kinds={tryOnConsent ? [tryOnConsent.kind] : []}
+        saving={tryOnConsentSaving}
+        onSubmit={handleTryOnConsentSubmit}
+        onCancel={() => setTryOnConsent(null)}
       />
 
     </SafeAreaView>

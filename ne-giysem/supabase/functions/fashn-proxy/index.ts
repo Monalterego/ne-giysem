@@ -8,9 +8,16 @@
 //                   görsel URL'leri kullanıcının kendi storage'ı veya kendi FASHN çıktısı
 // action 'status' → prediction id kullanıcının bir render'ına ait olmalı (403);
 //                   completed ise çıktılar kaydedilir; model-create değilse render başarılı
+//
+// Rıza (consent_events, 014) — eksikse 403 { error: 'consent-required', kinds }:
+//   start : tryon_photo YA DA tryon_physical'dan en az biri (kota düşmeden önce)
+//   run   : model-create                    → tryon_physical (fiziksel bilgi → manken tarifi)
+//           model_image avatars bucket'ında → tryon_photo    (profil fotoğrafı)
 
 import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
 import { reportOpsEvent, serviceUnavailable } from "../_shared/ops.ts";
+import { hasConsent, consentRequired } from "../_shared/consent.ts";
+import type { ConsentKind } from "../_shared/consent.ts";
 
 const FASHN_BASE = "https://api.fashn.ai/v1";
 
@@ -55,6 +62,16 @@ function isOwnStorageUrl(raw: string, uid: string): boolean {
     });
   } catch {
     return false;
+  }
+}
+
+/** Kendi storage URL'inin bucket'ı (isOwnStorageUrl'den SONRA çağrılır); değilse null */
+function storageBucket(raw: string): string | null {
+  try {
+    const m = new URL(raw).pathname.match(/^\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\//);
+    return m ? m[1] : null;
+  } catch {
+    return null;
   }
 }
 
@@ -121,6 +138,15 @@ Deno.serve(async (req) => {
 
     // ── start ──────────────────────────────────────────────────────────────
     if (body.action === "start") {
+      // Sanal deneme rızalarından en az biri yoksa render açılmaz (kota düşmez)
+      const [photo, physical] = await Promise.all([
+        hasConsent(admin, user.id, "tryon_photo"),
+        hasConsent(admin, user.id, "tryon_physical"),
+      ]);
+      if (!photo && !physical) {
+        return consentRequired("consent-required", ["tryon_photo", "tryon_physical"]);
+      }
+
       const { data, error } = await admin.rpc("start_tryon", { p_user: user.id });
       if (error) throw new Error(`start_tryon: ${error.message}`);
       if (!data?.allowed) {
@@ -169,6 +195,21 @@ Deno.serve(async (req) => {
           // Reddedilen URL de loga (yalnızca 200 karakter — yine de kullanıcı yolu içerir)
           return bad(`image-not-allowed:${f}`, String(inputs[f]).slice(0, 200));
         }
+      }
+
+      // Rıza: bu çağrının FASHN'a gönderdiği kişisel veriye göre (run bütçesinden ÖNCE)
+      const needed: ConsentKind[] = [];
+      if (modelName === "model-create") needed.push("tryon_physical");
+      if (typeof inputs.model_image === "string" && storageBucket(inputs.model_image) === "avatars") {
+        needed.push("tryon_photo");
+      }
+      const missing: ConsentKind[] = [];
+      for (const kind of needed) {
+        if (!(await hasConsent(admin, user.id, kind))) missing.push(kind);
+      }
+      if (missing.length) {
+        console.error(`[fashn-proxy] 403 consent-required user=${user.id} model=${modelName} missing=${missing.join(",")}`);
+        return consentRequired("consent-required", missing);
       }
 
       // FASHN'a gitmeden ÖNCE çağrı bütçesinden yer ayır

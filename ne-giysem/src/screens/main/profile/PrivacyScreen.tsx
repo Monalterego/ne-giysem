@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../../navigation/types';
 import { useUserStore } from '../../../store/useUserStore';
-import { useConsentStore } from '../../../store/useConsentStore';
+import { useConsentStore, isGranted, versionState } from '../../../store/useConsentStore';
 import type { ConsentRecord } from '../../../store/useConsentStore';
 import type { TryOnConsentKind } from '../../../constants/consent';
 import { grantTryOnConsents, setAiProcessingConsent, withdrawTryOnConsent } from '../../../lib/privacyActions';
 import { openAiConsent } from '../../../lib/aiConsent';
 import { formatLocalDay } from '../../../lib/premiumGate';
 import { openLegal } from '../../../constants/legal';
+import type { LegalDoc } from '../../../constants/legal';
 import SensitiveConsentModal from '../../../components/SensitiveConsentModal';
 import { colors, fonts, typography, spacing, radius, layout } from '../../../constants/theme';
 import { t } from '../../../i18n';
@@ -26,6 +27,13 @@ const META: Record<Kind, { title: string; body: string; effect: string }> = {
   tryon_physical: { title: 'privacy.physicalTitle', body: 'privacy.physicalBody', effect: 'privacy.physicalWithdrawEffect' },
 };
 const ORDER: Kind[] = ['ai_processing', 'tryon_photo', 'tryon_physical'];
+
+const LEGAL_LINKS: { doc: LegalDoc; label: string }[] = [
+  { doc: 'notice',   label: 'legal.notice' },
+  { doc: 'consent',  label: 'legal.consentText' },
+  { doc: 'requests', label: 'legal.requests' },
+  { doc: 'privacy',  label: 'legal.privacy' },
+];
 
 function statusText(rec: ConsentRecord | undefined): string {
   if (!rec) return t('privacy.statusNotAsked');
@@ -100,11 +108,18 @@ export default function PrivacyScreen({ navigation }: Props) {
           <ActivityIndicator color={colors.text} style={styles.loader} />
         ) : ORDER.map((kind) => {
           const rec = records[kind];
-          const granted = rec?.granted === true;
+          // Ana sürümü eskimiş onay geçersiz → "İzin ver" (yeniden sorulur)
+          const granted = isGranted(records, kind);
+          const version = rec?.granted ? versionState(rec, kind) : 'current';
           return (
             <View key={kind} style={styles.card}>
               <Text style={styles.cardTitle}>{t(META[kind].title)}</Text>
               <Text style={[styles.status, granted && styles.statusOn]}>{statusText(rec)}</Text>
+              {version !== 'current' && (
+                <Text style={styles.versionNote}>
+                  {version === 'major' ? t('privacy.textUpdatedMajor') : t('privacy.textUpdatedMinor')}
+                </Text>
+              )}
               <Text style={styles.body}>{t(META[kind].body)}</Text>
               <Text style={styles.effect}>{t(META[kind].effect)}</Text>
               <TouchableOpacity
@@ -125,9 +140,14 @@ export default function PrivacyScreen({ navigation }: Props) {
           );
         })}
 
-        <TouchableOpacity onPress={() => openLegal('privacy')} activeOpacity={0.7}>
-          <Text style={styles.link}>{t('consent.policyLink')}</Text>
-        </TouchableOpacity>
+        {/* Yasal metinler — arayüz diline göre (legal.ts) */}
+        <View style={styles.links}>
+          {LEGAL_LINKS.map(({ doc, label }) => (
+            <TouchableOpacity key={doc} onPress={() => openLegal(doc)} activeOpacity={0.7}>
+              <Text style={styles.link}>{t(label)}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
 
       <SensitiveConsentModal
@@ -169,5 +189,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginTop: spacing.sm,
   },
   outlineBtnText: { ...typography.body, fontFamily: fonts.bodySemiBold, color: colors.text },
-  link: { ...typography.bodySmall, color: colors.text, textDecorationLine: 'underline', marginTop: spacing.sm },
+  versionNote: { ...typography.caption, color: colors.textSecondary, fontStyle: 'italic' },
+  links: { gap: spacing.sm, marginTop: spacing.sm },
+  link: { ...typography.bodySmall, color: colors.text, textDecorationLine: 'underline' },
 });
