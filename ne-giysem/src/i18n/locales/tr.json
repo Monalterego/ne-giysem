@@ -832,7 +832,7 @@
     "anthropicName": "Anthropic · ABD",
     "anthropicPurpose": "Kıyafetin kategori, renk, desen ve mevsim gibi özelliklerini tanımak için.",
     "trainingTitle": "Model eğitimi",
-    "trainingBody": "Gönderilen fotoğraflar bu sağlayıcıların yapay zekâ modellerini eğitmek için kullanılmaz.",
+    "trainingBody": "Sağlayıcıların beyanına göre, gönderilen fotoğraflar onların yapay zekâ modellerini eğitmek için kullanılmaz.",
     "declineTitle": "İzin vermezsen",
     "declineBody": "Uygulamayı kullanmaya devam edersin. Kıyafet fotoğrafların olduğu gibi (arka planı kaldırılmadan) kaydedilir; kategori, renk ve mevsimi sen seçersin. “Uyar mı?” taraması kapalı kalır. Kararını istediğin zaman Profil → Gizlilik ve izinler'den değiştirebilirsin.",
     "allow": "İzin ver",

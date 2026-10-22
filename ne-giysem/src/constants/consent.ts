@@ -13,7 +13,7 @@ export type TryOnConsentKind = 'tryon_photo' | 'tryon_physical';
 
 export const CONSENT_VERSIONS: Record<ConsentKind, string> = {
   notice_shown:   '1.0',
-  ai_processing:  '1.0',
+  ai_processing:  '1.1',   // 1.1: model eğitimi cümlesi "sağlayıcıların beyanına göre" (kapsam aynı)
   tryon_photo:    '1.0',
   tryon_physical: '1.0',
 };

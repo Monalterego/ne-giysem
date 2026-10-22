@@ -832,7 +832,7 @@
     "anthropicName": "Anthropic · USA",
     "anthropicPurpose": "To recognise the item's features such as category, colour, pattern and season.",
     "trainingTitle": "Model training",
-    "trainingBody": "The photos we send are not used to train these providers' AI models.",
+    "trainingBody": "According to the providers, the photos we send are not used to train their AI models.",
     "declineTitle": "If you don't allow it",
     "declineBody": "You can keep using the app. Clothing photos are saved as they are (background not removed), and you choose the category, colour and season yourself. “Match?” scans stay off. You can change your choice at any time in Profile → Privacy & permissions.",
     "allow": "Allow",
