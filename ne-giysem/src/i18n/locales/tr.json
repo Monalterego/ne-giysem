@@ -799,6 +799,8 @@
     "whyBody": "Yalnızca sanal deneme için: kıyafetlerini fotoğrafına ya da fiziksel bilgilerinden üretilen yapay bir mankene giydirmek. Kombin önerilerinde kullanılmaz.",
     "whoTitle": "Kime aktarılıyor?",
     "whoBody": "Sanal deneme görselini görsel üretim hizmeti FASHN oluşturur. Fotoğrafın FASHN'a 10 dakika geçerli bir bağlantıyla gönderilir; fiziksel bilgilerin ise yapay manken tarifine dönüştürülerek gönderilir. Kendi fotoğrafın ve fiziksel bilgilerin Anthropic'e ya da Poof'a gönderilmez.",
+    "specialTitle": "Özel nitelikli veri",
+    "specialBody": "Profil fotoğrafın, sanal deneme görsellerin ve ten rengi bilgin, içeriklerine ve kullanım biçimlerine göre özel nitelikli kişisel veri sayılabilir (kılık-kıyafet; ten rengi bakımından ırk veya etnik köken). Bu nedenle sanal deneme açık rızana dayanır.",
     "controlTitle": "Saklama ve kontrol",
     "controlBody": "Bu bilgiler rızan sürdüğü sürece hesabında saklanır. Profil → Gizlilik ve izinler'den her rızayı ayrı ayrı geri çekebilirsin; geri çektiğin rızaya bağlı bilgiler ve onlarla oluşturulan görseller silinir.",
     "rightsTitle": "Hakların",

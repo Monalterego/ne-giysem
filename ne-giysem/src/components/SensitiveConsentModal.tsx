@@ -90,6 +90,7 @@ export default function SensitiveConsentModal({
             <Section title={t('consent.whatTitle')}    body={t('consent.whatBody')} />
             <Section title={t('consent.whyTitle')}     body={t('consent.whyBody')} />
             <Section title={t('consent.whoTitle')}     body={t('consent.whoBody')} />
+            <Section title={t('consent.specialTitle')} body={t('consent.specialBody')} />
             <Section title={t('consent.controlTitle')} body={t('consent.controlBody')} />
             <Section title={t('consent.rightsTitle')}  body={t('consent.rightsBody')} />
 

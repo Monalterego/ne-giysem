@@ -1,6 +1,7 @@
 # Veri Envanteri — Sestina (Ne Giysem)
 
-**Durum:** 22 Ekim 2026 (ek: 016, yedek yeri, e-posta alıcıları) · kaynak: `ne-giysem` main (1474d3d + 015 + 016) · hazırlayan: kod incelemesi
+**Durum:** 22 Ekim 2026 (ek: 016, yedek yeri, e-posta alıcıları; notice 2.0; iç dokümanlar) · kaynak: `ne-giysem` main (1474d3d + 015 + 016) · hazırlayan: kod incelemesi
+**İlgili iç dokümanlar:** `verbis-degerlendirmesi.md`, `ozel-nitelikli-veri-siniflandirmasi.md`, `saklama-imha-politikasi.md`, `veri-ihlali-mudahale-proseduru.md`, `basvuru-proseduru.md`, `basvuru-kayit-defteri-sablonu.md`, `guvenlik-tedbirleri.md`
 **Kural:** Web metinleri (sestina-web: gizlilik, aydınlatma, açık rıza, başvuru, hesap silme, koşullar) bu tablodan türetilir. Kod değişince önce bu dosya güncellenir.
 
 Gösterim:
@@ -33,7 +34,7 @@ Veri sorumlusu: Hasan Can Demircan (bireysel geliştirici) · support@sestinaapp
 | 14 | Sanal deneme görselleri | Yapay manken (`base_mannequin.png`), try-on sonuçları — özel nitelikli olabilir (#11) | Görüntüleme, önbellek, paylaşım | **Açık rıza** | FASHN çıktısı depomuza kopyalanır | Supabase Storage (`mannequin-cache`, özel) | İlgili parça / fotoğraf / rıza / hesap silinene kadar | Parça sil (adında parça id geçenler) · fotoğraf rızası (avatar kaynaklı) · fiziksel rıza (`_m.jpg` + manken) · hesap silme | `tryon_photo` / `tryon_physical` | `CombosScreen`, `lib/privacyActions.ts` |
 | 15 | Sanal deneme kota kaydı | Render zamanı, çağrı sayısı, FASHN işlem kimlikleri, çıktı URL'leri | Kota, kötüye kullanımın önlenmesi | m. 5/2-f (plan sınırı için m. 5/2-c) | Otomatik | Supabase | Hesap süresince; hesap silinince cascade | Hesap silme | — | `tryon_renders` (006, 008, 013) |
 | 16 | Kombinler, takvim, favoriler | Giyildi / planlandı kayıtları, puan, favori imzaları | Geçmiş ve planlama | m. 5/2-c | Kullanıcı işlemi | Supabase | Hesap süresince | Tek tek silme · hesap silme | — | `combos`, `favorite_combos` |
-| 17 | Hava durumu | Konum, cihazda 2 ondalığa (~1 km) yuvarlanır; izin yoksa "Istanbul" | Hava durumuna göre öneri | m. 5/2-c | Cihaz konumu (yalnız ön planda, düşük doğruluk) | OpenWeather Ltd · Birleşik Krallık · istek doğrudan cihazdan [?] | Bizde saklanmaz [kod]. Sağlayıcının beyanına göre API isteklerinde IP ve parametreleri saklamaz [beyan] | — | iOS konum izni | `utils/weatherService.ts` |
+| 17 | Hava durumu | Konum, cihazda 2 ondalığa (~1 km) yuvarlanır; izin yoksa "Istanbul" | Hava durumuna göre öneri | m. 5/2-c | Cihaz konumu (yalnız ön planda, düşük doğruluk) | OpenWeather Ltd · Birleşik Krallık · istek doğrudan cihazdan [?] | Bizde saklanmaz [kod]. Sağlayıcının beyanına göre API isteklerinde IP ve parametreleri saklamaz [beyan] | — | iOS konum izni | `utils/weatherService.ts` (OpenWeather API anahtarı **istemcide**: `:3`) |
 | 18 | Abonelik | Ürün, mağaza, dönem türü, bitiş, yenileme; RevenueCat'te uygulama kullanıcı kimliği (= auth uid) | Premium, plan sınırları | m. 5/2-c | Mağaza satın alması → RevenueCat → webhook / sync | RevenueCat, Inc. · ABD · veri işleyen; Apple / Google ödeme için ayrı veri sorumlusu | Hesap süresince (`entitlements`); hesap silmede RevenueCat abone kaydı silinir (en iyi çaba) [kod] | Hesap silme | — | `entitlements`, `functions/revenuecat-webhook`, `sync-entitlement`, `_shared/revenuecat.ts` |
 | 19 | Rıza ve izin kayıtları | Tür, verildi/verilmedi, metin sürümü, zaman (yalnız ekleme) | Rızanın ispatı, kararın uygulanması | m. 5/2-ç | Rıza / izin ekranları | Supabase | Hesap süresince; hesap silinince cascade [?] | Hesap silme | Tümü | `consent_events` (014), `constants/consent.ts` |
 | 20 | Günlük kullanım sayaçları | Kullanıcı kimliği + işlev (`anthropic`, `bg`, `store_scan`, `export`) + gün + sayı | Kötüye kullanım, tavanlar, aylık tarama hakkı | m. 5/2-f (tarama hakkı m. 5/2-c) | Otomatik | Supabase | **13 ay** (`purge_retention`, pg_cron [?]); hesap silmede cascade | Otomatik / hesap silme | — | `api_usage` (006, 014) |
@@ -55,7 +56,7 @@ Veri sorumlusu: Hasan Can Demircan (bireysel geliştirici) · support@sestinaapp
 | Kayıt türü | Niteliği | Metin sürümü (kod) | Ne zaman sorulur | Geri çekme / red sonucu | Sunucu kontrolü |
 |---|---|---|---|---|---|
 | `ai_processing` | **Uygulama içi tercih / izin — KVKK işleme şartı değil**; hukuki sebep m. 5/2-c | `1.1` | İlk kıyafet eklemeden ve ilk taramadan önce | Mevcut veri silinmez; yeni parçalar elle eklenir; tarama kapanır | bg-removal-proxy, anthropic-proxy → 403 |
-| `notice_shown` | Aydınlatmanın gösterildiğinin kaydı ("Okudum") | `1.0` | Sanal deneme rızalarından önce | — | — |
+| `notice_shown` | Aydınlatmanın gösterildiğinin kaydı ("Okudum") | `2.0` (özel nitelikli veri paragrafı) | Sanal deneme rızalarından önce; 2.0'dan önceki sürümü okuyana rıza penceresi bir sonraki açıldığında yeniden | — | — |
 | `tryon_photo` | **Açık rıza** | `1.0` | Profil fotoğrafını ilk kez yüklemeden ve bu rıza olmadan try-on başlatmadan önce | Fotoğraf + fotoğrafla üretilen try-on'lar silinir | fashn-proxy → 403 |
 | `tryon_physical` | **Açık rıza** | `1.0` | Fiziksel profili ilk kez kaydetmeden ve fotoğrafsız try-on'dan önce | Fiziksel alanlar + manken + mankenle üretilen try-on'lar silinir | fashn-proxy → 403 |
 
@@ -104,8 +105,13 @@ Bu önlemlerin Kurul'un özel nitelikli veriler için aradığı "yeterli önlem
 4. ~~Yedeklerin saklandığı yer~~ — çözüldü: Google Drive, ABD, AES-256 (#25). Açık kalan: kişisel Google hesabında Google'ın rolü (veri işleyen mi?) ve hesap güvenliği (2FA vb.) belgelenmeli.
 5. ~~E-posta sağlayıcısı~~ — çözüldü: Cloudflare (yönlendirme) + Gmail (#28). Açık kalan: rol nitelemeleri.
 6. **Rıza kayıtları hesapla birlikte siliniyor (#19):** Hesap silinince ispat kaydı da gidiyor (cascade). Hesap silme sonrası rızanın ispat ihtiyacı varsa saklama ayrı kararlaştırılmalı.
-7. **Ten rengi (#12):** Metinlere "ırk / etnik köken bakımından özel nitelikli veri sayılabilir" eklendi. Açık kalan: (a) vücut tipi için sağlık çağrışımı değerlendirilmedi; (b) uygulama içi aydınlatma metni (`consent.whatBody`) özel nitelikli veriden söz etmiyor — web metinleriyle hizalanması gerekirse `notice_shown` ana sürümü artar ve kullanıcıya yeniden sorulur.
+7. **Ten rengi (#12):** Metinlere "ırk / etnik köken bakımından özel nitelikli veri sayılabilir" eklendi. Açık kalan: (a) vücut tipi / kilo için sağlık çağrışımı değerlendirilmedi. ~~(b) uygulama içi aydınlatma~~ — çözüldü: `consent.specialBody`, `notice_shown` 2.0.
 8. **pg_cron:** 13 ay / 12 ay / 3 yıl / 90 gün süreleri, 014–016 çalıştırılıp pg_cron aktifse otomatik uygulanır. pg_cron yoksa metinlerdeki süreler fiilen uygulanmaz.
 9. **Rol değerlendirmeleri:** Anthropic, Poof, FASHN, Expo ve OpenWeather için "veri işleyen" nitelemesi sağlayıcı koşullarına dayanıyor; DPA imzalı mı, teyit edilmeli.
 10. **EXIF:** Görseller yeniden kodlanıyor ve seçici `exif: false` ile çağrılıyor. Kaydedilen JPEG'de konum EXIF'i kalmadığı cihazda doğrulanmadı; metinlerde iddia edilmiyor.
-11. **Başvuru doğrulama kodu (#28):** Kayıtlı adres dışından gelen başvuruda kayıtlı adrese kod gönderme süreci elle işliyor [org]; kodun biçimi ve geçerlilik süresi tanımlı değil.
+11. ~~Başvuru doğrulama kodu biçimi / süresi~~ — çözüldü: 6 haneli rastgele, 7 gün, yalnızca kayıtlı adrese (`basvuru-proseduru.md` bölüm 4). Süreç elle işliyor [org].
+12. **Apple "E-postamı Gizle" adreslerine gönderim (#28):** Apple yönlendirme adreslerine yalnızca Apple Developer'da kayıtlı gönderen alan adı / adresinden gelen e-postayı iletir. Cloudflare Email Routing yalnızca alım yapar; support@ adına gönderim (Gmail "farklı gönder" + SPF / DKIM) kurulumu doğrulanmadı. Kurulmadıysa web metnindeki doğrulama kodu vaadi Apple kullanıcıları için çalışmaz.
+13. **OpenWeather API anahtarı istemcide (#17):** `src/utils/weatherService.ts:3`. Web metni "yalnızca Anthropic / FASHN / Poof anahtarları sunucuda" olarak daraltıldı.
+14. **Geçmişte istemcide bulunan anahtarlar:** Anthropic (≤ 05.06.2026), remove.bg (≤ 05.06.2026), FASHN (≤ 08.07.2026). Yenilenip yenilenmedikleri bilinmiyor (`guvenlik-tedbirleri.md` bölüm 6).
+15. **Storage policy'leri repoda yok:** SELECT / INSERT / UPDATE policy'leri panelden eklenmiş; yalnızca DELETE policy'si (011) repoda.
+16. **Mevcut rıza sahiplerine notice 2.0:** "Okudum" yeniden yalnızca sanal deneme rıza penceresi tekrar açıldığında istenir. Rızası zaten verilmiş ve pencereyi bir daha görmeyen kullanıcıya yeni aydınlatma gösterilmez; gösterilmesi gerekiyorsa ConsentGate'e bir "aydınlatma güncellendi" adımı eklenmeli.

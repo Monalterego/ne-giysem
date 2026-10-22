@@ -799,6 +799,8 @@
     "whyBody": "Only for virtual try-on: to dress your clothes on your photo or on an AI mannequin generated from your physical details. They are not used for outfit suggestions.",
     "whoTitle": "Who receives it?",
     "whoBody": "The try-on image is created by the image-generation service FASHN. Your photo is sent to FASHN via a link valid for 10 minutes; your physical details are sent as a description for generating an AI mannequin. Your own photo and physical details are not sent to Anthropic or Poof.",
+    "specialTitle": "Special category data",
+    "specialBody": "Your profile photo, virtual try-on images and skin tone may count as special category personal data depending on their content and how they are used (clothing and attire; for skin tone, race or ethnic origin). This is why virtual try-on is based on your explicit consent.",
     "controlTitle": "Storage and control",
     "controlBody": "This data is kept in your account for as long as your consent lasts. You can withdraw each consent separately in Profile → Privacy & permissions; the data tied to that consent and the images created with it are deleted.",
     "rightsTitle": "Your rights",
