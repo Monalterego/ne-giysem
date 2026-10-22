@@ -1,4 +1,8 @@
 -- ============================================================
+-- ⚠️ 019_storage_limits BU DOSYAYI GEÇERSİZ KILAR. 019 uygulandıktan sonra 018'i tekrar
+--    ÇALIŞTIRMA: bucket sınırlarını kaldırır ve iki bucket'ın policy rolünü public'e döndürür.
+--    Bu dosya 22.10.2026 ölçümünün (019 öncesi) kaydı olarak duruyor.
+-- ============================================================
 -- 018_storage_policies_snapshot
 -- Panelden elle oluşturulmuş storage bucket ayarlarını ve storage.objects policy'lerini
 -- repoya alır. Kaynak: 22.10.2026 ölçümü (storage.buckets + pg_policies, schemaname = storage).
@@ -90,7 +94,7 @@ commit;
 --   → 9 policy, ölçümle aynı ifadeler
 -- select id, public, file_size_limit, allowed_mime_types from storage.buckets order by id;
 --
--- ─── Notlar: fark edilen zayıflıklar (DÜZELTİLMEDİ) ──────────────────────────
+-- ─── Notlar: fark edilen zayıflıklar (bu dosyada düzeltilmedi; 1 ve 2 → 019) ─
 -- 1) Dosya boyutu ve MIME türü sınırı yok (file_size_limit / allowed_mime_types null).
 --    Oturum açmış bir kullanıcı kendi <uid>/ klasörüne istemciyi atlayarak her türden ve
 --    boyutta dosya yükleyebilir (ör. çalıştırılabilir dosya, çok büyük dosya → depolama

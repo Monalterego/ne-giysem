@@ -39,11 +39,11 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 
 - `avatars`, `wardrobe-items`, `mannequin-cache` bucket'ları **özel**: `010_private_buckets.sql:15`.
 - Dosya yolu `<uid>/…`; sahip dışı silme engelli: `011_privacy_hardening.sql:24-31`.
-- Tüm storage policy'leri ve bucket ayarları (22.10.2026 ölçümü) birebir repoda: `supabase/migrations/018_storage_policies_snapshot.sql`. Okuma / yükleme / güncelleme yalnızca sahibin `<uid>/` klasöründe.
-- **Bilinen zayıflıklar (düzeltilmedi):**
-  - Private bucket'larda `file_size_limit` / `allowed_mime_types` yok; oturum açmış kullanıcı kendi klasörüne her türden ve boyutta dosya yükleyebilir.
-  - `wardrobe-items` ve `mannequin-cache` policy'leri `public` rolüne tanımlı; anon için `auth.uid()` null olduğundan açık değil.
-  - `wardrobe-items`'ta UPDATE policy'si yok.
+- Tüm storage policy'leri ve bucket ayarları repoda: 22.10.2026 ölçümü `supabase/migrations/018_storage_policies_snapshot.sql`; güncel hâl `019_storage_limits.sql` (018'i geçersiz kılar, 019'dan sonra 018 çalıştırılmaz). Okuma / yükleme / güncelleme yalnızca sahibin `<uid>/` klasöründe.
+- **019 ile kapatılanlar:** özel bucket'larda yalnızca `image/jpeg`, `image/png`, `image/webp` ve en fazla 10 MB; tüm policy'ler `authenticated` rolünde. Uygulamadaki beş yükleme noktası bu sınırların içinde (019 başlığındaki tablo).
+- **Kalan:**
+  - `wardrobe-items`'ta UPDATE policy'si yok (aynı yola yeniden yükleme reddedilir; uygulama her seferinde yeni yol kullanıyor).
+  - MIME kontrolü bildirilen Content-Type'a göre yapılır, dosya içeriği incelenmez.
   - `moodboards` herkese açık bucket; policy yok, listeleme ve yükleme kapalı.
   - Ayrıntı: 018 sonundaki notlar.
 - Görüntüleme yalnızca imzalı bağlantıyla, **1 saat**: `src/lib/storageUrls.ts:13`, `:72`.
