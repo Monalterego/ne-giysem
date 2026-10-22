@@ -1,6 +1,6 @@
 # Veri Envanteri — Sestina (Ne Giysem)
 
-**Durum:** 22 Ekim 2026 · kaynak: `ne-giysem` main (1474d3d + 015) · hazırlayan: kod incelemesi
+**Durum:** 22 Ekim 2026 (ek: 016, yedek yeri, e-posta alıcıları) · kaynak: `ne-giysem` main (1474d3d + 015 + 016) · hazırlayan: kod incelemesi
 **Kural:** Web metinleri (sestina-web: gizlilik, aydınlatma, açık rıza, başvuru, hesap silme, koşullar) bu tablodan türetilir. Kod değişince önce bu dosya güncellenir.
 
 Gösterim:
@@ -18,7 +18,7 @@ Veri sorumlusu: Hasan Can Demircan (bireysel geliştirici) · support@sestinaapp
 | # | İşleme faaliyeti | Veri kategorisi | Amaç | Hukuki sebep (KVKK) | Toplama yöntemi | Alıcı (tüzel kişi · ülke · rol) | Saklama süresi | Silme yolu | Rıza / tercih bağlantısı | Kod kaynağı |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 1 | Hesap oluşturma, giriş (e-posta) | Kimlik/iletişim: e-posta, ad; şifre (Supabase Auth'ta hash'li); 18 yaş onay zamanı | Hesap, giriş, yaş sınırı | m. 5/2-c | Kayıt / giriş / yaş ekranında kullanıcı girer | Supabase, Inc. · ABD şirketi, proje bölgesi AB (Frankfurt) [?] · veri işleyen | Hesap süresince. Hesap silinince anında; DB yedeklerinde en fazla 30 gün [org] | Profil → Hesabımı Sil (anında) · e-posta (30 gün) | — | `profiles`, `auth.users`; `SignupScreen`, `AgeGateScreen` |
-| 2 | Apple / Google ile giriş | Sağlayıcı kimlik tokenı, e-posta, ad (Apple ilk girişte), Google kimlik meta verisi | Hesap doğrulama | m. 5/2-c | Sağlayıcıdan | Apple Inc. · ABD / Google LLC · ABD · ayrı veri sorumlusu; token doğrulama Supabase'de | Hesap süresince (`auth.users`, `auth.identities`) | Hesap silmede Apple refresh token iptali (sunucu) + Google erişim iptali (cihaz, en iyi çaba) [kod] | — | `lib/socialAuth.ts`, `functions/delete-account` |
+| 2 | Apple / Google ile giriş | Sağlayıcı kimlik tokenı, e-posta, ad (Apple ilk girişte); Google girişinde ad ve profil resmi bağlantısı (`auth.users` meta verisi) | Hesap doğrulama | m. 5/2-c | Sağlayıcıdan | Apple Inc. · ABD / Google LLC · ABD · ayrı veri sorumlusu; token doğrulama Supabase'de | Hesap süresince (`auth.users`, `auth.identities`) | Hesap silmede Apple refresh token iptali (sunucu) + Google erişim iptali (cihaz, en iyi çaba) [kod] | — | `lib/socialAuth.ts`, `functions/delete-account` |
 | 3 | Stil profili | Seçilen stiller ve ağırlıklar | Kombin önerisi | m. 5/2-c | Onboarding seçimi | Supabase · veri işleyen | Hesap süresince | Hesap silme (cascade) | — | `style_profiles` |
 | 4 | Dijital dolap — fotoğraf | Kıyafet görseli (≤1000 px JPEG) + 400 px önizleme | Dolap, kombin kartı | m. 5/2-c | Kamera / galeri; yüklemeden önce JPEG'e çevrilir, uzun kenar ≤1400 px [kod] | Supabase Storage (`wardrobe-items`, özel bucket) · veri işleyen | Parça silinene ya da hesap silinene kadar. **Fotoğraflar yedeklenmez** [org] | Parçayı sil (dosya + o parçalı try-on'lar) · hesap silme | `ai_processing` varsa arka planı kaldırılmış görsel; yoksa fotoğraf olduğu gibi | `UploadScreen`, `UploadDetailScreen`, `utils/imageNormalize.ts`, `lib/privacyActions.ts` |
 | 5 | Dijital dolap — bilgiler | Kategori, alt kategori, renk (hex), desen, mevsim, kumaş, ad, kesim, yaka, kol, detaylar, sinyaller | Dolap, kombin motoru | m. 5/2-c | `ai_processing` varsa yapay zekâ çıkarır, kullanıcı düzeltir; yoksa kullanıcı seçer | Supabase · veri işleyen | Parça / hesap silinene kadar; DB yedeklerinde ≤30 gün | Parçayı sil · hesap silme | `ai_processing` | `wardrobe_items` |
@@ -40,11 +40,11 @@ Veri sorumlusu: Hasan Can Demircan (bireysel geliştirici) · support@sestinaapp
 | 21 | Operasyon kayıtları | Servis kesintisi olayları; kullanıcı kimliği içermez | Hizmet sürekliliği | m. 5/2-f | Otomatik | Supabase | **12 ay** (`purge_retention`) | Otomatik | — | `ops_events` (007) |
 | 22 | Hesap silme kaydı | Silme zamanı, kanal (`app` / `email` / `under18`), silinen veri türleri, RevenueCat / Apple adımlarının sonucu. Kullanıcı kimliği veya e-posta alanı yok; yine de **anonim sayılmaz** | Silmenin yapıldığının ispatı | m. 5/2-ç · Silme/Yok Etme Yönetmeliği m. 7/3 | `delete-account` otomatik; e-posta talepleri elle eklenir | Supabase · yalnızca service_role | **En az 3 yıl, sonra silinir** (015) | Otomatik | — | `deletion_log` (014, 015), `functions/delete-account` |
 | 23 | Sunucu kayıtları (log) | Edge function logları: kullanıcı kimliği, hata metinleri; silme anında silinen kullanıcının kimliği | Hata ayıklama, güvenlik | m. 5/2-f | Otomatik | Supabase | **1 gün** (Free plan) [org] | Otomatik | — | `functions/*` (`console.log` / `console.error`) |
-| 24 | Kimlik doğrulama denetim kayıtları | Giriş / çıkış / token olayları, **IP adresi** | Supabase Auth'un kendi işleyişi | m. 5/2-f | Otomatik | Supabase | **Tanımsız** [?] | — | — | `auth.audit_log_entries` (Supabase yönetir) |
-| 25 | Veritabanı yedekleri | DB'nin tamamı (fotoğraflar hariç) | Felaket kurtarma | m. 5/2-f | Haftalık, elle, şifreli [org] | Saklama yeri **tanımsız** [?] | **En fazla 30 gün** [org] | Süre dolunca yedek silinir | — | — (otomatik yedek yok — Free plan) |
+| 24 | Kimlik doğrulama denetim kayıtları | Giriş / çıkış / token olayları, **IP adresi** | Güvenlik, kötüye kullanımın önlenmesi | m. 5/2-f | Otomatik (Supabase Auth) | Supabase · veri işleyen | Supabase auth log'unda 1 gün (Free plan); `auth.audit_log_entries` tablosunda **en fazla 90 gün** (016, `purge_retention`). Tablo `auth.users`'a bağlı değil → hesap silinince cascade ile gitmez, 90 gün kuralına tabi. Tablonun dolu olup olmadığı ölçülmedi [?] | Otomatik | — | `auth.audit_log_entries`, 016 |
+| 25 | Veritabanı yedekleri | DB'nin tamamı (fotoğraflar hariç) | Felaket kurtarma | m. 5/2-f | Haftalık, elle, AES-256 ile şifreli [org] | Google LLC (Google Drive) · ABD · veri sorumlusunun kişisel hesabı; rol [?] | **En fazla 30 gün** [org] | Süre dolunca yedek elle silinir [org] | — | — (otomatik yedek yok — Free plan) |
 | 26 | Verilerimi indir | Profil, stil, dolap meta, kombinler, favoriler, rıza geçmişi, abonelik + 1 saatlik fotoğraf linkleri | KVKK m. 11 erişim / taşınabilirlik | m. 5/2-ç | Profil → Verilerimi indir (günde 3) | Kullanıcının seçtiği uygulama (paylaşım menüsü) | Bizde saklanmaz; linkler 1 saat | — | — | `functions/export-my-data`, `privacyActions.exportMyData` |
 | 27 | Uygulama güncellemeleri | İşletim sistemi, kurulum başına rastgele kimlik | OTA güncelleme | m. 5/2-c / 5/2-f | Otomatik (expo-updates) | 650 Industries, Inc. (Expo) · ABD · veri işleyen [?] | Sağlayıcının beyanına göre [beyan] | — | — | `app.json` → `updates.url` |
-| 28 | Destek ve başvuru yazışmaları | E-posta adresi, içerik, başvuru kimlik bilgileri (ad-soyad, TCKN / pasaport, adres) | Taleplere ve KVKK başvurularına yanıt | m. 5/2-ç, 5/2-c | support@sestinaapp.com | E-posta barındırma sağlayıcısı **tanımsız** [?] | Talep kapanışından **2 yıl** [org] | Süre dolunca elle | — | — |
+| 28 | Destek ve başvuru yazışmaları | E-posta adresi, içerik, başvuru kimlik bilgileri (ad-soyad, TCKN / pasaport, adres); kayıtlı adres dışından gelen başvurularda kayıtlı adrese gönderilen doğrulama kodu ve yanıtı | Taleplere ve KVKK başvurularına yanıt, başvuranın kimliğinin doğrulanması | m. 5/2-ç, 5/2-c | support@sestinaapp.com | Cloudflare, Inc. · ABD · e-posta yönlendirme; Google LLC (Gmail) · ABD · e-posta kutusu; roller [?] | Talep kapanışından **2 yıl** [org] | Süre dolunca elle | — | — |
 | 29 | Cihazda tutulanlar | Oturum (Supabase), dil, dolap görünümü | Uygulamanın çalışması | — (cihazda) | AsyncStorage | — | Çıkış / uygulamayı kaldırma | Çıkış, kaldırma | — | `lib/supabase.ts`, `i18n/index.ts`, `WardrobeScreen` |
 | 30 | Paylaşım | Kombin kartı / try-on görseli bağlantısı | Kullanıcının paylaşması | Kullanıcının kendi işlemi | Paylaşım menüsü | Kullanıcının seçtiği uygulama | Bizim linkimiz 1 saat; depoya kaydedilemediyse FASHN linki (#13) | — | — | `CombosScreen` |
 
@@ -75,8 +75,8 @@ Sürüm biçimi `ana.alt`. Ana sürüm değişirse eski onay geçersiz sayılır
 | RevenueCat, Inc. | ABD | Veri işleyen | 18 | revenuecat.com/privacy [beyan] |
 | 650 Industries, Inc. (Expo) | ABD | Veri işleyen [?] | 27 | expo.dev/privacy [beyan] |
 | Apple Inc. / Google LLC | ABD | Ayrı veri sorumlusu (giriş, mağaza) | 2, 18 | Kendi politikaları |
-| E-posta sağlayıcısı | **?** | Veri işleyen | 28 | **?** |
-| Yedek depolama yeri | **?** | **?** | 25 | **?** |
+| Cloudflare, Inc. | ABD | E-posta yönlendirme — veri işleyen [?] | 28 | Sağlayıcı koşulları [beyan] |
+| Google LLC (Gmail, Google Drive) | ABD | E-posta kutusu ve yedek depolama; veri sorumlusunun **kişisel** hesabı — rol [?] | 25, 28 | Sağlayıcı koşulları [beyan] |
 | Yetkili kamu kurumları | Türkiye | Talep hâlinde | — | Hukuki yükümlülük |
 
 Tüzel kişi adları mevcut web metinlerinden alındı; sözleşme veya veri işleme sözleşmesi (DPA) ile teyit edilmedi.
@@ -90,7 +90,7 @@ Tüzel kişi adları mevcut web metinlerinden alındı; sözleşme veya veri iş
 - Rıza kararı sunucuda da uygulanıyor (fashn-proxy, bg-removal-proxy, anthropic-proxy).
 - Rıza geri çekilince ilgili veri ve türevleri siliniyor.
 - Üçüncü taraf API anahtarları yalnız sunucuda; kota ve rıza kayıtları istemciden değiştirilemiyor.
-- Fotoğraflar yedeklere girmiyor [org].
+- Fotoğraflar yedeklere girmiyor; veritabanı yedekleri AES-256 ile şifreli [org].
 
 Bu önlemlerin Kurul'un özel nitelikli veriler için aradığı "yeterli önlemler"i (2018/10 sayılı karar) karşılayıp karşılamadığı ayrıca değerlendirilmeli; politika, eğitim ve erişim yetkisi gibi idari önlemler kodda yok.
 
@@ -99,12 +99,13 @@ Bu önlemlerin Kurul'un özel nitelikli veriler için aradığı "yeterli önlem
 ## 5. Açık noktalar (karar / teyit gerekli)
 
 1. **Supabase proje bölgesi:** Metinler "Frankfurt" diyor; kodda proje adresinden bölge görünmüyor. Supabase panelinden teyit edilmeli.
-2. **Supabase Auth denetim kayıtları (#24):** IP adresi içeriyor ve hiçbir metinde geçmiyor. Saklama süresi tanımsız; temizlik işi yok.
-3. **Auth meta verisi:** Google girişinde `auth.users.raw_user_meta_data` alanına sağlayıcının verdiği ad ve profil resmi bağlantısı yazılabilir. Metinlerde yalnız "kimlik tokenı, e-posta, ad" var.
-4. **Yedeklerin saklandığı yer (#25):** Haftalık şifreli yedeğin nerede tutulduğu (yerel disk mi, bulut mu, hangi ülke) belli değil; bu bir alıcı / yurt dışı aktarım bilgisi.
-5. **E-posta sağlayıcısı (#28):** support@sestinaapp.com'u barındıran sağlayıcı ve ülkesi hiçbir metinde yok.
+2. **Auth denetim kayıtları (#24) — ölçüm bekliyor:** `auth.audit_log_entries` boş mu dolu mu ölçülmedi (sorgu 016'da). Metinler iki durumda da doğru olan ifadeyi kullanıyor: log'da 1 gün, denetim kayıtlarında en fazla 90 gün. Ölçüm "boş" çıkarsa metin "yalnızca log'da 1 gün" olarak sadeleştirilebilir. Ayrıca `postgres` rolünün bu tabloyu silme yetkisi doğrulanmalı: `purge_retention()` → `auth_audit = -1` ise yetki yok.
+3. ~~Auth meta verisi~~ — çözüldü: Google girişinde ad ve profil resmi bağlantısı metinlere eklendi (#2).
+4. ~~Yedeklerin saklandığı yer~~ — çözüldü: Google Drive, ABD, AES-256 (#25). Açık kalan: kişisel Google hesabında Google'ın rolü (veri işleyen mi?) ve hesap güvenliği (2FA vb.) belgelenmeli.
+5. ~~E-posta sağlayıcısı~~ — çözüldü: Cloudflare (yönlendirme) + Gmail (#28). Açık kalan: rol nitelemeleri.
 6. **Rıza kayıtları hesapla birlikte siliniyor (#19):** Hesap silinince ispat kaydı da gidiyor (cascade). Hesap silme sonrası rızanın ispat ihtiyacı varsa saklama ayrı kararlaştırılmalı.
-7. **Ten rengi ve vücut tipi (#12):** Kılık-kıyafet dışında ırk / etnik köken veya sağlık çağrışımı yönünden de değerlendirilmeli.
-8. **pg_cron:** 13 ay / 12 ay / 3 yıl süreleri, 014–015 çalıştırılıp pg_cron aktifse otomatik uygulanır. pg_cron yoksa metinlerdeki süreler fiilen uygulanmaz.
+7. **Ten rengi (#12):** Metinlere "ırk / etnik köken bakımından özel nitelikli veri sayılabilir" eklendi. Açık kalan: (a) vücut tipi için sağlık çağrışımı değerlendirilmedi; (b) uygulama içi aydınlatma metni (`consent.whatBody`) özel nitelikli veriden söz etmiyor — web metinleriyle hizalanması gerekirse `notice_shown` ana sürümü artar ve kullanıcıya yeniden sorulur.
+8. **pg_cron:** 13 ay / 12 ay / 3 yıl / 90 gün süreleri, 014–016 çalıştırılıp pg_cron aktifse otomatik uygulanır. pg_cron yoksa metinlerdeki süreler fiilen uygulanmaz.
 9. **Rol değerlendirmeleri:** Anthropic, Poof, FASHN, Expo ve OpenWeather için "veri işleyen" nitelemesi sağlayıcı koşullarına dayanıyor; DPA imzalı mı, teyit edilmeli.
 10. **EXIF:** Görseller yeniden kodlanıyor ve seçici `exif: false` ile çağrılıyor. Kaydedilen JPEG'de konum EXIF'i kalmadığı cihazda doğrulanmadı; metinlerde iddia edilmiyor.
+11. **Başvuru doğrulama kodu (#28):** Kayıtlı adres dışından gelen başvuruda kayıtlı adrese kod gönderme süreci elle işliyor [org]; kodun biçimi ve geçerlilik süresi tanımlı değil.
