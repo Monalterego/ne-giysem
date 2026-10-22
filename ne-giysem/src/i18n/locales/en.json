@@ -807,6 +807,8 @@
     "rightsBody": "You can access your data and ask for it to be corrected or deleted. Use Profile → Download my data to get a copy, or Delete My Account to delete all of it.",
     "policyLink": "Privacy Policy",
     "noticeAck": "I've read this",
+    "noticeUpdatedTitle": "Privacy notice updated",
+    "noticeUpdatedIntro": "We've updated the virtual try-on notice. The consents you gave remain valid; we only ask you to read the current text.",
     "noticeRead": "You've read the notice.",
     "readFirst": "To give consent, first read the notice and tap “I've read this”.",
     "explicitLabel": "Explicit consent",

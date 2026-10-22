@@ -2,7 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import { useUserStore } from '../store/useUserStore';
-import { useConsentStore, requiredTryOnConsents } from '../store/useConsentStore';
+import { useConsentStore, requiredTryOnConsents, needsNoticeUpdate } from '../store/useConsentStore';
 
 import OnboardingNavigator from './OnboardingNavigator';
 import MainTabNavigator from './MainTabNavigator';
@@ -24,7 +24,9 @@ export default function RootNavigator() {
   const user          = useUserStore((s) => s.user);
   const consentLoaded = useConsentStore((s) => s.loaded);
   const records       = useConsentStore((s) => s.records);
-  const needsConsent  = consentLoaded && requiredTryOnConsents(user, records).length > 0;
+  // Ya da rızası geçerli ama aydınlatmanın güncel ana sürümünü okumamış → yalnız "Okudum" adımı
+  const needsConsent  = consentLoaded
+    && (requiredTryOnConsents(user, records).length > 0 || needsNoticeUpdate(records));
 
   console.log('[RootNavigator] render — isAuthenticated:', isAuthenticated, '| isOnboarded:', isOnboarded, '| age:', ageConfirmed);
 

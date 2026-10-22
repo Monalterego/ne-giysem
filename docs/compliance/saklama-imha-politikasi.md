@@ -29,7 +29,7 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 | Fiziksel profil, manken ve mankenli görseller (#12, #14) | Rıza geri çekme / hesap silme | Silme (alanlar NULL, dosyalar silinir) | `privacyActions.removePhysicalData` |
 | Günlük kullanım sayaçları (#20) | **13 ay** | Silme | Otomatik, günlük (bölüm 3) |
 | Operasyon kayıtları (#21) | **12 ay** | Silme | Otomatik, günlük |
-| Hesap silme kaydı (#22) | **En az 3 yıl, sonra silinir** (Yönetmelik m. 7/3) | Silme | Otomatik, günlük |
+| Hesap silme kaydı (#22) — `subject_hash` (geri döndürülemeyen özet) dahil | **En az 3 yıl, sonra silinir** (Yönetmelik m. 7/3) | Silme | Otomatik, günlük |
 | Auth denetim kayıtları, IP dahil (#24) | **En fazla 90 gün** | Silme | Otomatik, günlük (016) |
 | Sunucu log'ları (#23) | **1 gün** | Sağlayıcı tarafında silme | Supabase Free plan |
 | Veritabanı yedekleri (#25) | **En fazla 30 gün** | Silme (Drive'dan kalıcı silme, çöp kutusu dahil) | **Elle**, haftalık (bölüm 4) |
@@ -50,7 +50,7 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
    order by start_time desc limit 5;
   ```
   `auth_audit = -1` dönüyorsa auth tablosunu silme yetkisi yoktur; satırlar elle ya da Supabase desteğiyle silinir ve imha kaydına yazılır.
-- **[?]** pg_cron'un projede etkin olduğu ve 014–016'nın çalıştırıldığı doğrulanmadı. Doğrulanana kadar bu süreler fiilen uygulanmıyor sayılır; ayda bir `select public.purge_retention();` elle çalıştırılır.
+- **Doğrulandı (22.10.2026):** pg_cron etkin, 014–016 uygulandı; `purge_retention()` çalıştırıldı, `auth_audit = 0` (silinecek eski satır yok), auth tablosunu silme yetkisi var.
 
 ## 4. Elle yedek prosedürü (haftalık)
 
@@ -66,7 +66,34 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 
 **Etki:** hesap silen kullanıcının DB kayıtları en fazla 30 gün yedekte kalabilir; metinlerde bu böyle yazılıdır.
 
-**Geri yükleme:** bir yedekten geri yükleme yapılırsa, yedek tarihinden sonra silinen hesaplar `deletion_log` ile karşılaştırılarak geri yükleme sonrası **yeniden silinir**. `deletion_log` kimlik içermediği için eşleştirme **yapılamaz** [?]; bu nedenle geri yükleme yalnızca felaket durumunda yapılır ve hukuki görüş alınır.
+## 4a. Yedekten geri yükleme prosedürü
+
+Geri yükleme yalnızca veri kaybı / bozulma hâlinde yapılır. Yedek, alındığı tarihten **sonra** silinmiş hesapları da içerir. Bu hesaplar geri yükleme biter bitmez, uygulama trafiğe açılmadan önce yeniden silinir.
+
+**Dayanak:** `deletion_log.subject_hash` = HMAC-SHA256(`DELETION_LOG_PEPPER`, user_id). `delete-account` her silmede yazar (`017_deletion_subject_hash.sql`).
+
+1. **Hazırlık:** Bakım duyurusu yapılır. Edge function'lar geçici olarak kapatılabilir; en azından yeni kayıt ve giriş beklenmez.
+2. **Şifre çöz ve geri yükle:** Drive'daki şifreli döküm yerel makinede açılır ve Supabase'e yüklenir. Şifresiz döküm iş bitince yerelden silinir.
+3. **`deletion_log`'u koru:** Geri yükleme `deletion_log` tablosunu da yedekteki hâline döndürür; yedekten sonraki silme satırları kaybolur. Bu yüzden geri yüklemeden **önce** canlı veritabanından `deletion_log` dışa aktarılır (`copy (select * from deletion_log) to stdout` / CSV), geri yüklemeden **sonra** eksik satırlar geri eklenir. Canlı veritabanı tamamen kaybolduysa bu adım yapılamaz; o durumda en güncel yedekteki `deletion_log` kullanılır ve aradaki silmeler hesap silme e-postaları / log'lardan elle belirlenir [?].
+4. **Yeniden silme:** service_role ile çağrılır. Pepper SQL Editor'a yazılmaz, ortam değişkeninden verilir:
+   ```bash
+   curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/purge_restored_deleted_accounts" \
+     -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+     -H "Content-Type: application/json" -d "{\"p_pepper\": \"$DELETION_LOG_PEPPER\"}"
+   ```
+   Dönüş: `matched`, `auth_users`, `public_rows`, `storage_objects`. `auth.users` ve `profiles`'ta özeti silme kaydında bulunan hesaplar silinir (cascade + doğrudan public tablolar + varsa storage meta verisi).
+5. **RevenueCat:** yedekte RevenueCat bilgisi yoktur; abone kayıtları silme anında zaten silinmiştir. Ek işlem gerekmez.
+6. **Fotoğraflar:** yedeklenmediği için geri gelmez. Geri yüklenen ve silinmemiş kullanıcıların fotoğraf kayıtları dosyasız kalabilir; uygulama bunları görsel yok olarak gösterir.
+7. **Kayıt:** imha kaydına "geri yükleme — yedek tarihi, `matched` sayısı, yapan" satırı yazılır.
+8. **Doğrulama:**
+   ```sql
+   select count(*) from auth.users u
+    where encode(extensions.hmac(u.id::text, '<pepper>', 'sha256'), 'hex')
+          in (select subject_hash from deletion_log);
+   ```
+   Sonuç 0 olmalı. Pepper yalnızca bu tek sorgu için, parola yöneticisinden kopyalanır.
+
+**Pepper yönetimi:** `DELETION_LOG_PEPPER` en az 32 rastgele bayttır (ör. `openssl rand -hex 32`). Supabase secret'ı olarak ve ayrıca parola yöneticisinde tutulur; repoda, kodda ve veritabanında yer almaz. **Değiştirilmez** — değişirse eski silme kayıtları eşleşmez. Kaybolursa geri yükleme eşleştirmesi yapılamaz. 017'den önceki silme kayıtlarında `subject_hash` yoktur; bu kayıtlar için 3. adımdaki elle belirleme uygulanır.
 
 ## 5. Elle imha kontrolleri (aylık)
 

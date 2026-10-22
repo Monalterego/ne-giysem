@@ -807,6 +807,8 @@
     "rightsBody": "Verilerine erişebilir, düzeltilmesini ya da silinmesini isteyebilirsin. Profil → Verilerimi indir ile bir kopyasını alabilir, Hesabımı Sil ile tüm verilerini silebilirsin.",
     "policyLink": "Gizlilik Politikası",
     "noticeAck": "Okudum",
+    "noticeUpdatedTitle": "Aydınlatma metni güncellendi",
+    "noticeUpdatedIntro": "Sanal deneme bilgilendirmesini güncelledik. Verdiğin rızalar geçerliliğini koruyor; yalnızca güncel metni okumanı istiyoruz.",
     "noticeRead": "Bilgilendirmeyi okudun.",
     "readFirst": "Rıza vermek için önce bilgilendirmeyi okuyup “Okudum”a dokun.",
     "explicitLabel": "Açık rıza",

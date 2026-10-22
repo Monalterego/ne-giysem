@@ -39,7 +39,13 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 
 - `avatars`, `wardrobe-items`, `mannequin-cache` bucket'ları **özel**: `010_private_buckets.sql:15`.
 - Dosya yolu `<uid>/…`; sahip dışı silme engelli: `011_privacy_hardening.sql:24-31`.
-- **[?]** SELECT / INSERT / UPDATE storage policy'leri panelden eklenmiş; repoda migration yok. Kodla doğrulanamıyor; panelden dışa aktarılıp repoya eklenmeli.
+- Tüm storage policy'leri ve bucket ayarları (22.10.2026 ölçümü) birebir repoda: `supabase/migrations/018_storage_policies_snapshot.sql`. Okuma / yükleme / güncelleme yalnızca sahibin `<uid>/` klasöründe.
+- **Bilinen zayıflıklar (düzeltilmedi):**
+  - Private bucket'larda `file_size_limit` / `allowed_mime_types` yok; oturum açmış kullanıcı kendi klasörüne her türden ve boyutta dosya yükleyebilir.
+  - `wardrobe-items` ve `mannequin-cache` policy'leri `public` rolüne tanımlı; anon için `auth.uid()` null olduğundan açık değil.
+  - `wardrobe-items`'ta UPDATE policy'si yok.
+  - `moodboards` herkese açık bucket; policy yok, listeleme ve yükleme kapalı.
+  - Ayrıntı: 018 sonundaki notlar.
 - Görüntüleme yalnızca imzalı bağlantıyla, **1 saat**: `src/lib/storageUrls.ts:13`, `:72`.
 - FASHN'a giden bağlantı **10 dakika**: `src/lib/storageUrls.ts:14`, `:175`.
 - Verilerimi indir bağlantıları 1 saat: `supabase/functions/export-my-data/index.ts:16`.
@@ -74,6 +80,7 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 | `REVENUECAT_SECRET_API_KEY`, `REVENUECAT_ENTITLEMENT_ID` | `_shared/revenuecat.ts:23`, `:27` |
 | `REVENUECAT_WEBHOOK_SECRET` | `revenuecat-webhook/index.ts:46` |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID`, `APPLE_PRIVATE_KEY` | `delete-account/index.ts:57-60` |
+| `DELETION_LOG_PEPPER` — silme kaydı özeti (HMAC anahtarı); **değiştirilmez**, parola yöneticisinde ayrıca saklanır | `delete-account/index.ts` (`subjectHash`); geri yükleme RPC'sine parametre olarak (`017_deletion_subject_hash.sql`) |
 
 **İstemcide bulunan anahtarlar** (`EXPO_PUBLIC_*`, derlemeye gömülür — herkes okuyabilir):
 
@@ -94,12 +101,14 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 
 | Tarih | Anahtar | Nasıl açığa çıktı | İptal / yenileme tarihi | Yeni anahtar nerede | Kişisel veri etkisi | Yapan |
 |---|---|---|---|---|---|---|
-| ≤ 2026-06-05 | `EXPO_PUBLIC_ANTHROPIC_API_KEY` | İstemci derlemesine gömülüydü; `a91eaf7` ile kaldırıldı ve sunucuya taşındı | **[?] yenilendi mi bilinmiyor** | Supabase secret `ANTHROPIC_API_KEY` | Anahtarla başkasının isteği; bizim kullanıcı verimize erişim sağlamaz (Anthropic tarafında geçmiş istek okunamaz) [?] | HCD |
-| ≤ 2026-06-05 | `EXPO_PUBLIC_REMOVEBG_API_KEY` | İstemci derlemesi; `204de19` ile kaldırıldı (Poof'a geçildi) | **[?]** | — (remove.bg kullanılmıyor) | Yok sayılır [?] | HCD |
-| ≤ 2026-07-08 | `EXPO_PUBLIC_FASHN_API_KEY` | İstemci derlemesi; `70e4db4` ile kaldırıldı | **[?] yenilendi mi bilinmiyor** | Supabase secret `FASHN_API_KEY` | FASHN istek kaydında görsel bağlantıları ve sonuçlar 3 gün tutulur; anahtar sahibi API ile geçmiş işleri sorgulayabiliyorsa **kişisel veri etkisi olabilir** [?] | HCD |
+| ≤ 2026-06-05 | `EXPO_PUBLIC_ANTHROPIC_API_KEY` | İstemci derlemesine gömülüydü; `a91eaf7` ile kaldırıldı ve sunucuya taşındı | **Yenilendi** (beyan, ≤ 22.10.2026; kesin tarih [?]) | Supabase secret `ANTHROPIC_API_KEY` | Eski anahtar geçersiz; kullanıcı verimize erişim sağlamaz | HCD |
+| ≤ 2026-06-05 | `EXPO_PUBLIC_REMOVEBG_API_KEY` | İstemci derlemesi; `204de19` ile kaldırıldı (Poof'a geçildi) | **İptal edildi** (beyan) | — (remove.bg kullanılmıyor) | Yok | HCD |
+| ≤ 2026-07-08 | `EXPO_PUBLIC_FASHN_API_KEY` | İstemci derlemesi; `70e4db4` ile kaldırıldı | **Yenilendi; eski anahtar geçersiz** (beyan) | Supabase secret `FASHN_API_KEY` | Eski anahtarla geçmiş işler artık sorgulanamaz | HCD |
+| geçmiş | OpenAI API anahtarı | Geçmiş kod (`cf3d402`: anahtar cihaz loguna yazılıyordu) | **İptal edildi** (beyan) | — (kullanılmıyor) | Yok | HCD |
+| geçmiş | Replicate API anahtarı | Geçmiş kod (`b3c1f3e`, IDM-VTON) | **İptal edildi** (beyan) | — (kullanılmıyor) | Yok | HCD |
 | sürekli | `EXPO_PUBLIC_OPENWEATHER_API_KEY` | Tasarım gereği istemcide | — | — | Yok (yalnızca kota) | — |
 
-**Yapılacak:** ilk üç satır için anahtarların iptal edildiği teyit edilip tarih yazılmalı. FASHN için, eski anahtarla geçmiş işlerin okunup okunamayacağı FASHN'a sorulmalı. O tarihlerde dağıtılmış derleme varsa (TestFlight / mağaza) anahtarlar herkese açık sayılır.
+Kesin iptal / yenileme tarihleri sağlayıcı panellerinden alınıp yazılmalı [?].
 
 ## 6a. Diğer tedbirler
 

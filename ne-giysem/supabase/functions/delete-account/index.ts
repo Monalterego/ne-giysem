@@ -12,8 +12,9 @@
 //      YİNE DE sürer — log + ops_events (kimliksiz).
 //   5. auth.users kaydını sil → profiles / style_profiles / wardrobe_items / combos /
 //      favorite_combos / entitlements / consent_events ON DELETE CASCADE ile otomatik gider.
-//   6. deletion_log'a kimliksiz bir satır (kaynak, silinen veri türleri, RevenueCat/Apple
-//      sonucu). Yazılamazsa silme yine başarılı döner — log + ops_events.
+//   6. deletion_log'a bir satır (kaynak, silinen veri türleri, RevenueCat/Apple sonucu,
+//      subject_hash = HMAC-SHA256(DELETION_LOG_PEPPER, uid) — yedekten geri yüklemede
+//      yeniden silmek için, 017). Yazılamazsa silme yine başarılı döner — log + ops_events.
 //
 // Gövde: { appleAuthCode?: string, source?: 'app' | 'under18' } — 'email' istemciden
 // kabul edilmez (destek talebiyle panelden silinir, satır elle eklenir; 014).
@@ -21,6 +22,7 @@
 // Gerekli secret'lar (npx supabase secrets set ...):
 //   APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_CLIENT_ID (= bundle id), APPLE_PRIVATE_KEY (.p8 içeriği)
 //   REVENUECAT_SECRET_API_KEY (yoksa RevenueCat adımı atlanır + ops_events)
+//   DELETION_LOG_PEPPER (en az 32 rastgele bayt; yoksa subject_hash null + ops_events)
 // Otomatik gelenler: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -161,6 +163,22 @@ async function dataCategories(admin: any, uid: string, removedFiles: number): Pr
   return cats;
 }
 
+/**
+ * deletion_log.subject_hash (017): hex(HMAC-SHA256(anahtar = DELETION_LOG_PEPPER, mesaj = uid)).
+ * SQL tarafı aynı değeri extensions.hmac(uid::text, pepper, 'sha256') ile üretir.
+ * Pepper yoksa null — silme engellenmez, ops_events'e yazılır.
+ */
+async function subjectHash(uid: string): Promise<string | null> {
+  const pepper = Deno.env.get("DELETION_LOG_PEPPER");
+  if (!pepper) return null;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(pepper), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(uid.toLowerCase())));
+  return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -213,10 +231,15 @@ Deno.serve(async (req) => {
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
     if (delErr) return json({ error: "delete-failed", detail: delErr.message }, 500);
 
-    // 6) Kimliksiz silme kaydı — en iyi çaba
+    // 6) Silme kaydı — en iyi çaba. Kimlik yerine geri döndürülemeyen özet (017)
     const source = body?.source === "under18" ? "under18" : "app";
+    const hash = await subjectHash(user.id).catch(() => null);
+    if (!hash) {
+      await reportOpsEvent(admin, "delete-account", "deletion_pepper_missing", { pepper: false });
+    }
     const { error: logErr } = await admin.from("deletion_log").insert({
       source,
+      subject_hash: hash,
       categories,
       revenuecat_ok:   revenuecat === "deleted",
       apple_revoke_ok: apple === "skipped" ? null : apple === "revoked",

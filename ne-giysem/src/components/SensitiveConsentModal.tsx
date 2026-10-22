@@ -33,9 +33,10 @@ export default function SensitiveConsentModal({
   onCancel,
   intro,
   cancelLabel,
+  noticeOnly,
 }: {
   visible: boolean;
-  /** Bu akışın gerektirdiği açık rızalar (1 ya da 2) */
+  /** Bu akışın gerektirdiği açık rızalar (1 ya da 2); noticeOnly'de boş */
   kinds: TryOnConsentKind[];
   saving?: boolean;
   onSubmit: (granted: TryOnConsentKind[]) => void;
@@ -44,6 +45,11 @@ export default function SensitiveConsentModal({
   intro?: string;
   /** Kapıda 'Vazgeç' yerine 'Kabul etmiyorum' (red → ilgili veriler silinir) */
   cancelLabel?: string;
+  /**
+   * Aydınlatma güncellendi (mevcut rıza sahipleri): yalnızca aydınlatma + "Okudum".
+   * Rıza kutuları ve vazgeç yok; "Okudum" notice_shown'ı yazar, kapı kendiliğinden kalkar.
+   */
+  noticeOnly?: boolean;
 }) {
   const uid       = useUserStore((s) => s.user?.id);
   const read      = useConsentStore((s) => noticeRead(s.records));
@@ -78,12 +84,12 @@ export default function SensitiveConsentModal({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={noticeOnly ? () => {} : onCancel}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            <Text style={styles.title}>{t('consent.title')}</Text>
-            <Text style={styles.intro}>{intro ?? t('consent.intro')}</Text>
+            <Text style={styles.title}>{noticeOnly ? t('consent.noticeUpdatedTitle') : t('consent.title')}</Text>
+            <Text style={styles.intro}>{noticeOnly ? t('consent.noticeUpdatedIntro') : (intro ?? t('consent.intro'))}</Text>
 
             {/* ── Aydınlatma — bilgilendirme, onay kutusu YOK ── */}
             <Text style={styles.blockLabel}>{upper(t('consent.noticeLabel'))}</Text>
@@ -98,7 +104,7 @@ export default function SensitiveConsentModal({
               <Text style={styles.link}>{t('consent.policyLink')}</Text>
             </TouchableOpacity>
 
-            {read ? (
+            {noticeOnly ? null : read ? (
               <View style={styles.readRow}>
                 <Feather name="check" size={14} color={colors.text} />
                 <Text style={styles.readText}>{t('consent.noticeRead')}</Text>
@@ -116,7 +122,8 @@ export default function SensitiveConsentModal({
               </TouchableOpacity>
             )}
 
-            {/* ── Açık rıza — her biri ayrı kutu ── */}
+            {/* ── Açık rıza — her biri ayrı kutu (aydınlatma güncellemesinde yok) ── */}
+            {!noticeOnly && <>
             <Text style={[styles.blockLabel, styles.blockLabelSpaced]}>{upper(t('consent.explicitLabel'))}</Text>
             <Text style={styles.sectionBody}>
               {kinds.length > 1 ? t('consent.explicitIntroMany') : t('consent.explicitIntroOne')}
@@ -141,8 +148,23 @@ export default function SensitiveConsentModal({
               );
             })}
             {!read && <Text style={styles.hint}>{t('consent.readFirst')}</Text>}
+            </>}
           </ScrollView>
 
+          {noticeOnly ? (
+            <View style={[styles.actions, { paddingBottom: spacing.lg + insets.bottom }]}>
+              <TouchableOpacity
+                style={[styles.primaryBtn, ackBusy && styles.disabled]}
+                onPress={handleAcknowledge}
+                disabled={ackBusy}
+                activeOpacity={0.85}
+              >
+                {ackBusy
+                  ? <ActivityIndicator color={colors.white} />
+                  : <Text style={styles.primaryBtnText}>{t('consent.noticeAck')}</Text>}
+              </TouchableOpacity>
+            </View>
+          ) : (
           <View style={[styles.actions, { paddingBottom: spacing.lg + insets.bottom }]}>
             <TouchableOpacity
               style={[styles.primaryBtn, !canSubmit && styles.disabled]}
@@ -158,6 +180,7 @@ export default function SensitiveConsentModal({
               <Text style={styles.cancelText}>{cancelLabel ?? t('consent.cancel')}</Text>
             </TouchableOpacity>
           </View>
+          )}
         </View>
       </View>
     </Modal>

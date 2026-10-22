@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/useUserStore';
 import type { UserState } from '../../store/useUserStore';
-import { useConsentStore, requiredTryOnConsents } from '../../store/useConsentStore';
+import { useConsentStore, requiredTryOnConsents, needsNoticeUpdate } from '../../store/useConsentStore';
 import type { TryOnConsentKind } from '../../constants/consent';
 import { grantTryOnConsents, withdrawTryOnConsent } from '../../lib/privacyActions';
 import SensitiveConsentModal from '../../components/SensitiveConsentModal';
@@ -16,11 +16,17 @@ import { t } from '../../i18n';
  * bunu gösterir. YALNIZCA eksik rızalar sorulur (requiredTryOnConsents).
  * İşaretlenen → rıza kaydı. İşaretlenmeyen → onaydan sonra o rızaya bağlı veri silinir
  * (geri çekme kaydıyla). Her durumda koşul kalkar, kapı kapanır.
+ *
+ * Rızaları geçerli ama aydınlatmanın güncel ana sürümünü (CONSENT_VERSIONS.notice_shown)
+ * okumamış kullanıcıya yalnızca "Aydınlatma metni güncellendi" adımı gösterilir; rızalar
+ * yeniden sorulmaz. "Okudum" → notice_shown güncel sürümle yazılır, kapı kalkar.
  */
 export default function ConsentGateScreen() {
   const user     = useUserStore((s: UserState) => s.user);
   const records  = useConsentStore((s) => s.records);
   const required = requiredTryOnConsents(user, records);
+  // Eksik rıza yoksa ama aydınlatmanın güncel ana sürümü okunmadıysa: yalnız "Okudum" adımı
+  const noticeOnly = required.length === 0 && needsNoticeUpdate(records);
   const [busy, setBusy] = useState(false);
 
   const run = async (granted: TryOnConsentKind[], declined: TryOnConsentKind[]) => {
@@ -55,7 +61,8 @@ export default function ConsentGateScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.fill} />
       <SensitiveConsentModal
-        visible={required.length > 0}
+        visible={required.length > 0 || noticeOnly}
+        noticeOnly={noticeOnly}
         kinds={required}
         saving={busy}
         intro={t('consent.existingIntro')}

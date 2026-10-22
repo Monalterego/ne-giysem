@@ -34,7 +34,7 @@ Kod referansları `ne-giysem/` altındaki yollardır; satır numaraları `1ae49a
 | Rızalar ayrı ayrı ve yalnız eklenebilir şekilde kaydedilir | `supabase/migrations/014_privacy_consent.sql:51-71` (RLS, kolon bazlı INSERT, UPDATE / DELETE yok) |
 | Metin sürümü; ana sürüm değişince yeniden sorma | `src/constants/consent.ts:15-18`, `src/store/useConsentStore.ts:73`, `:84` |
 | Mevcut verisi olup rızası olmayan kullanıcıya kapı | `src/navigation/RootNavigator.tsx:27`, `src/store/useConsentStore.ts:103` |
-| Depoda sahip dışı silme / erişim yok | `011_privacy_hardening.sql:24-31` (DELETE). SELECT / INSERT / UPDATE storage policy'leri **repoda yok** [?] |
+| Depoda sahip dışı erişim yok | `018_storage_policies_snapshot.sql` (tüm policy'ler, 22.10.2026 ölçümü) |
 | Hesap silmede tüm depo dosyaları | `supabase/functions/delete-account/index.ts:115` |
 | Yedeklerde fotoğraf yok | [org] — kodda yok |
 
@@ -43,5 +43,5 @@ Kod referansları `ne-giysem/` altındaki yollardır; satır numaraları `1ae49a
 1. **Vücut tipi ve kilo:** sağlık verisi sayılıp sayılmadığına dair hukuki görüş yok.
 2. **Kıyafet fotoğrafında kişi:** kişi görünmesi teknik olarak engellenmiyor; yalnızca rehberde öneri var. Yapay zekâ izni olan kullanıcıda böyle bir fotoğraf Poof ve Anthropic'e de gider.
 3. **Yurt dışına aktarım (KVKK m. 9):** FASHN Birleşik Krallık ve alt işleyenler — özel nitelikli verinin yurt dışına aktarım dayanağı (standart sözleşme / bildirim) bu dokümanın kapsamı dışında; hukuki değerlendirme gerekiyor.
-4. **Storage policy'leri:** okuma / yükleme / güncelleme policy'leri panelden elle eklenmiş; repoda yok, kodla doğrulanamıyor.
+4. ~~Storage policy'leri repoda yok~~ — çözüldü: `018_storage_policies_snapshot.sql`. Açık kalan: private bucket'larda dosya boyutu / MIME sınırı yok.
 5. **Kurul'un 31.01.2018 tarihli ve 2018/10 sayılı kararındaki "yeterli önlemler":** idari önlemler (politika, eğitim, gizlilik taahhüdü) tek kişilik yapıda belgelenmeli; kodda karşılığı yok.

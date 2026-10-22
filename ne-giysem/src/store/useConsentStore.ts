@@ -114,3 +114,13 @@ export function requiredTryOnConsents(user: User | null | undefined, records: Co
 export function noticeRead(records: ConsentMap): boolean {
   return isGranted(records, 'notice_shown');
 }
+
+/**
+ * Sanal deneme rızası (fotoğraf ya da fiziksel) geçerli ama aydınlatmanın güncel ana
+ * sürümü okunmamış → ConsentGate yalnızca "Aydınlatma metni güncellendi" adımını
+ * gösterir; rızalar yeniden sorulmaz.
+ */
+export function needsNoticeUpdate(records: ConsentMap): boolean {
+  const hasTryOnConsent = isGranted(records, 'tryon_photo') || isGranted(records, 'tryon_physical');
+  return hasTryOnConsent && !noticeRead(records);
+}
