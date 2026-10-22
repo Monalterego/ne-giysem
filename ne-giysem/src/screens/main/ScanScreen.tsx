@@ -24,7 +24,7 @@ import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { toUploadJpeg, alertAfterPicker } from '../../utils/imageNormalize';
 import { callEdge, edgeError, EdgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
@@ -36,24 +36,10 @@ async function removeBackground(imageBase64: string): Promise<string> {
   const res = await callEdge('bg-removal-proxy', { image_b64: imageBase64 });
   if (!res.ok) throw await edgeError(res);
   const json = await res.json();
-  return (json as any).result_b64 as string;
-}
-
-/**
- * 1400px JPEG'e indir (UploadScreen ile aynı). 12MP base64 ~8MB — proxy'nin boyut
- * tavanını aşar ve HEIC'i Poof kabul etmez. Başarısızsa orijinale düş.
- */
-async function shrinkToJpeg(uri: string, fallbackBase64: string): Promise<string> {
-  try {
-    const normalized = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1400 } }],
-      { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG, base64: true },
-    );
-    return normalized.base64 ?? fallbackBase64;
-  } catch {
-    return fallbackBase64;
-  }
+  const out = (json as any)?.result_b64;
+  // Boş sonuç sessizce "başarı" sayılmasın
+  if (typeof out !== 'string' || !out) throw new Error('bg-removal: result_b64 yok');
+  return out;
 }
 
 async function processBase64(base64: string): Promise<string> {
@@ -85,45 +71,64 @@ export default function ScanScreen({ navigation }: Props) {
 
     let result: ImagePicker.ImagePickerResult;
 
-    if (source === 'camera') {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('errors.permissionTitle'), t('errors.cameraPermission'));
-        return;
+    // Picker base64 yalnız web'de (manipulator yok); native'de tek kaynak toUploadJpeg
+    const pickerOptions: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      quality: 0.8,
+      base64: Platform.OS === 'web',
+      exif: false,
+    };
+    try {
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(t('errors.permissionTitle'), t('errors.cameraPermission'));
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync(pickerOptions);
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(t('errors.permissionTitle'), t('errors.galleryPermission'));
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
       }
-      result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true });
-    } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('errors.permissionTitle'), t('errors.galleryPermission'));
-        return;
-      }
-      result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true });
-    }
-
-    if (result.canceled || !result.assets?.[0]) return;
-
-    const asset = result.assets[0];
-    const uri   = asset.uri;
-    const base64Input = asset.base64
-      ? (Platform.OS === 'web' ? asset.base64 : await shrinkToJpeg(uri, asset.base64))
-      : null;
-    if (!base64Input) {
-      Alert.alert(t('combos.errorTitle'), t('errors.imageReadFailed'));
+    } catch (err) {
+      console.warn(`[Scan] ${source} picker açılamadı:`, err);
+      alertAfterPicker(t('combos.errorTitle'), t('errors.imageReadFailed'));
       return;
     }
 
+    if (result.canceled) return;   // kullanıcı vazgeçti — mesaj gerekmez
+    const asset = result.assets?.[0];
+    if (!asset) {
+      console.warn(`[Scan] ${source}: canceled=false ama asset yok`);
+      alertAfterPicker(t('combos.errorTitle'), t('errors.imageReadFailed'));
+      return;
+    }
+    const uri = asset.uri;
+
     setLoadingUri(uri);
-    setLoadingStep(Platform.OS === 'web' ? t('scan.preparingImage') : t('scan.removingBg'));
+    setLoadingStep(t('scan.preparingImage'));
     setLoading(true);
 
     try {
+      let base64Input: string;
+      if (Platform.OS === 'web') {
+        if (!asset.base64) throw new Error('web: picker base64 dönmedi');
+        base64Input = asset.base64;
+      } else {
+        base64Input = (await toUploadJpeg(uri, asset.width, asset.height)).base64;
+        setLoadingStep(t('scan.removingBg'));
+      }
       const processedBase64 = await processBase64(base64Input);
       navigation.navigate('StoreResult', { processedBase64, originalUri: uri });
     } catch (err) {
+      console.warn(`[Scan] ${source} hazırlama/arka plan başarısız:`, err);
       // 403: izin başka yerde geri çekilmiş → durumu tazele, ekran "kapalı"ya döner
       if (isAiConsentError(err)) useConsentStore.getState().refresh();
-      Alert.alert(t('combos.errorTitle'), friendlyError(err));
+      alertAfterPicker(t('combos.errorTitle'), friendlyError(err));
     } finally {
       setLoading(false);
       setLoadingUri(null);
@@ -144,11 +149,12 @@ export default function ScanScreen({ navigation }: Props) {
       // Ürün görselleri boyut/format açısından kontrolsüz → aynı normalizasyon
       const imageBase64 = Platform.OS === 'web'
         ? scraped
-        : await shrinkToJpeg(`data:image/jpeg;base64,${scraped}`, scraped);
+        : (await toUploadJpeg(`data:image/jpeg;base64,${scraped}`)).base64;
       setLoadingStep(Platform.OS === 'web' ? t('scan.preparingImage') : t('scan.removingBg'));
       const processedBase64 = await processBase64(imageBase64);
       navigation.navigate('StoreResult', { processedBase64, originalUri: url });
     } catch (err) {
+      console.warn('[Scan] url akışı başarısız:', err);
       // fetch-product kodları → anlamlı mesaj; diğerleri (oturum, sınır, boyut,
       // zaman aşımı) friendlyError; teknik mesaj gösterilmez
       let msg = t('errors.productImageFailed');

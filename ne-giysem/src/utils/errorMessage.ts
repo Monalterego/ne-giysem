@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { EdgeError } from '../lib/edgeFunctions';
+import { ImagePrepError } from './imageNormalize';
 
 /** Ham hata → kullanıcı dostu mesaj. Teknik detay ASLA kullanıcıya gösterilmez. */
 export function friendlyError(err: unknown): string {
@@ -13,6 +14,11 @@ export function friendlyError(err: unknown): string {
     if (err.code === 'quota-exceeded') return t('combos.limitReached');
     if (err.code === 'run-budget-exceeded') return t('combos.tryOnBusy');
     if (err.code === 'image-too-large') return t('errors.imageTooLarge');
+  }
+
+  // Yükleme öncesi görsel hazırlama (utils/imageNormalize)
+  if (err instanceof ImagePrepError) {
+    return err.reason === 'too-large' ? t('errors.imageTooLarge') : t('errors.imageProcessFailed');
   }
 
   const raw = err instanceof Error ? err.message : String(err ?? '');

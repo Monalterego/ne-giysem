@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -18,6 +17,7 @@ import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { callEdge, edgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
+import { toUploadJpeg, alertAfterPicker } from '../../utils/imageNormalize';
 import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { t } from '../../i18n';
@@ -38,7 +38,10 @@ async function removeBackground(imageBase64: string): Promise<string> {
   if (!res.ok) throw await edgeError(res);
 
   const json = await res.json();
-  return (json as any).result_b64 as string;
+  const out = (json as any)?.result_b64;
+  // Boş sonuç sessizce "başarı" sayılmasın — sonuç ekranı boş kalırdı
+  if (typeof out !== 'string' || !out) throw new Error('bg-removal: result_b64 yok');
+  return out;
 }
 
 export default function UploadScreen({ navigation }: Props) {
@@ -59,81 +62,97 @@ export default function UploadScreen({ navigation }: Props) {
 
     let result: ImagePicker.ImagePickerResult;
 
-    if (source === 'camera') {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('errors.permissionTitle'), t('errors.cameraPermission'));
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true });
-    } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('errors.permissionTitle'), t('errors.galleryPermission'));
-        return;
-      }
-      result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true });
-    }
-
-    if (result.canceled || !result.assets?.[0]) return;
-
-    const asset = result.assets[0];
-
-    // ⚠️ HEIC → JPEG + küçültme.
-    //    iPhone galerisi HEIC verir, poof.bg kabul etmez (sadece PNG/JPG/WEBP).
-    //    Ayrıca 12MP base64 ~8MB → yükleme timeout. 1400px + JPEG ile ~400KB'a iner.
-    let uri = asset.uri;
-    let base64Input: string | null | undefined = null;
+    // Picker base64 İSTENMEZ: galeride tam çözünürlüklü (HEIC/12–48 MP) olabilir ve
+    // eskiden manipulate başarısız olunca bu ham base64 doğrudan Poof'a gidiyordu.
+    // Tek kaynak toUploadJpeg (JPEG, uzun kenar ≤ 1400, boyut tavanı).
+    const pickerOptions: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      quality: 0.8,
+      base64: Platform.OS === 'web',   // web'de manipulator yok → picker çıktısı kullanılır
+      exif: false,
+    };
     try {
-      const normalized = await ImageManipulator.manipulateAsync(
-        asset.uri,
-        [{ resize: { width: 1400 } }],   // yükseklik oranla ölçeklenir
-        {
-          compress: 0.85,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
-        },
-      );
-      uri = normalized.uri;
-      base64Input = normalized.base64;
-    } catch {
-      // Normalizasyon başarısız → picker'ın kendi çıktısına düş (kamera yolu zaten JPEG)
-      base64Input = asset.base64;
-    }
-
-    if (!base64Input) {
-      Alert.alert(t('combos.errorTitle'), t('errors.imageReadFailed'));
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(t('errors.permissionTitle'), t('errors.cameraPermission'));
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync(pickerOptions);
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(t('errors.permissionTitle'), t('errors.galleryPermission'));
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
+      }
+    } catch (err) {
+      console.warn(`[Upload] ${source} picker açılamadı:`, err);
+      alertAfterPicker(t('combos.errorTitle'), t('errors.imageReadFailed'));
       return;
     }
 
-    setOriginalUri(uri);
+    if (result.canceled) return;   // kullanıcı vazgeçti — mesaj gerekmez
+    const asset = result.assets?.[0];
+    if (!asset) {
+      console.warn(`[Upload] ${source}: canceled=false ama asset yok`);
+      alertAfterPicker(t('combos.errorTitle'), t('errors.imageReadFailed'));
+      return;
+    }
+    console.log(`[Upload] ${source} asset`, {
+      w: asset.width, h: asset.height, mime: asset.mimeType ?? '?', size: asset.fileSize ?? '?', ai: useAi,
+    });
+
+    // Hazırlanırken önizleme + bekleme göster (büyük galeri görseli birkaç saniye sürebilir)
+    setOriginalUri(asset.uri);
     setProcessedBase64(null);
     setManual(!useAi);
+    setLoading(true);
+
+    let uri = asset.uri;
+    let base64Input: string;
+    try {
+      if (Platform.OS === 'web') {
+        // Web: arka plan kaldırma yok, picker'ın base64'ü olduğu gibi
+        if (!asset.base64) throw new Error('web: picker base64 dönmedi');
+        base64Input = asset.base64;
+      } else {
+        const normalized = await toUploadJpeg(asset.uri, asset.width, asset.height);
+        uri = normalized.uri;
+        base64Input = normalized.base64;
+      }
+    } catch (err) {
+      console.warn(`[Upload] ${source} görsel hazırlanamadı:`, err);
+      setLoading(false);
+      setOriginalUri(null);
+      alertAfterPicker(t('combos.errorTitle'), friendlyError(err));
+      return;
+    }
+    setOriginalUri(uri);
 
     // İzin yok: arka plan kaldırılmaz, fotoğraf olduğu gibi kaydedilir
     if (!useAi) {
       setProcessedBase64(base64Input);
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
     try {
-      if (Platform.OS === 'web') {
-        // Web: Remove.bg atla, picker'dan gelen base64'ü direkt kullan
-        setProcessedBase64(base64Input);
-      } else {
-        const processed = await removeBackground(base64Input);
-        setProcessedBase64(processed);
-      }
+      // Web: Remove.bg atla, picker'dan gelen base64'ü direkt kullan
+      const processed = Platform.OS === 'web' ? base64Input : await removeBackground(base64Input);
+      setProcessedBase64(processed);
     } catch (err) {
       // İzin başka cihazda geri çekilmiş olabilir (sunucu 403) → elle akışa düş
       if (isAiConsentError(err)) {
+        console.warn('[Upload] bg-removal 403 ai-consent-required → elle akış');
         useConsentStore.getState().refresh();
         setManual(true);
         setProcessedBase64(base64Input);
       } else {
-        Alert.alert(t('combos.errorTitle'), friendlyError(err));
+        console.warn(`[Upload] ${source} bg-removal başarısız (b64=${base64Input.length}):`, err);
         setOriginalUri(null);
+        alertAfterPicker(t('combos.errorTitle'), friendlyError(err));
       }
     } finally {
       setLoading(false);
@@ -218,7 +237,7 @@ export default function UploadScreen({ navigation }: Props) {
           <Image source={{ uri: originalUri }} style={styles.previewImage} contentFit="contain" />
           <View style={styles.loadingOverlay}>
             <ActivityIndicator color={colors.accent} size="large" />
-            <Text style={styles.loadingText}>{t('scan.removingBg')}</Text>
+            <Text style={styles.loadingText}>{manual ? t('scan.preparingImage') : t('scan.removingBg')}</Text>
           </View>
         </View>
       )}
