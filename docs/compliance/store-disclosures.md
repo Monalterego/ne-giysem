@@ -52,7 +52,7 @@ Tüm satırlarda **Used for tracking: No**. Amaçlar Apple listesinden: *Third-P
 | | Other Financial Info | No | | | | |
 | Location | Precise Location | No | | | #17 | 2 ondalık, düşük doğruluk |
 | | Coarse Location | **Yes** [T5] | App Functionality | **No** | #17 | Doğrudan OpenWeather'a |
-| Sensitive Info | Sensitive Info | **Yes** [T2] | App Functionality | Yes | #12 | Ten rengi; saç tipi |
+| Sensitive Info | Sensitive Info | **Yes** [T2] | App Functionality | Yes | #12 | Yalnızca ten rengi |
 | Contacts | Contacts | No | | | | |
 | User Content | Emails or Text Messages | No | | | | |
 | | Photos or Videos | **Yes** [T3] | App Functionality | Yes | #4, #9, #11, #13, #14 | Kıyafet, profil fotoğrafı, tarama fotoğrafı, manken / try-on görselleri |
@@ -73,7 +73,7 @@ Tüm satırlarda **Used for tracking: No**. Amaçlar Apple listesinden: *Third-P
 | | Other Diagnostic Data | No [T10] | | | #23 | Sunucu logu cihazdan toplanmıyor |
 | Surroundings | Environment Scanning | No | | | | |
 | Body | Hands / Head | No | | | | |
-| Other Data | Other Data Types | **Yes** [T1] | App Functionality | Yes | #1, #12, #19 | Boy, kilo, yaş, vücut tipi, saç rengi / uzunluğu; 18 yaş onay zamanı; rıza kayıtları |
+| Other Data | Other Data Types | **Yes** [T1] | App Functionality | Yes | #1, #12, #19 | Boy, kilo, yaş, vücut tipi, saç rengi / uzunluğu / tipi [T2]; 18 yaş onay zamanı; rıza kayıtları |
 
 ### A3. Beklenen özet (ürün sayfasında görünecek)
 
@@ -117,10 +117,10 @@ Amaç seçenekleri: *App functionality, Analytics, Developer communications, Adv
 | | User IDs | **Yes** [T7] | No | No | Required | App functionality, Account management, Fraud prevention, security, and compliance | #1, #18, #20 |
 | | Address | No | | | | | |
 | | Phone number | No | | | | | |
-| | Race and ethnicity | **Yes** [T2] | No | No | Optional | App functionality | #12 (ten rengi, saç tipi) |
+| | Race and ethnicity | **Yes** [T2] | No | No | Optional | App functionality | #12 (yalnızca ten rengi) |
 | | Political or religious beliefs | No | | | | | |
 | | Sexual orientation | No | | | | | |
-| | Other info | **Yes** [T1] | No | No | Optional | App functionality | #12 (yaş, boy, kilo, vücut tipi, saç) |
+| | Other info | **Yes** [T1] | No | No | Optional | App functionality | #12 (yaş, boy, kilo, vücut tipi, saç rengi / uzunluğu / tipi) |
 | Financial info | User payment info | No | | | | | Ödemeyi Google alır |
 | | Purchase history | **Yes** [T6] | No | No | Optional | App functionality | #18 |
 | | Credit score / Other financial info | No | | | | | |
@@ -165,7 +165,7 @@ Amaç seçenekleri: *App functionality, Analytics, Developer communications, Adv
 | # | Konu | Karar | Gerekçe | Muhafazakâr alternatif |
 |---|---|---|---|---|
 | T1 | Boy, kilo, yaş, vücut tipi (#12) | Apple: **Other Data**, Health değil. Play: **Personal info → Other info**, Health info değil | Apple Health tanımı "sağlık veya tıbbi veri" (HealthKit, klinik kayıt vb.); Play Health info "tıbbi kayıt, semptom gibi sağlık bilgisi". Burada amaç kıyafet / manken ölçüsü; HealthKit / Health Connect yok, tanı ya da sağlık amacı yok | `ozel-nitelikli-veri-siniflandirmasi.md`'de kilo / vücut tipi için sağlık çağrışımı **değerlendirilmedi** (bölüm 5 #7a). Hukuki görüş "sağlık verisi" derse iki formda da Health seçilir; Apple'da 5.1.3 kuralları (reklamda kullanmama, iCloud'da tutmama) zaten karşılanıyor |
-| T2 | Ten rengi, saç tipi (#12) | Apple: **Sensitive Info: Yes**. Play: **Race and ethnicity: Yes** | KVKK dokümanlarımız ve gizlilik politikası ten rengini "ırk / etnik köken bakımından özel nitelikli sayılabilir" diye niteliyor; formlar bununla tutarlı olmalı. Saç tipi ("afro") etnik çağrışım taşıyabilir | — (zaten muhafazakâr). "Hayır" seçmek politika metniyle çelişir |
+| T2 | Ten rengi ve saç tipi (#12) | **Ten rengi** → Apple: **Sensitive Info: Yes**; Play: **Race and ethnicity: Yes**. **Saç tipi** → Apple: **Other Data**; Play: **Personal info → Other info** (saç rengi / uzunluğuyla birlikte) | Gizlilik politikası ve aydınlatma (notice 2.0) yalnızca ten rengini "ırk / etnik köken bakımından özel nitelikli sayılabilir" diye niteliyor; formlar metinle birebir tutarlı olmalı. Saç tipi seçenekleri (düz / dalgalı / kıvırcık / afro) kıyafet ve manken görünümü içindir; `ozel-nitelikli-veri-siniflandirmasi.md` saç için olasılığı "düşük" değerlendiriyor | Saç tipi ("afro") etnik çağrışım taşıyabilir. Hukuki görüş saç tipini de özel nitelikli sayarsa önce gizlilik metni ve aydınlatma güncellenir, sonra iki formda Sensitive Info / Race and ethnicity'e eklenir — metinden önce formu değiştirmek tutarsızlık yaratır |
 | T3 | Profil fotoğrafı, try-on / manken görselleri, tarama fotoğrafı | Apple: **Photos or Videos: Yes**, linked. Play: **Photos: Yes**, optional | Kullanıcının fotoğrafı ve ondan üretilen görseller depomuzda, hesaba bağlı. Manken / try-on görselleri sunucuda üretilir ama kullanıcı fotoğrafından / tarifinden türer ve hesapla saklanır. Yüz geometrisi çıkarılmıyor → Biometric yok | — |
 | T4 | Kullanım sayaçları, try-on kota kaydı (#15, #20) | Apple: **Product Interaction: Yes**, App Functionality. Play: **App interactions: Yes**, App functionality + Fraud prevention | İşlev başına günlük sayım "kullanıcının uygulamayla etkileşimi". Analitik için kullanılmıyor, kota ve kötüye kullanımın önlenmesi için | Sayaçlar sunucuda üretildiği için "toplanmıyor" denebilir; ama kullanıcıya bağlı ve 13 ay tutuluyor → beyan etmek daha savunulabilir |
 | T5 | Konum (#17) | Apple: **Coarse Location: Yes, Not linked**. Play: **Approximate location: Yes, ephemeral, optional** | Cihazdan üçüncü tarafa çıkıyor → collected. 2 ondalık (~1 km) Apple'ın "3+ ondalıktan düşük çözünürlük" coarse tanımına uyuyor. Kullanıcı kimliği eklenmiyor, bizde saklanmıyor, OpenWeather beyanına göre saklanmıyor → not linked / ephemeral | OpenWeather IP'yi görür; IP'yi kimlikle eşleştirme yapılmıyor. "Linked" seçmek gereksiz şekilde fazla beyan olur |
@@ -181,7 +181,7 @@ Amaç seçenekleri: *App functionality, Analytics, Developer communications, Adv
 
 ## E. Envanterle çelişkiler / dikkat edilecekler
 
-1. **Hesap silme sayfasında e-posta süresi iki farklı yazıyor (sestina-web, TR ve EN):** bölüm 2 "talebin **doğrulandıktan** sonra en geç 30 gün içinde", bölüm 5 "talebini **aldıktan** sonra en geç 30 gün içinde". `basvuru-proseduru.md` bölüm 4 süreyi doğrulamadan başlatıyor [hukuki teyit gerekli]. Play'e silme URL'si verilmeden önce bölüm 5 tek ifadeye indirilmeli. (Bu repo dışı, sestina-web düzeltmesi.)
+1. ~~Hesap silme sayfasında e-posta süresi iki farklı yazıyor~~ — çözüldü (23.10.2026, sestina-web `abb3bb0`): hesap silme ve başvuru sayfalarında (TR + EN) tek ifade: "talebin bize ulaşmasından itibaren en geç 30 gün içinde; kimlik doğrulaması bu süre içinde yapılır". `basvuru-proseduru.md` bölüm 4 buna göre güncellendi.
 2. **Konum izni:** envanter #17 "Rıza / tercih bağlantısı" sütununda yalnızca "iOS konum izni" yazıyordu; Android'de de `ACCESS_COARSE_LOCATION` isteniyor. Envanterde düzeltildi.
 3. **Envanterde olup formda ayrı tür karşılığı olmayanlar:** IP (#24), sunucu logları (#23), yedekler (#25), silme kaydı (#22), yazışmalar (#28). Bilinçli karar (T9, T10); formda eksik değil.
 4. **Gizlilik politikası "Expo: rastgele kurulum kimliği"** diyor; formda Device ID beyan ediliyor (T8). Çelişki değil, ama politika "cihaz kimliği toplamıyoruz" gibi bir ifade eklenirse çelişir.
@@ -191,7 +191,7 @@ Amaç seçenekleri: *App functionality, Analytics, Developer communications, Adv
 ## F. Gönderim öncesi kontrol listesi
 
 - [ ] URL'ler tarayıcıda 200 (bölüm C).
-- [ ] Hesap silme sayfasındaki süre ifadesi tekleştirildi (E1).
+- [x] Hesap silme sayfasındaki süre ifadesi tekleştirildi (E1).
 - [ ] T1 için hukuki görüş alındıysa Health / Health info kararı güncellendi.
 - [ ] RevenueCat'in güncel "Apple App Privacy" ve "Google Play Data Safety" sayfaları formla karşılaştırıldı (bu taslak: Purchase History + User ID).
 - [ ] Expo'nun `expo-updates` için güncel gizlilik rehberi T8 ile karşılaştırıldı.

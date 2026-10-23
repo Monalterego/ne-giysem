@@ -50,7 +50,7 @@
 | Süre dolarsa / kod yanlışsa | Başvuru doğrulanmamış sayılır, yeni kod istenebilir; en fazla 3 deneme |
 | Saklama | Kod, doğrulanana ya da süresi dolana kadar defterde tutulur, sonra silinir (yalnızca "doğrulandı / süresi doldu" kalır) |
 | Doğrulama tamamlanana kadar | Veri paylaşılmaz, silme yapılmaz |
-| 30 günlük süre | **Doğrulamanın tamamlandığı tarihten** başlar [hukuki teyit gerekli] |
+| 30 günlük süre | **Talebin bize ulaştığı tarihten** başlar; kimlik doğrulaması bu süre içinde yapılır (web: hesap silme ve başvuru sayfaları, 23.10.2026). Doğrulama gecikirse kalan süre takip edilir; kod 7 gün geçerli olduğundan doğrulama en geç ilk haftada tamamlanmalı |
 
 **Apple "E-postamı Gizle":** kayıtlı adres `…@privaterelay.appleid.com` biçimindedir. Kod bu adrese gönderilir ve Apple kullanıcının gerçek adresine iletir; kullanıcının yanıtı yine yönlendirme adresinden gelir.
 
