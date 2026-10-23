@@ -11,7 +11,7 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 
 | Ortam | İçerik | Konum |
 |---|---|---|
-| Supabase Postgres | Hesap, dolap meta verisi, kombinler, rıza kayıtları, sayaçlar, silme kaydı | Supabase, Inc.; proje bölgesi AB / Frankfurt [?] |
+| Supabase Postgres | Hesap, dolap meta verisi, kombinler, rıza kayıtları, sayaçlar, silme kaydı | Supabase, Inc.; proje bölgesi AB / Frankfurt (`eu-central-1`) |
 | Supabase Storage (özel bucket'lar) | `wardrobe-items`, `avatars`, `mannequin-cache` | Aynı |
 | Supabase log'ları | Edge function ve auth log'ları | Aynı; 1 gün (Free plan) |
 | Veritabanı yedekleri | Haftalık DB dökümü (fotoğraflar yok) | Veri sorumlusunun kişisel Google Drive'ı ("Sestina Yedekler"), AES-256 (gpg) |

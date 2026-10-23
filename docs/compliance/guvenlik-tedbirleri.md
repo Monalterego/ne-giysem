@@ -18,7 +18,7 @@ Kod referansları `ne-giysem/` altındaki yollardır (`1ae49a9` sonrası). `[?]`
 | RevenueCat | Yalnızca veri sorumlusu | Açık | |
 | Apple Developer | Yalnızca veri sorumlusu | Zorunlu (Apple) | |
 | FASHN | Yalnızca veri sorumlusu | **Sunmuyor** — benzersiz, güçlü parola | Anahtar yalnızca sunucuda (bölüm 5) |
-| Poof | Yalnızca veri sorumlusu | [?] | |
+| Poof | Yalnızca veri sorumlusu | GitHub ile giriş — GitHub 2FA'sıyla korunuyor | |
 
 2FA durumu veri sorumlusu beyanıdır (23.10.2026). Yeni panel eklenince 2FA açılır ve bu tabloya yazılır; 2FA sunmayan sağlayıcıda benzersiz güçlü parola kullanılır.
 
