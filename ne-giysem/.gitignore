@@ -44,3 +44,4 @@ yarn-error.*
 # fotoğraf rehberi orijinal görselleri (optimize edilmiş .jpg'ler repoda)
 assets/guide/_src/
 supabase/.temp/
+*.gpg
