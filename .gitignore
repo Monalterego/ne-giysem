@@ -1,0 +1,3 @@
+# şifreli DB yedekleri — asla commit edilmez (docs/compliance/saklama-imha-politikasi.md bölüm 4)
+*.gpg
+sestina-db-*

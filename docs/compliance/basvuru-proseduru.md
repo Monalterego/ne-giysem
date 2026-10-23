@@ -54,7 +54,16 @@
 
 **Apple "E-postamı Gizle":** kayıtlı adres `…@privaterelay.appleid.com` biçimindedir. Kod bu adrese gönderilir ve Apple kullanıcının gerçek adresine iletir; kullanıcının yanıtı yine yönlendirme adresinden gelir.
 
-**[?] Ön koşul:** Apple, yönlendirme adreslerine yalnızca Apple Developer hesabında "Sign in with Apple for Email Communication" altında **kayıtlı gönderen alan adı / adreslerinden** gelen e-postaları iletir. Ayrıca sestinaapp.com'dan gönderim için SPF / DKIM gerekir. Cloudflare Email Routing yalnızca alım yapar; support@ adına **gönderim** için Gmail "farklı gönder" (SMTP) yapılandırması gerekir. Bu kurulum doğrulanmadan Apple kullanıcılarına kod ulaşmayabilir.
+**Ön koşul — kuruldu (23.10.2026):** Apple, yönlendirme adreslerine yalnızca Apple Developer hesabında "Sign in with Apple for Email Communication" altında **kayıtlı gönderen alan adı / adreslerinden** gelen e-postaları iletir.
+
+| Parça | Durum |
+|---|---|
+| Alım | Cloudflare Email Routing → Gmail |
+| Gönderim | support@sestinaapp.com, Gmail "farklı gönder" ile **Gmail SMTP** (uygulama şifresi) |
+| SPF | `v=spf1 include:_spf.mx.cloudflare.net include:_spf.google.com ~all` |
+| Apple Developer | `sestinaapp.com` alan adı ve `support@sestinaapp.com` kayıtlı; SPF doğrulandı |
+
+Kod her zaman **support@sestinaapp.com adına** gönderilir (Gmail'de "Gönderen" alanı kontrol edilir); kişisel Gmail adresinden giden e-postayı Apple iletmez. SPF kaydı ya da Gmail gönderim ayarı değişirse Apple Developer'daki doğrulama yeniden kontrol edilir.
 
 ## 5. Yanıt
 

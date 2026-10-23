@@ -1,6 +1,6 @@
 # Kişisel Veri Saklama ve İmha Politikası
 
-**Sürüm:** 1.0 · **Tarih:** 22 Ekim 2026 · **Sorumlu:** Hasan Can Demircan (veri sorumlusu; tüm roller)
+**Sürüm:** 1.1 · **Tarih:** 23 Ekim 2026 · **Sorumlu:** Hasan Can Demircan (veri sorumlusu; tüm roller)
 **Kaynak:** `data-inventory.md` · **Dayanak:** KVKK m. 7; Kişisel Verilerin Silinmesi, Yok Edilmesi veya Anonim Hale Getirilmesi Hakkında Yönetmelik ("Yönetmelik")
 
 Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kayıtla yükümlü veri sorumluları içindir. Veri sorumlusu bundan istisnadır (`verbis-degerlendirmesi.md`); bu politika iyi uygulama olarak tutulur.
@@ -14,7 +14,7 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 | Supabase Postgres | Hesap, dolap meta verisi, kombinler, rıza kayıtları, sayaçlar, silme kaydı | Supabase, Inc.; proje bölgesi AB / Frankfurt [?] |
 | Supabase Storage (özel bucket'lar) | `wardrobe-items`, `avatars`, `mannequin-cache` | Aynı |
 | Supabase log'ları | Edge function ve auth log'ları | Aynı; 1 gün (Free plan) |
-| Veritabanı yedekleri | Haftalık DB dökümü (fotoğraflar yok) | Veri sorumlusunun kişisel Google Drive'ı, AES-256 |
+| Veritabanı yedekleri | Haftalık DB dökümü (fotoğraflar yok) | Veri sorumlusunun kişisel Google Drive'ı ("Sestina Yedekler"), AES-256 (gpg) |
 | E-posta | Destek ve başvuru yazışmaları | Cloudflare (yönlendirme) → Gmail |
 | Kullanıcı cihazı | Oturum, dil, görünüm tercihi | Cihaz (bizim kontrolümüzde değil) |
 | Üçüncü taraflar | Poof, Anthropic, FASHN, RevenueCat, Expo, OpenWeather | Sağlayıcıların beyan ettiği süreler |
@@ -54,15 +54,40 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 
 ## 4. Elle yedek prosedürü (haftalık)
 
+**Durum:** ilk yedek **23.10.2026**'da alındı; AES-256 (gpg simetrik), Google Drive "Sestina Yedekler" klasörü; şifre çözme testi başarılı.
+
 1. **Zamanlama:** her pazartesi.
-2. **Döküm:** yalnızca veritabanı (şema + veri) — Supabase CLI `supabase db dump` veya panelden. **Storage (fotoğraflar) yedeklenmez.**
-3. **Şifreleme:** döküm, Drive'a yüklenmeden **önce** yerel makinede AES-256 ile şifrelenir (ör. `7z a -mhe=on -p` ya da `gpg --symmetric --cipher-algo AES256`). Parola bir parola yöneticisinde tutulur; Drive'da, e-postada veya repoda tutulmaz.
-4. **Yükleme:** şifreli dosya veri sorumlusunun kişisel Google Drive hesabındaki ayrı bir klasöre yüklenir. Dosya adında tarih olur, kişisel veri olmaz (ör. `sestina-db-2026-10-26.7z`).
-5. **Yerel temizlik:** şifresiz döküm ve şifreli kopya yerel diskten silinir.
+2. **Döküm:** yalnızca veritabanı (roller + şema + veri) — Supabase CLI `supabase db dump`. **Storage (fotoğraflar) yedeklenmez.**
+3. **Şifreleme:** döküm, Drive'a yüklenmeden **önce** yerel makinede AES-256 ile şifrelenir (`gpg --symmetric --cipher-algo AES256`). Parola bir parola yöneticisinde tutulur; Drive'da, e-postada, repoda ve komut satırında (`--passphrase`) tutulmaz — gpg parolayı terminalde sorar.
+4. **Yükleme:** şifreli dosya veri sorumlusunun kişisel Google Drive hesabındaki **"Sestina Yedekler"** klasörüne yüklenir. Dosya adında tarih olur, kişisel veri olmaz (ör. `sestina-db-2026-10-26.tar.gz.gpg`).
+5. **Yerel temizlik:** şifresiz döküm, şifreleme doğrulandıktan sonra; şifreli kopya, Drive'a yüklendiği görüldükten **sonra** silinir. Döküm başka bir cihaza indirildiyse (ör. şifre çözme testi için) **o cihazdan da** silinir (İndirilenler klasörü ve çöp kutusu dahil).
 6. **30 gün kuralı:** yükleme sırasında 30 günden eski yedekler Drive'dan silinir ve **çöp kutusundan da** kalıcı olarak boşaltılır.
-7. **Asla:** yedekler (şifreli ya da şifresiz) **git deposuna** konmaz, e-postayla gönderilmez, paylaşılan bağlantıyla açılmaz.
+7. **Asla:** yedekler (şifreli ya da şifresiz) **git deposuna** konmaz (`*.gpg` `.gitignore`'da; döküm klasörü repo dışında), e-postayla gönderilmez, paylaşılan bağlantıyla açılmaz.
 8. **Kayıt:** her yedek ve her silme, imha kaydına (bölüm 6) bir satır olarak yazılır.
-9. **Hesap güvenliği:** Google hesabında iki adımlı doğrulama açık olmalı [?].
+9. ~~**Hesap güvenliği:** Google hesabında iki adımlı doğrulama açık olmalı~~ — açık (23.10.2026, `guvenlik-tedbirleri.md` bölüm 1).
+
+**Haftalık komut bloğu** (Git Bash / bash; `ne-giysem/` içinden, `supabase link` yapılmış hâlde). Her adım `&&` ile bağlı: biri başarısız olursa sonrakiler çalışmaz, hiçbir şey silinmez. Döküm repo **dışındaki** `~/sestina-yedek/` klasörüne yazılır.
+
+```bash
+D=$(date +%F) && W="$HOME/sestina-yedek" && B="sestina-db-$D" \
+&& mkdir -p "$W/$B" \
+&& supabase db dump --linked --role-only -f "$W/$B/roles.sql" \
+&& supabase db dump --linked -f "$W/$B/schema.sql" \
+&& supabase db dump --linked --data-only --use-copy -f "$W/$B/data.sql" \
+&& tar -C "$W" -czf "$W/$B.tar.gz" "$B" \
+&& gpg --pinentry-mode loopback --symmetric --cipher-algo AES256 -o "$W/$B.tar.gz.gpg" "$W/$B.tar.gz" \
+&& gpg --pinentry-mode loopback --decrypt "$W/$B.tar.gz.gpg" | cmp - "$W/$B.tar.gz" \
+&& rm -rf "$W/$B" "$W/$B.tar.gz" \
+&& echo "Şifre çözme testi geçti. Şimdi $W/$B.tar.gz.gpg dosyasını Drive > Sestina Yedekler'e yükle." \
+&& read -r -p "Dosya Drive'da görünüyor ve boyutu aynı mı? (evet yaz): " OK \
+&& [ "$OK" = "evet" ] \
+&& rm "$W/$B.tar.gz.gpg" \
+&& echo "Tamam: $B yüklendi, yerel kopyalar silindi. İmha kaydına satır yaz; 30 günden eski yedekleri sil."
+```
+
+- `cmp` adımı şifreli dosyanın aynı parolayla açılıp orijinalle bayt bayt eşleştiğini doğrular; eşleşmezse şifresiz döküm silinmez.
+- "evet" dışında bir yanıt (veya Ctrl+C) zinciri durdurur; şifreli kopya yerelde kalır, yükleme tamamlanınca `rm` elle çalıştırılır.
+- Blok sonunda `ls "$HOME/sestina-yedek"` boş olmalı (bölüm 5, "Cihazda kalıntı").
 
 **Etki:** hesap silen kullanıcının DB kayıtları en fazla 30 gün yedekte kalabilir; metinlerde bu böyle yazılıdır.
 

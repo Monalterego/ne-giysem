@@ -1,6 +1,6 @@
 # Teknik ve İdari Güvenlik Tedbirleri
 
-**Sürüm:** 1.0 · **Tarih:** 22 Ekim 2026 · **Dayanak:** KVKK m. 12 · **Kaynak:** `data-inventory.md`
+**Sürüm:** 1.1 · **Tarih:** 23 Ekim 2026 · **Dayanak:** KVKK m. 12 · **Kaynak:** `data-inventory.md`
 Kod referansları `ne-giysem/` altındaki yollardır (`1ae49a9` sonrası). `[?]` = kodda doğrulanamayan, veri sorumlusunun teyit etmesi gereken nokta.
 
 ---
@@ -9,12 +9,18 @@ Kod referansları `ne-giysem/` altındaki yollardır (`1ae49a9` sonrası). `[?]`
 
 | Sistem | Erişimi olan | 2FA | Not |
 |---|---|---|---|
-| Supabase projesi (panel, SQL, secrets) | Yalnızca veri sorumlusu | [?] | service_role anahtarı panelde ve edge function ortamında |
-| GitHub (`Monalterego/ne-giysem`, `sestina-web`) | Yalnızca veri sorumlusu | [?] | Secret repoda yok (bölüm 5) |
-| Expo / EAS (derleme, OTA) | Yalnızca veri sorumlusu | [?] | EAS ortam değişkenlerinde `EXPO_PUBLIC_*` |
-| Google hesabı (Drive yedekleri, Gmail) | Yalnızca veri sorumlusu | [?] | Kişisel hesap |
-| Cloudflare (DNS, e-posta yönlendirme) | Yalnızca veri sorumlusu | [?] | |
-| Sağlayıcı panelleri (Anthropic, FASHN, Poof, RevenueCat, Apple Developer, Google Cloud) | Yalnızca veri sorumlusu | [?] | |
+| Supabase projesi (panel, SQL, secrets) | Yalnızca veri sorumlusu | Açık | service_role anahtarı panelde ve edge function ortamında |
+| GitHub (`Monalterego/ne-giysem`, `sestina-web`) | Yalnızca veri sorumlusu | Açık | Secret repoda yok (bölüm 5) |
+| Expo / EAS (derleme, OTA) | Yalnızca veri sorumlusu | GitHub / Google ile giriş — bu hesapların 2FA'sıyla korunuyor | EAS ortam değişkenlerinde `EXPO_PUBLIC_*` |
+| Google hesabı (Drive yedekleri, Gmail, Google Cloud) | Yalnızca veri sorumlusu | Açık | Kişisel hesap; Gmail SMTP için uygulama şifresi |
+| Cloudflare (DNS, e-posta yönlendirme) | Yalnızca veri sorumlusu | Açık (TOTP uygulaması) | |
+| Anthropic Console | Yalnızca veri sorumlusu | Açık | |
+| RevenueCat | Yalnızca veri sorumlusu | Açık | |
+| Apple Developer | Yalnızca veri sorumlusu | Zorunlu (Apple) | |
+| FASHN | Yalnızca veri sorumlusu | **Sunmuyor** — benzersiz, güçlü parola | Anahtar yalnızca sunucuda (bölüm 5) |
+| Poof | Yalnızca veri sorumlusu | [?] | |
+
+2FA durumu veri sorumlusu beyanıdır (23.10.2026). Yeni panel eklenince 2FA açılır ve bu tabloya yazılır; 2FA sunmayan sağlayıcıda benzersiz güçlü parola kullanılır.
 
 - **Yetki ilkesi:** üçüncü kişiye erişim verilmez. Verilirse (ör. ileride çalışan / danışman) en az yetki, kişisel hesap ve gizlilik taahhüdü uygulanır, bu tablo güncellenir ve `verbis-degerlendirmesi.md` bölüm 5 tetiklenir.
 - **Cihaz:** geliştirme bilgisayarında disk şifrelemesi [?], ekran kilidi [?].
@@ -104,8 +110,8 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 | ≤ 2026-06-05 | `EXPO_PUBLIC_ANTHROPIC_API_KEY` | İstemci derlemesine gömülüydü; `a91eaf7` ile kaldırıldı ve sunucuya taşındı | **Yenilendi** (beyan, ≤ 22.10.2026; kesin tarih [?]) | Supabase secret `ANTHROPIC_API_KEY` | Eski anahtar geçersiz; kullanıcı verimize erişim sağlamaz | HCD |
 | ≤ 2026-06-05 | `EXPO_PUBLIC_REMOVEBG_API_KEY` | İstemci derlemesi; `204de19` ile kaldırıldı (Poof'a geçildi) | **İptal edildi** (beyan) | — (remove.bg kullanılmıyor) | Yok | HCD |
 | ≤ 2026-07-08 | `EXPO_PUBLIC_FASHN_API_KEY` | İstemci derlemesi; `70e4db4` ile kaldırıldı | **Yenilendi; eski anahtar geçersiz** (beyan) | Supabase secret `FASHN_API_KEY` | Eski anahtarla geçmiş işler artık sorgulanamaz | HCD |
-| geçmiş | OpenAI API anahtarı | Geçmiş kod (`cf3d402`: anahtar cihaz loguna yazılıyordu) | **İptal edildi** (beyan) | — (kullanılmıyor) | Yok | HCD |
-| geçmiş | Replicate API anahtarı | Geçmiş kod (`b3c1f3e`, IDM-VTON) | **İptal edildi** (beyan) | — (kullanılmıyor) | Yok | HCD |
+| Mayıs–Temmuz 2026 | OpenAI API anahtarı | Geçmiş kod (`cf3d402`: anahtar cihaz loguna yazılıyordu) | **İptal edildi** (beyan) | — (koddan kaldırıldı) | Yok — yalnızca geliştirici / test görselleri, gerçek kullanıcı verisi gönderilmedi (beyan) | HCD |
+| Mayıs–Temmuz 2026 | Replicate API anahtarı | Geçmiş kod (`b3c1f3e`, IDM-VTON) | **İptal edildi** (beyan) | — (koddan kaldırıldı) | Yok — yalnızca geliştirici / test görselleri, gerçek kullanıcı verisi gönderilmedi (beyan) | HCD |
 | sürekli | `EXPO_PUBLIC_OPENWEATHER_API_KEY` | Tasarım gereği istemcide | — | — | Yok (yalnızca kota) | — |
 
 Kesin iptal / yenileme tarihleri sağlayıcı panellerinden alınıp yazılmalı [?].
@@ -116,7 +122,7 @@ Kesin iptal / yenileme tarihleri sağlayıcı panellerinden alınıp yazılmalı
 - Veri minimizasyonu: Poof / Anthropic'e yalnızca küçültülmüş kıyafet fotoğrafı; konum cihazda ~1 km'ye yuvarlanır (`src/utils/weatherService.ts:12-13`).
 - Analitik, reklam ve izleme SDK'sı yok (`ne-giysem/package.json`).
 - Log'lar 1 gün (Supabase Free plan); hata mesajlarında kullanıcı kimliği dışında kişisel veri yazılmaz [?] (tam denetim yapılmadı).
-- Yedekler AES-256, fotoğraf içermez; parola ayrı tutulur (`saklama-imha-politikasi.md` bölüm 4).
+- Yedekler AES-256 (gpg simetrik), fotoğraf içermez; parola ayrı tutulur; `*.gpg` git dışında (`.gitignore`) (`saklama-imha-politikasi.md` bölüm 4).
 
 ## 7. Gözden geçirme
 
