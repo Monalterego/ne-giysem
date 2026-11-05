@@ -642,6 +642,8 @@
     "manualNote": "Because you haven't given AI permission, photos are saved as they are and you choose the category, colour and season yourself.",
     "enableAi": "Turn on automatic recognition",
     "asIs": "Will be saved as is",
+    "bgFallbackTitle": "Background not cleaned",
+    "bgFallback": "We couldn't clean up the photo's background right now. We've added the item with the original photo.",
     "guideDoLegs": "Pants, shorts, jumpsuits: legs apart and fully extended, waistband visible",
     "guideDontFolded": "Folded legs — may be mistaken for shorts or a top",
     "exampleTop": "Top: lay flat",
@@ -726,7 +728,9 @@
     "compatScore": "%{score}% match",
     "missingTitle": "Missing Pieces",
     "comboSuggestions": "Outfit Suggestions",
-    "emptyDesc": "As you add items to your wardrobe, compatibility analysis will appear here."
+    "emptyDesc": "As you add items to your wardrobe, compatibility analysis will appear here.",
+    "analysisFailed": "We couldn't recognise this item. This scan wasn't counted — try again.",
+    "retry": "Try again"
   },
   "weather": {
     "veryCold": "Warm layers",

@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
-import { callEdge, edgeError, isAiConsentError } from '../../lib/edgeFunctions';
+import { callEdge, edgeError, EdgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { toUploadJpeg, alertAfterPicker } from '../../utils/imageNormalize';
 import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
@@ -51,6 +51,8 @@ export default function UploadScreen({ navigation }: Props) {
   const [guideVisible, setGuideVisible] = useState(false);
   // Yapay zekâ izni yok → fotoğraf olduğu gibi, otomatik tanıma yok (elle akış)
   const [manual, setManual] = useState(false);
+  // Arka plan kaldırma başarısız → orijinal olduğu gibi kaydedilir (otomatik tanıma sürer)
+  const [bgFailed, setBgFailed] = useState(false);
   const aiDeclined = useConsentStore((s) => aiStatus(s.records) === 'declined');
 
   const pick = async (source: 'camera' | 'gallery') => {
@@ -108,6 +110,7 @@ export default function UploadScreen({ navigation }: Props) {
     setOriginalUri(asset.uri);
     setProcessedBase64(null);
     setManual(!useAi);
+    setBgFailed(false);
     setLoading(true);
 
     let uri = asset.uri;
@@ -149,10 +152,16 @@ export default function UploadScreen({ navigation }: Props) {
         useConsentStore.getState().refresh();
         setManual(true);
         setProcessedBase64(base64Input);
-      } else {
-        console.warn(`[Upload] ${source} bg-removal başarısız (b64=${base64Input.length}):`, err);
+      } else if (err instanceof EdgeError && err.status === 401) {
+        // Oturum yok → kayıt da yapılamaz; nedenini göster
         setOriginalUri(null);
         alertAfterPicker(t('combos.errorTitle'), friendlyError(err));
+      } else {
+        // Sağlayıcı hatası (kredi, kota, zaman aşımı, 5xx, format reddi): parça yine
+        // eklenebilsin — orijinal olduğu gibi kaydedilir, analiz orijinal üzerinde yapılır
+        console.warn(`[Upload] ${source} bg-removal başarısız → orijinal kullanılacak (b64=${base64Input.length}):`, err);
+        setBgFailed(true);
+        setProcessedBase64(base64Input);
       }
     } finally {
       setLoading(false);
@@ -161,7 +170,7 @@ export default function UploadScreen({ navigation }: Props) {
 
   const handleContinue = () => {
     if (!processedBase64 || !originalUri) return;
-    navigation.navigate('UploadDetail', { processedBase64, originalUri, manual });
+    navigation.navigate('UploadDetail', { processedBase64, originalUri, manual, bgFailed });
   };
 
   return (
@@ -251,7 +260,7 @@ export default function UploadScreen({ navigation }: Props) {
               style={styles.previewImage}
               contentFit="contain"
             />
-            {manual ? (
+            {manual || bgFailed ? (
               <View style={[styles.badge, styles.badgeMuted]}>
                 <Text style={[styles.badgeText, styles.badgeTextMuted]}>{t('upload.asIs')}</Text>
               </View>

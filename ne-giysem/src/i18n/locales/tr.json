@@ -642,6 +642,8 @@
     "manualNote": "Yapay zekâ iznini vermediğin için fotoğraflar olduğu gibi kaydedilir; kategori, renk ve mevsimi sen seçersin.",
     "enableAi": "Otomatik tanımayı aç",
     "asIs": "Olduğu gibi kaydedilecek",
+    "bgFallbackTitle": "Arka plan temizlenemedi",
+    "bgFallback": "Fotoğrafın arka planı şu an temizlenemedi. Parçayı fotoğrafın orijinal hâliyle ekledik.",
     "guideDoLegs": "Pantolon, şort, tulum: paçaları ayrık ve uzanmış ser, bel bandı görünsün",
     "guideDontFolded": "Katlanmış paça — şort ya da üst sanılabilir",
     "exampleTop": "Üst: düz ser",
@@ -726,7 +728,9 @@
     "compatScore": "%{score} puan uyum",
     "missingTitle": "Eksik Parçalar",
     "comboSuggestions": "Kombin Önerileri",
-    "emptyDesc": "Dolabına parça ekledikçe uyum analizi burada gösterilecek."
+    "emptyDesc": "Dolabına parça ekledikçe uyum analizi burada gösterilecek.",
+    "analysisFailed": "Bu ürünü tanıyamadık. Bu tarama hakkından düşmedi, tekrar deneyebilirsin.",
+    "retry": "Tekrar dene"
   },
   "weather": {
     "veryCold": "Kalın kıyafetler",

@@ -74,10 +74,11 @@ const SEASONS: { label: string; value: Season }[] = [
 ];
 
 export default function UploadDetailScreen({ route, navigation }: Props) {
-  const { processedBase64, originalUri, existingItem, manual: manualParam } = route.params as {
+  const { processedBase64, originalUri, existingItem, manual: manualParam, bgFailed } = route.params as {
     processedBase64?: string;
     originalUri?: string;
     manual?: boolean;
+    bgFailed?: boolean;
     existingItem?: WardrobeItem;
   };
   const isEditMode = !!existingItem;
@@ -338,6 +339,8 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
       });
 
       navigation.navigate('WardrobeList');
+      // Arka plan kaldırılamadıysa parça orijinal hâliyle eklendi — kullanıcıya söyle
+      if (bgFailed) Alert.alert(t('upload.bgFallbackTitle'), t('upload.bgFallback'));
     } catch (err: any) {
       Alert.alert(t('combos.errorTitle'), err.message ?? t('uploadDetail.saveFailed'));
     } finally {

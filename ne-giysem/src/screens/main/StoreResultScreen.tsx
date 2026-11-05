@@ -153,6 +153,9 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   const [visionResult, setVisionResult]       = useState<VisionResult | null>(null);
   const [smartAnalyzing, setSmartAnalyzing]   = useState(false);
   const [compatibility, setCompatibility]     = useState<StoreAnalysis | null>(null);
+  // Analiz başarısız → sonuç yerine hata + "Tekrar dene" (attempt artınca analiz yeniden çalışır)
+  const [analysisError, setAnalysisError]     = useState<string | null>(null);
+  const [attempt, setAttempt]                 = useState(0);
 
   // Kullanılmayan detectedCategory/detectedColors state'lerini basit şekilde saklıyoruz
   // — scannedItem artık gereksiz; sadece scannedUri gösterimi yeterli
@@ -164,9 +167,16 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   // gösterilmez, limit ekranı açılır.
   useEffect(() => {
     let cancelled = false;
+    setAnalyzing(true);
+    setAnalysisError(null);
     analyzeClothingImage(processedBase64)
       .then(async (result) => {
         if (cancelled) return;
+        // Analiz başarısız (failed: varsayılan 'upper') → hak düşmez, sonuç gösterilmez
+        if (result.failed) {
+          setAnalysisError(t('storeResult.analysisFailed'));
+          return;
+        }
         const allowed = await spendScan();
         if (cancelled) return;
         if (!allowed) {
@@ -185,14 +195,14 @@ export default function StoreResultScreen({ route, navigation }: Props) {
           navigation.goBack();
           return;
         }
-        // Oturum yok / günlük sınır → nedenini göster (diğer hatalarda eski sessiz davranış)
-        if (!cancelled && isUserFacingEdgeError(err)) {
-          Alert.alert(t('combos.errorTitle'), friendlyError(err));
+        // Oturum yok / günlük sınır → nedeni; diğerleri → genel analiz hatası. Hak düşmez
+        if (!cancelled) {
+          setAnalysisError(isUserFacingEdgeError(err) ? friendlyError(err) : t('storeResult.analysisFailed'));
         }
       })
       .finally(() => { if (!cancelled) setAnalyzing(false); });
     return () => { cancelled = true; };
-  }, [processedBase64]);
+  }, [processedBase64, attempt]);
 
   // 2. Dolap uyum analizi — senkron lokal motor, sıfır network
   useEffect(() => {
@@ -263,8 +273,16 @@ export default function StoreResultScreen({ route, navigation }: Props) {
         {/* AI Detay Kartı */}
         {visionResult && <AIDetailCard vision={visionResult} />}
 
-        {/* Dolap boşsa */}
-        {!items.length ? (
+        {/* Analiz başarısız — varsayılan kategoriyle sonuç gösterilmez */}
+        {analysisError && !analyzing ? (
+          <View style={styles.emptyCard}>
+            <Feather name="alert-circle" size={36} color={colors.textSecondary} />
+            <Text style={styles.emptyDesc}>{analysisError}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => setAttempt((a) => a + 1)} activeOpacity={0.85}>
+              <Text style={styles.retryBtnText}>{t('storeResult.retry')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : analysisError ? null : !items.length ? (
           <View style={styles.emptyCard}>
             <Feather name="shopping-bag" size={36} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>{t('storeResult.emptyWardrobe')}</Text>
@@ -514,6 +532,20 @@ const styles = StyleSheet.create({
   },
 
   // ── Verdict ──
+  retryBtn: {
+    marginTop: spacing.sm,
+    height: 44,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    ...typography.body,
+    fontFamily: fonts.bodyBold,
+    color: colors.white,
+  },
   verdictBadge: {
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,

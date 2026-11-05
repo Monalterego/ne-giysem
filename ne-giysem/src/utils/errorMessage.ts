@@ -37,8 +37,11 @@ export function friendlyError(err: unknown): string {
   if (m.includes('body pose') || m.includes('detect body'))
     return t('combos.tryOnPoseFailed');
 
-  // Arka plan silme: format reddi
-  if (m.includes('poof') || m.includes('422') || m.includes('unsupported'))
+  // Format reddi — yalnızca açık format kodları (415/422) ya da "unsupported" mesajı.
+  // Mesajda sağlayıcı adı (Poof) geçmesi format hatası DEĞİLDİR: proxy her üst servis
+  // hatasını "Poof error <status>" diye sarıyor (kredi, kota, 5xx dahil)
+  const formatStatus = err instanceof EdgeError && (err.status === 415 || err.status === 422);
+  if (formatStatus || (!(err instanceof EdgeError) && m.includes('unsupported')))
     return t('errors.imageFormatUnsupported');
 
   // Boyut

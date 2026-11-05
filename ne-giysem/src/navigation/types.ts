@@ -27,8 +27,9 @@ export type WardrobeStackParamList = {
   Upload: undefined;
   UploadDetail:
     // manual: yapay zekâ izni yok — fotoğraf olduğu gibi, otomatik tanıma yapılmaz
-    | { processedBase64: string; originalUri: string; manual?: boolean; existingItem?: undefined }
-    | { processedBase64?: undefined; originalUri?: undefined; manual?: undefined; existingItem: WardrobeItem };
+    // bgFailed: arka plan kaldırılamadı — orijinal olduğu gibi kaydedilir, otomatik tanıma sürer
+    | { processedBase64: string; originalUri: string; manual?: boolean; bgFailed?: boolean; existingItem?: undefined }
+    | { processedBase64?: undefined; originalUri?: undefined; manual?: undefined; bgFailed?: undefined; existingItem: WardrobeItem };
 };
 
 export type ScanStackParamList = {
