@@ -18,8 +18,10 @@ import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
 import { reportOpsEvent, serviceUnavailable } from "../_shared/ops.ts";
 import { hasConsent, consentRequired } from "../_shared/consent.ts";
 import type { ConsentKind } from "../_shared/consent.ts";
-
-const FASHN_BASE = "https://api.fashn.ai/v1";
+import {
+  fashnKey, fashnRun, fashnStatus, isOutOfCredits, parsePredictionId, parseStatus,
+  httpsOutputs, PREDICTION_ID_RE,
+} from "../_shared/fashn.ts";
 
 // Model → izinli inputs anahtarları (src/utils/virtualModel.ts'te kullanılanlar)
 const ALLOWED_INPUTS: Record<string, readonly string[]> = {
@@ -29,17 +31,15 @@ const ALLOWED_INPUTS: Record<string, readonly string[]> = {
   "tryon-max":    ["model_image", "product_image", "prompt", "resolution", "generation_mode"],
 };
 
-// Maliyeti etkileyen değerler koddaki değere sabit
+// Maliyeti etkileyen değerler koddaki değere sabit. Sabitlenen anahtar ZORUNLU:
+// gönderilmezse FASHN varsayılanı (maliyeti bilinmiyor) devreye girerdi → 400.
 const PINNED_VALUES: Record<string, Record<string, readonly unknown[]>> = {
-  "tryon-max": { resolution: ["1k"] },
+  "tryon-max": { resolution: ["1k"], generation_mode: ["balanced"] },
 };
 
 const IMAGE_FIELDS = ["model_image", "garment_image", "product_image"] as const;
 const STORAGE_BUCKETS = new Set(["avatars", "wardrobe-items", "mannequin-cache"]);
 
-// FASHN id formatı repoda/yanıtlarda görülmedi → biçim tahmini yok; yalnızca güvenli
-// karakter kümesi (path enjeksiyonunu keser). Asıl kontrol: id'nin kullanıcıya ait olması.
-const PREDICTION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** https://<proje>/storage/v1/object/(public|sign)/<bucket>/<uid>/<dosya...> mı? */
@@ -75,11 +75,6 @@ function storageBucket(raw: string): string | null {
   }
 }
 
-/** FASHN kredi hatası mı? Ölçülmüş biçim: {"error":"OutOfCredits"} */
-function isOutOfCredits(text: string): boolean {
-  try { return JSON.parse(text)?.error === "OutOfCredits"; } catch { return false; }
-}
-
 /**
  * ÜST SERVİS hatasında render'ı iade et (kotadan düşmesin), sonra 503.
  * Yalnızca /run'da (iş başlamadı: OutOfCredits ya da 5xx). /status'un HTTP hatasında
@@ -110,7 +105,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST")    return json({ error: "method-not-allowed" }, 405);
 
   try {
-    const key = Deno.env.get("FASHN_API_KEY");
+    const key = fashnKey();
     if (!key) return json({ error: "FASHN_API_KEY missing" }, 500);
 
     const admin = adminClient();
@@ -186,8 +181,9 @@ Deno.serve(async (req) => {
         if (!allowedKeys.includes(k)) return bad(`input-not-allowed:${k}`);
       }
       for (const [k, values] of Object.entries(PINNED_VALUES[modelName] ?? {})) {
-        if (k in inputs && !values.includes(inputs[k])) {
-          return bad(`value-not-allowed:${k}`);
+        if (!(k in inputs)) return bad(`value-required:${k}`);
+        if (!values.includes(inputs[k])) {
+          return bad(`value-not-allowed:${k}`, inputs[k]);
         }
       }
       for (const f of IMAGE_FIELDS) {
@@ -219,12 +215,8 @@ Deno.serve(async (req) => {
       if (resErr) throw new Error(`register_run: ${resErr.message}`);
       if (reserved !== true) return json({ error: "run-budget-exceeded" }, 429);
 
-      const res  = await fetch(`${FASHN_BASE}/run`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model_name: modelName, inputs }),
-      });
-      const text = await res.text();
+      const res  = await fashnRun(key, modelName, inputs);
+      const text = res.text;
       // FASHN'ın kendi hatası istemciye aynı status ile geçer (400 dahil) — ayırt edilsin
       if (!res.ok) {
         console.error(`[fashn-proxy] upstream /run ${res.status} model=${modelName} render=${renderId}`, text.slice(0, 500));
@@ -243,9 +235,8 @@ Deno.serve(async (req) => {
       }
 
       if (res.ok) {
-        let id: unknown;
-        try { id = JSON.parse(text)?.id; } catch { /* yanıt JSON değil */ }
-        if (typeof id === "string" && PREDICTION_ID_RE.test(id)) {
+        const id = parsePredictionId(text);
+        if (id) {
           // Tür sunucuda belirlenir: model-create dışındakiler try-on → tamamlanınca başarı
           const { error: regErr } = await admin.rpc("register_run", {
             p_user: user.id, p_render: renderId, p_prediction_id: id,
@@ -270,11 +261,8 @@ Deno.serve(async (req) => {
       if (ownErr) throw new Error(`render_for_prediction: ${ownErr.message}`);
       if (!renderId) return json({ error: "forbidden" }, 403);
 
-      const res  = await fetch(`${FASHN_BASE}/status/${encodeURIComponent(id)}`, {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${key}` },
-      });
-      const text = await res.text();
+      const res  = await fashnStatus(key, id);
+      const text = res.text;
       if (!res.ok) {
         console.error(`[fashn-proxy] upstream /status ${res.status} id=${id}`, text.slice(0, 500));
         // Yoklama hatası geçici olabilir; FASHN'da iş sürüyor olabilir → İADE YOK, yalnızca 503
@@ -286,14 +274,11 @@ Deno.serve(async (req) => {
       }
 
       if (res.ok) {
-        // deno-lint-ignore no-explicit-any
-        let s: any = null;
-        try { s = JSON.parse(text); } catch { /* yanıt JSON değil */ }
+        const s = parseStatus(text);
         if (s?.status === "completed") {
           // Çıktıları kaydet + try-on ise render'ı başarılı işaretle — karar tamamen
           // sunucuda (istemcinin gönderdiği 'final' vb. alanlar yok sayılır)
-          const outputs = (Array.isArray(s.output) ? s.output : [])
-            .filter((u: unknown): u is string => typeof u === "string" && u.startsWith("https://"));
+          const outputs = httpsOutputs(s);
           const { error } = await admin.rpc("complete_prediction", {
             p_user: user.id, p_render: renderId, p_prediction_id: id, p_urls: outputs,
           });

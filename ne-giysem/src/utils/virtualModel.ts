@@ -354,7 +354,8 @@ export async function generateVirtualModelImage(
       product_image:   await signedUrlForFashn('wardrobe-items', shoe.processedImageUrl),
       prompt:          'shoes worn on feet',
       resolution:      '1k',
-      generation_mode: 'quality',
+      // Sunucu yalnızca 'balanced' kabul eder (fashn-proxy PINNED_VALUES) — maliyet
+      generation_mode: 'balanced',
     }, renderId);
     console.log('[fashn] tryon-max ayakkabı çıktı:', result);
   }
@@ -439,7 +440,7 @@ if (require.main === module) {
         product_image:   await signedUrlForFashn('wardrobe-items', TEST_SHOES_URL),
         prompt:          'shoes worn on feet',
         resolution:      '1k',
-        generation_mode: 'quality',
+        generation_mode: 'balanced',
       }, renderId);
       console.log('\n✅ tryon-max ayakkabı URL:', shoesUrl);
       console.log('   → (a) Ayakkabı ayağa düzgün giydirilmiş mi?');
