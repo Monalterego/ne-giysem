@@ -86,7 +86,7 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 | `REVENUECAT_SECRET_API_KEY`, `REVENUECAT_ENTITLEMENT_ID` | `_shared/revenuecat.ts:23`, `:27` |
 | `REVENUECAT_WEBHOOK_SECRET` | `revenuecat-webhook/index.ts:46` |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID`, `APPLE_PRIVATE_KEY` | `delete-account/index.ts:57-60` |
-| `DELETION_LOG_PEPPER` — silme kaydı özeti (HMAC anahtarı); **değiştirilmez**, parola yöneticisinde ayrıca saklanır | `delete-account/index.ts` (`subjectHash`); geri yükleme RPC'sine parametre olarak (`017_deletion_subject_hash.sql`) |
+| `DELETION_LOG_PEPPER` — silme kaydı özeti (HMAC anahtarı); lansmandan sonra **değiştirilmez** (05.11.2026'da lansman öncesi yenilendi), iPhone Parolalar uygulamasında ayrıca saklanır | `delete-account/index.ts` (`subjectHash`); geri yükleme RPC'sine parametre olarak (`017_deletion_subject_hash.sql`) |
 
 **İstemcide bulunan anahtarlar** (`EXPO_PUBLIC_*`, derlemeye gömülür — herkes okuyabilir):
 
