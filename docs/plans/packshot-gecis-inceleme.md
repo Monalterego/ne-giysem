@@ -317,6 +317,21 @@ Web'de Poof atlanır (`UploadScreen.tsx:143`). İzin yoksa fotoğraf olduğu gib
 
 Sonrasında limit değişikliği yalnızca `update app_limits …` olur; build gerektirmez. İstemci metinleri sayıyı `get_usage`'tan alıyor. Yalnızca yedek sabitler (`CombosScreen.tsx:54`, `PaywallScreen.tsx:118`) ve CLAUDE.md'deki tablo elle güncellenir.
 
+**Uygulandı (adım 2):** `ne-giysem/supabase/migrations/020_app_limits.sql`. Anahtarlar: `free.wardrobe_max` 50, `free.tryon_lifetime` 3, `premium.tryon_monthly` 8, `free.scan_monthly` 3. NULL = sınırsız. Premium dolap ve tarama sınırsızlığı fonksiyonlardaki `is_premium` dalında kaldı, tabloda değil. İstemci tabloyu okumuyor; sayılar `get_usage`'tan geliyor.
+
+**İstemcide sabit yazılı limitler — adım 15'te güncellenecek** (adım 2'de değiştirilmedi):
+
+| Yer | Değer | Not |
+|---|---|---|
+| `ne-giysem/src/screens/main/CombosScreen.tsx:54` | `FREE_RENDER_LIMIT = 3` | 402 yanıtında limit yoksa yedek |
+| `ne-giysem/src/screens/main/PaywallScreen.tsx:112` | `usage?.scan.limit ?? 3` | Yedek |
+| `ne-giysem/src/screens/main/PaywallScreen.tsx:118` | `usage?.tryon.limit ?? 3` | Yedek |
+| `ne-giysem/src/i18n/locales/tr.json:906, 909, 910, 912` / `en.json` aynı satırlar | `rowWardrobeFree` "50 parça", `rowTryonFree` "3 (ömür boyu)", `rowTryonPremium` "8 / ay", `rowScanFree` "3 / ay" | **Paywall karşılaştırma tablosu sabit metin**: `app_limits` değişince kendiliğinden güncellenmez. Adım 15'te ya metinler güncellenir ya da `get_usage`'tan beslenen parametreli metne çevrilir (`%{limit}`) |
+| `ne-giysem/src/lib/premiumGate.ts:57, 59`, `ne-giysem/src/screens/main/ProfileScreen.tsx:53, 57` | "23/50", "1/3" | Yalnızca yorumlardaki örnekler; davranışı etkilemez |
+| `CLAUDE.md`, Monetizasyon tablosu | 50 / 3 / 8 / 3 | Proje dokümanı |
+
+İstemci `tryon.limit` değerini `number` olarak bekliyor (`ne-giysem/src/store/usePlanStore.ts:139`). `app_limits`'te bir deneme limiti NULL (sınırsız) yapılırsa istemci tarafı önce bunu desteklemeli **[doğrulanmadı — null için ekran davranışı test edilmedi]**.
+
 **Mevcut kullanıcıların sayaçları:**
 
 - Sayım mantığı değişmediği için yeni limit **geriye dönük** uygulanır.
@@ -432,20 +447,20 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | # | Adım | Etiket | Nasıl test edilir |
 |---|---|---|---|
 | 1 | Hata düzeltmeleri: Poof hatasında parça orijinal fotoğrafla eklenir; "poof" artık format hatası sayılmaz; başarısız tarama hak yakmaz (İş 2, ayrı commit) | OTA | Bkz. commit notu: geçersiz Poof anahtarıyla ekleme; "Uyar mı?" ile analiz hatası |
-| 2 | `app_limits` + `limit_for`; 4 fonksiyon tabloya bağlanır, **değerler bugünkülerle aynı** | sunucu | Test kullanıcısında önce ve sonra `get_usage` diff'i boş olmalı; tablodaki değer değişince paywall/profil yeni sayıyı göstermeli; satır silinince sabite dönmeli |
+| 2 | `app_limits` + `limit_for`; 4 fonksiyon tabloya bağlanır, **değerler bugünkülerle aynı**. Dosya: `ne-giysem/supabase/migrations/020_app_limits.sql` (geri alma SQL'i dosyanın sonunda) | sunucu | Test kullanıcısında uygulama öncesi ve sonrası `get_usage` çıktısı birebir aynı olmalı; tablodaki değer değişince `limit_for` ve `get_usage` yeni sayıyı göstermeli; satır silinince sabite dönmeli |
 | 3 | `_shared/fashn.ts` çıkarımı; tryon-max `generation_mode` doğrudan `['balanced']` olarak sabitlenir + istemci `virtualModel.ts:357` `'balanced'` (birlikte) | sunucu + OTA | `quality` gönderen istek 400 almalı; yeni paketle ayakkabılı deneme çalışmalı |
 | 4 | Try-on: dış giyim/yelek elenir, cache imzası güncellenir | OTA | Ceketli kombin: `runs_used` bir azalmalı, çıktıda ceket olmamalı, eski cache isabet vermemeli |
-| 5 | `segmentation_free: true` denemesi (sabit seed, 10 kombin, dev build'de yerel değişiklik) | test (yayın yok) | Görsel karşılaştırma tablosu; karar sonrası tek satır OTA |
-| 6 | fashn-proxy'de `return_base64` + ara çıktıyı `mannequin-cache/<uid>/tmp/`'ye yazma; istemci storage yolunu kullanır | sunucu + OTA | 3 katman + ayakkabı: FASHN URL'i istemciye hiç gelmemeli; geçici dosyalar silinmeli; function süre/bellek logu |
-| 7 | **Sunucuda izin sürümü kontrolü** (Karar 5): `consent_granted` ya da `_shared/consent.ts` en son kaydın `text_version` ana sürümünü sunucu tarafı tablo/sabitle (`ai_processing` → 2, `tryon_*` → 1) karşılaştırır. Eski sürüm 403 döner. `anthropic-proxy`, `fashn-proxy` ve (adım 9'daki) `garment-image` kullanır. `bg-removal-proxy` da (silinene kadar) aynı kontrolü alır | sunucu | 1.1 onaylı test hesabı: proxy'ler 403 `ai-consent-required` döndürmeli; 2.0 onayından sonra 200; try-on 1.0 rızalarıyla çalışmaya devam etmeli |
-| 8 | İzin metni ve sürüm (Karar 5): tr/en `aiConsent` (Poof çıkar, FASHN eklenir), `privacy.aiBody`, `CONSENT_VERSIONS.ai_processing = '2.0'`; web sayfaları ve compliance dokümanları (c bölümü) | OTA + web + docs (adım 7 ile **aynı gün**) | 1.1 onaylı hesap: ilk eklemede izin ekranı yeniden açılmalı; `consent_events`'te 2.0 satırı; web sayfalarında Poof geçmemeli |
-| 9 | `garment-image` fonksiyonu (packshot + background-remove, `garment_jobs`, packshot sayacı, adım 7'deki sürüm kontrolü); istemci henüz çağırmıyor | sunucu | Test kullanıcısıyla curl: başarılı, moderasyon (mayo), OutOfCredits (sahte anahtar), sahiplik (başkasının id'si → 403), 1.1 izinle 403 |
-| 10 | `wardrobe_items.image_source` migration (`'packshot' \| 'fashn_bg' \| 'original'`; `'device'` lansman sonrası) | sunucu | Sütun null'able; mevcut uygulama etkilenmez |
-| 11 | Yeni yükleme akışı (Karar 2, 4, 6): geçici `_orig.jpg` yükle → Claude(orijinal) ∥ packshot → yan yana seçim → onay: packshot / ret: FASHN background-remove → karar verilince `_orig.jpg` silinir. Ücretsiz plan 4.+ parça: packshot yok, orijinal olduğu gibi + "düz zemine ser, iyi ışıkta çek" ipucu. Hata durumunda: orijinal olduğu gibi | OTA | Ücretsiz: 3 parça packshot, 4. parça olduğu gibi + ipucu; premium: tüm parçalar packshot; onay/ret/zaman aşımı/moderasyon/OutOfCredits; kayıttan sonra storage'da `_orig.jpg` kalmamalı; vazgeçince de silinmeli |
+| 5 | fashn-proxy'de `return_base64` + ara çıktıyı `mannequin-cache/<uid>/tmp/`'ye yazma; istemci storage yolunu kullanır | sunucu + OTA | 3 katman + ayakkabı: FASHN URL'i istemciye hiç gelmemeli; geçici dosyalar silinmeli; function süre/bellek logu |
+| 6 | **Sunucuda izin sürümü kontrolü** (Karar 5): `consent_granted` ya da `_shared/consent.ts` en son kaydın `text_version` ana sürümünü sunucu tarafı tablo/sabitle (`ai_processing` → 2, `tryon_*` → 1) karşılaştırır. Eski sürüm 403 döner. `anthropic-proxy`, `fashn-proxy` ve (adım 8'deki) `garment-image` kullanır. `bg-removal-proxy` da (silinene kadar) aynı kontrolü alır | sunucu | 1.1 onaylı test hesabı: proxy'ler 403 `ai-consent-required` döndürmeli; 2.0 onayından sonra 200; try-on 1.0 rızalarıyla çalışmaya devam etmeli |
+| 7 | İzin metni ve sürüm (Karar 5): tr/en `aiConsent` (Poof çıkar, FASHN eklenir), `privacy.aiBody`, `CONSENT_VERSIONS.ai_processing = '2.0'`; web sayfaları ve compliance dokümanları (c bölümü) | OTA + web + docs (adım 6 ile **aynı gün**) | 1.1 onaylı hesap: ilk eklemede izin ekranı yeniden açılmalı; `consent_events`'te 2.0 satırı; web sayfalarında Poof geçmemeli |
+| 8 | `garment-image` fonksiyonu (packshot + background-remove, `garment_jobs`, packshot sayacı, adım 6'daki sürüm kontrolü); istemci henüz çağırmıyor | sunucu | Test kullanıcısıyla curl: başarılı, moderasyon (mayo), OutOfCredits (sahte anahtar), sahiplik (başkasının id'si → 403), 1.1 izinle 403 |
+| 9 | `wardrobe_items.image_source` migration (`'packshot' \| 'fashn_bg' \| 'original'`; `'device'` lansman sonrası) | sunucu | Sütun null'able; mevcut uygulama etkilenmez |
+| 10 | Yeni yükleme akışı (Karar 2, 4, 6): geçici `_orig.jpg` yükle → Claude(orijinal) ∥ packshot → yan yana seçim → onay: packshot / ret: FASHN background-remove → karar verilince `_orig.jpg` silinir. Ücretsiz plan 4.+ parça: packshot yok, orijinal olduğu gibi + "düz zemine ser, iyi ışıkta çek" ipucu. Hata durumunda: orijinal olduğu gibi | OTA | Ücretsiz: 3 parça packshot, 4. parça olduğu gibi + ipucu; premium: tüm parçalar packshot; onay/ret/zaman aşımı/moderasyon/OutOfCredits; kayıttan sonra storage'da `_orig.jpg` kalmamalı; vazgeçince de silinmeli |
+| 11 | `segmentation_free: true` denemesi — packshot'lı parçalarla, adım 10'dan sonra. Yöntem: fashn-proxy'de **yalnızca belirli test kullanıcı kimlikleri için** `segmentation_free: true` gönderen geçici sunucu bayrağı (secret, örn. `FASHN_SEGFREE_TEST_UIDS`, ya da `app_limits` benzeri bir ayar). Proxy, istemcinin gönderdiği değeri bu kullanıcılar için ezer. Dev build gerekmez. Deneme bitince bayrak ve kod kaldırılır, sonuca göre değer kalıcı yapılır | sunucu | Aynı 10 kombin, bayrak açık ve kapalı test hesabıyla; function logunda gönderilen değer; görsel karşılaştırma tablosu. Bayrak dışındaki kullanıcıların isteği değişmemeli |
 | 12 | "Uyar mı?" Poof'suz (Karar 1): `ScanScreen` arka plan kaldırmaz, orijinal base64 `StoreResult`'a ve Claude'a gider | OTA | Tarama: `bg` sayacı artmamalı; sonuç ekranı orijinali göstermeli; storage'a dosya yazılmamalı |
-| 13 | Poof kaldırma: `bg-removal-proxy` deploy'dan silinir, `POOF_API_KEY` secret'ı silinir, Poof hesabı kapanır, kod/çeviri temizliği (c.1) | sunucu + OTA | Adım 11–12 test hesaplarında doğrulandıktan sonra; `grep -i poof` yalnızca tarihsel dokümanlarda sonuç vermeli |
+| 13 | Poof kaldırma: `bg-removal-proxy` deploy'dan silinir, `POOF_API_KEY` secret'ı silinir, Poof hesabı kapanır, kod/çeviri temizliği (c.1) | sunucu + OTA | Adım 10 ve 12 test hesaplarında doğrulandıktan sonra; `grep -i poof` yalnızca tarihsel dokümanlarda sonuç vermeli |
 | 14 | Ucuz model testi (b.4): önce prompt'un saf modüle taşınması, betik yerelde. Karar 2'ye göre test görselleri **orijinal + packshot** | OTA + yerel | Rapor; geçerse önce `ALLOWED_MODELS` (sunucu), ardından `visionAnalysis.ts:198` (OTA) |
-| 15 | Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); paywall metinleri; CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; test hesaplarının sayaçları sıfırlanarak |
+| 15 | Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
 
 ### Lansman sonrası
 
@@ -478,9 +493,9 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 - **Maliyet:** her eklemede packshot (1 kredi), "orijinali kullan" seçilirse +1 kredi. Premium kullanıcı 200 parça eklerse 200–400 kredi. Günlük tavan (mevcut 150) yeni fonksiyonda da olmalı; global harcama alarmı yok (a.4).
 - **Edge function limitleri** (`return_base64` + sunucuda storage yazma; packshot süresi) ölçülmedi.
 - **OTA'yı almamış eski binary'ler** `bg-removal-proxy`'yi çağırmaya devam eder. Kapatma zamanlaması benimseme oranına bağlı.
-- **Sunucuda rıza sürümü kontrol edilmiyor** (c.2). Karar 5 ile çözülüyor (d, adım 7). Adım 7 ile 8 aynı gün yayınlanmazsa, test hesapları yeni metni görmeden 403 alır.
+- **Sunucuda rıza sürümü kontrol edilmiyor** (c.2). Karar 5 ile çözülüyor (d, adım 6). Adım 6 ile 7 aynı gün yayınlanmazsa, test hesapları yeni metni görmeden 403 alır.
 - **Ücretsiz plan 4.+ parçalar arka planlı kaydediliyor** (Karar 4). Kombin kartı ve try-on kalitesi bu parçalarda düşük olabilir. `garment_photo_type: 'auto'` kalmalı.
-- **Claude girdisinin orijinale dönmesi** kategori doğruluğunu değiştirebilir (arka plan gürültüsü). Adım 13'teki test packshot'lı ve packshot'sız varyantı da ölçmeli.
+- **Claude girdisinin orijinale dönmesi** kategori doğruluğunu değiştirebilir (arka plan gürültüsü). Adım 14'teki test packshot'lı ve packshot'sız varyantı da ölçmeli.
 - **`category:'auto'` ve `'flat-lay'`** packshot'larda daha iyi sonuç verecek mi, ölçülmedi.
 - **`expo-segmentation` olgun değil.** Kendi Expo modülümüzü yazma maliyeti var. iOS 16.x kullanıcıları cihaz üstü yoldan yararlanamaz.
 - **Cache imzası değişimi** (dış giyim eleme) kullanıcıların daha önce cache'ten aldığı kombinleri yeniden kotaya sokar.
