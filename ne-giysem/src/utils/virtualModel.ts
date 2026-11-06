@@ -107,17 +107,24 @@ export async function startTryOn(): Promise<TryOnStart> {
 }
 
 /**
- * FASHN API'de prediction başlatır, sonuç görsel URL'ini döndürür.
+ * Bir FASHN adımının çıktısı. fashn-proxy çıktıyı mannequin-cache'e yazar:
+ * url = 10 dk'lık imzalı URL (sonraki adıma model_image olarak gider),
+ * path = bucket içi yol (<uid>/tmp_… ya da <uid>/base_mannequin.png).
+ * path null → sunucu yazmadı (FASHN https döndürdü): url FASHN CDN URL'idir.
+ */
+export type FashnOutput = { url: string; path: string | null };
+
+/**
+ * FASHN API'de prediction başlatır, tamamlanınca çıktıyı döndürür.
  * @param modelName  Örn. 'tryon-v1.6' | 'model-create'
  * @param inputs     Model girdileri
  * @param renderId   startTryOn'dan gelen render kimliği
- * @returns          CDN URL (72 saat geçerli)
  */
 export async function runFashn(
   modelName: string,
   inputs: Record<string, unknown>,
   renderId: string,
-): Promise<string> {
+): Promise<FashnOutput> {
   // Tek deneme — bkz. withRetry
   const runRes = await callEdge('fashn-proxy', {
     action: 'run',
@@ -162,6 +169,7 @@ export async function runFashn(
       id: string;
       status: 'starting' | 'in_queue' | 'processing' | 'completed' | 'failed';
       output?: string[];
+      path?: string;
       error?: { name?: string; message?: string };
     };
 
@@ -170,7 +178,7 @@ export async function runFashn(
     if (s.status === 'completed') {
       const url = s.output?.[0];
       if (!url) throw new Error('FASHN completed ancak output boş');
-      return url;
+      return { url, path: typeof s.path === 'string' ? s.path : null };
     }
 
     if (s.status === 'failed') {
@@ -209,9 +217,22 @@ export function profileToPrompt(profile: PhysicalProfile): string {
 export type ModelSource = { bucket: 'avatars' | 'mannequin-cache'; ref: string };
 
 /**
+ * Yapay manken üretimi (FASHN model-create). Sunucu çıktıyı <uid>/base_mannequin.png
+ * olarak yazar (path). Kotadan düşmez ama render'ın çağrı bütçesine dahildir.
+ */
+export async function createMannequin(profile: PhysicalProfile, renderId: string): Promise<FashnOutput> {
+  console.log('[fashn] manken üretiliyor (model-create)...');
+  const out = await runFashn('model-create', {
+    prompt:       profileToPrompt(profile),
+    aspect_ratio: '2:3',
+  }, renderId);
+  console.log('[fashn] manken hazır:', out.path ?? '(FASHN URL)');
+  return out;
+}
+
+/**
  * Öncelik: verilen kaynak (avatar / kayıtlı manken) → FASHN model-create.
  * Kaynak storage'daysa FASHN'a 10 dk'lık imzalı URL gider (FASHN URL'leri saklıyor).
- * Manken üretimi kotadan düşmez ama render'ın çağrı bütçesine dahildir.
  */
 export async function getModelImage(
   profile: PhysicalProfile,
@@ -219,14 +240,7 @@ export async function getModelImage(
   source?: ModelSource | null,
 ): Promise<string> {
   if (source) return signedUrlForFashn(source.bucket, source.ref);
-
-  console.log('[fashn] manken üretiliyor (model-create)...');
-  const url = await runFashn('model-create', {
-    prompt:       profileToPrompt(profile),
-    aspect_ratio: '2:3',
-  }, renderId);
-  console.log('[fashn] manken hazır:', url);
-  return url;
+  return (await createMannequin(profile, renderId)).url;
 }
 
 // ─── Katmanlama sırası ────────────────────────────────────────────────────────
@@ -287,14 +301,15 @@ function tryOnShoe(items: WardrobeItem[]): WardrobeItem | undefined {
 // ─── Katmanlı giydirme ────────────────────────────────────────────────────────
 
 /**
- * Her parçayı sırayla giydirir; her adımın çıktısı bir sonraki adıma model_image olarak girer.
+ * Her parçayı sırayla giydirir; her adımın çıktısı (bizim storage'daki ara dosyanın imzalı
+ * URL'i) bir sonraki adıma model_image olarak girer.
  */
 export async function layeredTryOn(
   modelImage: string,
   garments: WardrobeItem[],
   renderId: string,
-): Promise<string> {
-  let current = modelImage;
+): Promise<FashnOutput> {
+  let current: FashnOutput = { url: modelImage, path: null };
 
   for (const g of garments) {
     const label    = g.itemName ?? g.subCategory ?? g.category;
@@ -302,7 +317,7 @@ export async function layeredTryOn(
     console.log(`[fashn] katman: ${g.category} → FASHN category="${category}" / ${label}`);
 
     current = await runFashn('tryon-v1.6', {
-      model_image:        current,
+      model_image:        current.url,
       // Katmandan hemen önce imzalanır — 10 dk TTL uzun render'da da geçerli kalsın
       garment_image:      await signedUrlForFashn('wardrobe-items', g.processedImageUrl),
       // 'flat-lay' sadece düz serili/ghost manken görselleri için; kullanıcılar
@@ -318,10 +333,29 @@ export async function layeredTryOn(
       output_format:      'jpeg',
     }, renderId);
 
-    console.log(`[fashn] katman çıktı (${label}):`, current);
+    console.log(`[fashn] katman çıktı (${label}):`, current.path ?? '(FASHN URL)');
   }
 
   return current;
+}
+
+/**
+ * Deneme sonu (fashn-proxy 'finish'). final verilirse sunucu son ara dosyayı
+ * <uid>/<cacheName>'e kopyalar; her durumda bu render'ın ara dosyalarını (tmp_) siler.
+ * Döner: kopyalandı mı. Hata → fırlatır (çağıran yedek yola düşer).
+ */
+export async function finishTryOn(
+  renderId: string,
+  final?: { path: string; cacheName: string },
+): Promise<boolean> {
+  const res = await callEdge('fashn-proxy', {
+    action: 'finish',
+    render_id: renderId,
+    ...(final ? { final_path: final.path, cache_key: final.cacheName } : {}),
+  });
+  if (!res.ok) throw await edgeError(res);
+  const body = await res.json() as { copied?: boolean };
+  return body.copied === true;
 }
 
 // ─── Cache anahtar yardımcısı ────────────────────────────────────────────────
@@ -361,7 +395,7 @@ export async function generateVirtualModelImage(
   items: WardrobeItem[],
   renderId: string,
   source?: ModelSource | null,
-): Promise<string> {
+): Promise<FashnOutput> {
   const model    = await getModelImage(profile, renderId, source);
   const garments = selectAndOrderGarments(items);
   if (!garments.length) throw new Error('Giydirilecek parça yok');
@@ -374,14 +408,16 @@ export async function generateVirtualModelImage(
   if (shoe) {
     console.log('[fashn] tryon-max: ayakkabı ekleniyor...');
     result = await runFashn('tryon-max', {
-      model_image:     result,
+      model_image:     result.url,
       product_image:   await signedUrlForFashn('wardrobe-items', shoe.processedImageUrl),
       prompt:          'shoes worn on feet',
       resolution:      '1k',
       // Sunucu yalnızca 'balanced' kabul eder (fashn-proxy PINNED_VALUES) — maliyet
       generation_mode: 'balanced',
+      // Sunucuda sabit: cache dosyası .jpg (varsayılan png idi)
+      output_format:   'jpeg',
     }, renderId);
-    console.log('[fashn] tryon-max ayakkabı çıktı:', result);
+    console.log('[fashn] tryon-max ayakkabı çıktı:', result.path ?? '(FASHN URL)');
   }
 
   return result;
@@ -446,7 +482,7 @@ if (require.main === module) {
       const garments = selectAndOrderGarments(testGarments);
       console.log('[2] Katmanlama sırası:', garments.map((g) => g.category).join(' → '));
 
-      const layeredUrl = await layeredTryOn(mannequinUrl, garments, renderId);
+      const layeredUrl = (await layeredTryOn(mannequinUrl, garments, renderId)).url;
       console.log('\n[3] Katmanlı (üst+alt) URL:', layeredUrl);
       console.log('    → Tarayıcıda aç: üst+alt düzgün giydirilmiş mi?\n');
 
@@ -459,13 +495,14 @@ if (require.main === module) {
       //   generation_mode → 'balanced' | 'quality'
       //   category alanı YOK
       console.log('[4] tryon-max: ayakkabı ekleniyor...');
-      const shoesUrl = await runFashn('tryon-max', {
+      const shoesUrl = (await runFashn('tryon-max', {
         model_image:     layeredUrl,
         product_image:   await signedUrlForFashn('wardrobe-items', TEST_SHOES_URL),
         prompt:          'shoes worn on feet',
         resolution:      '1k',
         generation_mode: 'balanced',
-      }, renderId);
+        output_format:   'jpeg',
+      }, renderId)).url;
       console.log('\n✅ tryon-max ayakkabı URL:', shoesUrl);
       console.log('   → (a) Ayakkabı ayağa düzgün giydirilmiş mi?');
       console.log('   → (b) Üst+alt kıyafet BOZULMADAN korunmuş mu?');

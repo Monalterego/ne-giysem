@@ -30,7 +30,7 @@ import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
 import {
-  generateVirtualModelImage, getModelImage, comboSignatureForCache, startTryOn,
+  generateVirtualModelImage, createMannequin, finishTryOn, comboSignatureForCache, startTryOn,
   tryOnCacheSignature, selectAndOrderGarments, hasOmittedOuterwear,
 } from '../../utils/virtualModel';
 import type { PhysicalProfile, ModelSource } from '../../utils/virtualModel';
@@ -671,6 +671,9 @@ export default function CombosScreen() {
     setModelModalVisible(true);
     setGeneratingComboId(combo.id);
 
+    // Açılan render — hata durumunda ara dosyaları (tmp_) silmek için
+    let activeRender: string | null = null;
+
     try {
       const physProfile: PhysicalProfile = {
         height:     (profile?.height      ?? 165) as number,
@@ -697,7 +700,8 @@ export default function CombosScreen() {
         : 'm';
 
       // Yalnızca giydirilen parçalar (dış giyim hariç) + sürüm: eski dış giyimli çıktılar isabet vermez
-      const cacheKey = `${user.id}/${tryOnCacheSignature(combo.items)}_${modelVersion}.jpg`;
+      const cacheName = `${tryOnCacheSignature(combo.items)}_${modelVersion}.jpg`;
+      const cacheKey  = `${user.id}/${cacheName}`;
 
       // Kimlikli HEAD (storage-js exists) — private bucket'ta da çalışır; hata → miss
       if (await storageExists('mannequin-cache', cacheKey)) {
@@ -730,6 +734,7 @@ export default function CombosScreen() {
         return;
       }
       const { renderId } = start;
+      activeRender = renderId;
 
       // 3. Manken kaynağını çöz: avatar → kayıtlı manken → yeni üretim.
       //    Değerler storage YOLU (ya da eski tam URL); FASHN'a giderken virtualModel
@@ -750,52 +755,72 @@ export default function CombosScreen() {
       }
 
       if (!modelSource) {
-        const fashnUrl = await getModelImage(physProfile, renderId);
-        // FASHN URL'i geçici — kendi storage'ımıza taşı, DB'ye YOL kaydet
-        let persistedRef = fashnUrl;
-        try {
-          const res = await fetch(fashnUrl);
-          if (res.ok) {
-            const bytes = new Uint8Array(await res.arrayBuffer());
-            const baseKey = `${user.id}/base_mannequin.png`;
-            const { error: mErr } = await supabase.storage
-              .from('mannequin-cache')
-              .upload(baseKey, bytes, { upsert: true, contentType: 'image/png' });
-            if (!mErr) persistedRef = baseKey;
+        // Sunucu mankeni <uid>/base_mannequin.png olarak yazar → DB'ye YOL kaydedilir
+        const mannequin = await createMannequin(physProfile, renderId);
+        let persistedRef = mannequin.path ?? mannequin.url;
+        // Yedek yol: sunucu yazmadıysa (FASHN https döndürdü) indir, kendi storage'ımıza taşı
+        if (!mannequin.path) {
+          try {
+            const res = await fetch(mannequin.url);
+            if (res.ok) {
+              const bytes = new Uint8Array(await res.arrayBuffer());
+              const baseKey = `${user.id}/base_mannequin.png`;
+              const { error: mErr } = await supabase.storage
+                .from('mannequin-cache')
+                .upload(baseKey, bytes, { upsert: true, contentType: 'image/png' });
+              if (!mErr) persistedRef = baseKey;
+            }
+          } catch {
+            // taşıma başarısızsa FASHN URL ile devam — bu seans çalışır, sonraki seans yeniden üretir
           }
-        } catch {
-          // taşıma başarısızsa FASHN URL ile devam — bu seans çalışır, sonraki seans yeniden üretir
         }
         modelSource = { bucket: 'mannequin-cache', ref: persistedRef };
         await supabase.from('profiles').update({ mannequin_url: persistedRef }).eq('id', user.id);
       }
 
-      // 4. Üret (ilk try-on katmanı tamamlanınca sunucu render'ı başarılı sayar), bucket'a yükle
-      const finalUrl = await generateVirtualModelImage(physProfile, combo.items, renderId, modelSource);
-      if (!finalUrl) return;
+      // 4. Üret (ilk try-on katmanı tamamlanınca sunucu render'ı başarılı sayar). Ara ve son
+      //    çıktılar sunucuda mannequin-cache'e yazılır (tmp_)
+      const final = await generateVirtualModelImage(physProfile, combo.items, renderId, modelSource);
 
-      const imgRes = await fetch(finalUrl);
-      if (!imgRes.ok) throw new Error(t('combos.imageDownloadError'));
-      const imgBuffer = await imgRes.arrayBuffer();
-      const imgBytes  = new Uint8Array(imgBuffer);
-
-      // Yükleme bir kez yeniden denenir — başarısızsa FASHN linki paylaşılmasın diye
-      let upErr: { message: string } | null = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        ({ error: upErr } = await supabase.storage
-          .from('mannequin-cache')
-          .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/jpeg' }));
-        if (!upErr) break;
-        console.warn(`cache upload başarısız (deneme ${attempt + 1}):`, upErr.message);
+      // 5. Son çıktıyı cache anahtarına sunucuda kopyala + ara dosyaları sil (indirme yok)
+      let saved = false;
+      if (final.path) {
+        try {
+          saved = await finishTryOn(renderId, { path: final.path, cacheName });
+        } catch (e) {
+          console.warn('[tryon] finish başarısız, yedek yola geçiliyor:', e);
+        }
       }
 
-      // Upload patlasa (ya da imza alınamasa) bile FASHN URL'iyle manken gösterilir,
-      // ama paylaşım kapatılır — FASHN CDN linki dışarı verilmez
-      const uploadedUrl = upErr ? null : await displayUrl('mannequin-cache', cacheKey);
+      // Yedek yol: kopyalanmadıysa görseli indirip istemciden yükle (bir kez yeniden denenir)
+      if (!saved) {
+        const imgRes = await fetch(final.url);
+        if (!imgRes.ok) throw new Error(t('combos.imageDownloadError'));
+        const imgBytes = new Uint8Array(await imgRes.arrayBuffer());
+
+        let upErr: { message: string } | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          ({ error: upErr } = await supabase.storage
+            .from('mannequin-cache')
+            .upload(cacheKey, imgBytes, { upsert: true, contentType: 'image/jpeg' }));
+          if (!upErr) break;
+          console.warn(`cache upload başarısız (deneme ${attempt + 1}):`, upErr.message);
+        }
+        saved = !upErr;
+        // Ara dosyalar: yükleme başarılıysa hemen sil; değilse gösterilen URL onlardan biri —
+        // start'taki temizlik (1 saat) siler
+        if (saved && final.path) finishTryOn(renderId).catch(() => {});
+      }
+
+      // Kaydedilemese (ya da imza alınamasa) bile sonuç gösterilir, ama paylaşım kapatılır —
+      // geçici bağlantı (ara dosya ya da FASHN CDN) dışarı verilmez
+      const uploadedUrl = saved ? await displayUrl('mannequin-cache', cacheKey) : null;
       setModelShareable(uploadedUrl !== null);
-      setModelImageUrl(uploadedUrl ?? finalUrl);
+      setModelImageUrl(uploadedUrl ?? final.url);
     } catch (err) {
       setModelModalVisible(false);
+      // Bu render'ın ara dosyaları (en iyi çaba; olmazsa start'taki temizlik siler)
+      if (activeRender) finishTryOn(activeRender).catch(() => {});
       // ⚠️ Bozuk manken kalıcı: bir kez kaydedilirse her denemede aynı hata gelir.
       //    Pose hatasında cache'i temizle ki sonraki denemede YENİ manken üretilsin.
       //    Deploy öncesi kaydedilmiş FASHN URL'i proxy'nin izin listesinde değil (400) → aynı tedavi.

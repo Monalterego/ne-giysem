@@ -14,6 +14,9 @@ import type { TryOnConsentKind } from '../constants/consent';
 // Storage hataları akışı durdurmaz (DB işlemi esas); loglanır.
 
 const BASE_MANNEQUIN = 'base_mannequin.png';
+// Try-on ara çıktıları (fashn-proxy: <uid>/tmp_<render>_<prediction>.<ext>). Kaynakları
+// (parça, fotoğraf, manken) adda yok ve geçici oldukları için her silme işlemi hepsini siler.
+const TMP_PREFIX = 'tmp_';
 
 /** remove() RLS'e takılırsa hata DÖNMEZ, sadece silmez → silinen sayısını kontrol et */
 async function removeFiles(bucket: PrivateBucket, paths: string[]): Promise<void> {
@@ -43,10 +46,10 @@ async function listMannequinCache(uid: string): Promise<string[]> {
 }
 
 /**
- * Silinen dolap parçalarının dosyaları: görsel + işlenmiş + thumbnail, ve adında
- * parça id'si geçen try-on sonuçları. Try-on adı: <uid>/<imza>_<sürüm>.jpg,
- * imza = giyilebilir parça id'leri sıralı, '_' ile birleşik (virtualModel
- * comboSignatureForCache) → id dosya adında aynen geçer.
+ * Silinen dolap parçalarının dosyaları: görsel + işlenmiş + thumbnail, adında parça
+ * id'si geçen try-on sonuçları ve tüm ara çıktılar (tmp_). Try-on adı:
+ * <uid>/v2_<imza>_<sürüm>.jpg, imza = giydirilen parça id'leri sıralı, '_' ile
+ * birleşik (virtualModel tryOnCacheSignature) → id dosya adında aynen geçer.
  */
 export async function deleteWardrobeItemFiles(
   uid: string,
@@ -62,13 +65,14 @@ export async function deleteWardrobeItemFiles(
 
   const names = await listMannequinCache(uid);
   const tryOns = names
-    .filter((n) => n !== BASE_MANNEQUIN && items.some((i) => n.includes(i.id)))
+    .filter((n) => n !== BASE_MANNEQUIN && (n.startsWith(TMP_PREFIX) || items.some((i) => n.includes(i.id))))
     .map((n) => `${uid}/${n}`);
   await removeFiles('mannequin-cache', tryOns);
 }
 
 /**
- * Avatarı kaldır: dosya + avatar_url = null + avatarla üretilmiş try-on sonuçları.
+ * Avatarı kaldır: dosya + avatar_url = null + avatarla üretilmiş try-on sonuçları
+ * (ara çıktılar tmp_ de `_m.jpg` ile bitmediği için silinir).
  * Yapay manken (base_mannequin.png) ve mankenle üretilenler (`_m.jpg`) fotoğraftan
  * türemediği için kalır — onlar fiziksel bilgi rızasına bağlı (removePhysicalData).
  */
@@ -90,8 +94,9 @@ export async function removeAvatarAndTryOns(
 }
 
 /**
- * Fiziksel profil verisini sil: alanlar + mannequin_url NULL; yapay manken ve onunla
- * üretilen try-on'lar (ad sonu `_m.jpg` — CombosScreen modelVersion 'm') silinir.
+ * Fiziksel profil verisini sil: alanlar + mannequin_url NULL; yapay manken, onunla
+ * üretilen try-on'lar (ad sonu `_m.jpg` — CombosScreen modelVersion 'm') ve ara
+ * çıktılar (tmp_) silinir.
  * Avatar ve avatarla üretilen try-on'lar KALIR.
  */
 async function removePhysicalData(uid: string): Promise<void> {
@@ -108,7 +113,7 @@ async function removePhysicalData(uid: string): Promise<void> {
 
   const names = await listMannequinCache(uid);
   const toDelete = names
-    .filter((n) => n === BASE_MANNEQUIN || n.endsWith('_m.jpg'))
+    .filter((n) => n === BASE_MANNEQUIN || n.endsWith('_m.jpg') || n.startsWith(TMP_PREFIX))
     .map((n) => `${uid}/${n}`);
   await removeFiles('mannequin-cache', toDelete);
 }
