@@ -370,9 +370,14 @@ const TRYON_CACHE_VERSION = 'v2';
  * cache'i bulmak için (privacyActions.deleteWardrobeItemFiles).
  */
 export function tryOnCacheSignature(items: WardrobeItem[]): string {
-  const shoe = tryOnShoe(items);
-  const ids  = [...selectAndOrderGarments(items), ...(shoe ? [shoe] : [])].map((i) => i.id).sort();
+  const ids = tryOnItems(items).map((i) => i.id).sort();
   return `${TRYON_CACHE_VERSION}_${ids.join('_')}`;
+}
+
+/** FASHN'a görseli gidecek parçalar: giydirilenler + ayakkabı (cache imzası, rezervasyon öncesi kontrol) */
+export function tryOnItems(items: WardrobeItem[]): WardrobeItem[] {
+  const shoe = tryOnShoe(items);
+  return [...selectAndOrderGarments(items), ...(shoe ? [shoe] : [])];
 }
 
 /**

@@ -31,7 +31,7 @@ import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
 import {
   generateVirtualModelImage, createMannequin, finishTryOn, comboSignatureForCache, startTryOn,
-  tryOnCacheSignature, selectAndOrderGarments, hasOmittedOuterwear,
+  tryOnCacheSignature, tryOnItems, selectAndOrderGarments, hasOmittedOuterwear,
 } from '../../utils/virtualModel';
 import type { PhysicalProfile, ModelSource } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
@@ -713,7 +713,40 @@ export default function CombosScreen() {
         }
       }
 
-      // 2. Cache MISS — kotayı SUNUCU verir; render_id tüm FASHN çağrılarında taşınır
+      // 2. Cache MISS — rezervasyondan ÖNCE FASHN gerektirmeyen kontroller: start alındıktan
+      //    sonra FASHN'a istek gitmeden hata verilirse hak 30 dk açık sayılıyor (runs_used = 0).
+      //    İmzalama burada YAPILMAZ (10 dk TTL) — yalnızca değerlerin bizim storage'da olması.
+      //    Harici URL'i signedUrlForFashn geçirir ama fashn-proxy reddeder (image-not-allowed).
+      if (avatarUrl && !toStoragePath('avatars', avatarUrl)) {
+        setModelModalVisible(false);
+        Alert.alert(t('combos.tryOnPhotoMissingTitle'), t('combos.tryOnPhotoMissingBody'));
+        return;   // finally loading'i kapatır
+      }
+      if (tryOnItems(combo.items).some((i) => !toStoragePath('wardrobe-items', i.processedImageUrl))) {
+        setModelModalVisible(false);
+        Alert.alert(t('combos.tryOnImageMissingTitle'), t('combos.tryOnImageMissingBody'));
+        return;
+      }
+
+      // 3. Manken kaynağını çöz: avatar → kayıtlı manken → (yoksa start'tan sonra) yeni üretim.
+      //    Değerler storage YOLU (ya da eski tam URL); FASHN'a giderken virtualModel
+      //    10 dk'lık imzalı URL'e çevirir.
+      let modelSource: ModelSource | null = avatarUrl ? { bucket: 'avatars', ref: avatarUrl } : null;
+
+      // Kayıtlı manken hâlâ var mı? Storage'daysa kimlikli HEAD; harici (eski FASHN
+      // CDN, 72 saatte silinir) ise düz HEAD
+      if (!modelSource && savedMannequinUrl) {
+        const inStorage = toStoragePath('mannequin-cache', savedMannequinUrl) !== null;
+        let alive = false;
+        if (inStorage) {
+          alive = await storageExists('mannequin-cache', savedMannequinUrl);
+        } else {
+          try { alive = (await fetch(savedMannequinUrl, { method: 'HEAD' })).ok; } catch { /* ölü */ }
+        }
+        if (alive) modelSource = { bucket: 'mannequin-cache', ref: savedMannequinUrl };
+      }
+
+      // 4. Kotayı SUNUCU verir; render_id tüm FASHN çağrılarında taşınır
       const start = await startTryOn();
       if (!start.allowed) {
         setModelModalVisible(false);
@@ -736,24 +769,7 @@ export default function CombosScreen() {
       const { renderId } = start;
       activeRender = renderId;
 
-      // 3. Manken kaynağını çöz: avatar → kayıtlı manken → yeni üretim.
-      //    Değerler storage YOLU (ya da eski tam URL); FASHN'a giderken virtualModel
-      //    10 dk'lık imzalı URL'e çevirir.
-      let modelSource: ModelSource | null = avatarUrl ? { bucket: 'avatars', ref: avatarUrl } : null;
-
-      // Kayıtlı manken hâlâ var mı? Storage'daysa kimlikli HEAD; harici (eski FASHN
-      // CDN, 72 saatte silinir) ise düz HEAD
-      if (!modelSource && savedMannequinUrl) {
-        const inStorage = toStoragePath('mannequin-cache', savedMannequinUrl) !== null;
-        let alive = false;
-        if (inStorage) {
-          alive = await storageExists('mannequin-cache', savedMannequinUrl);
-        } else {
-          try { alive = (await fetch(savedMannequinUrl, { method: 'HEAD' })).ok; } catch { /* ölü */ }
-        }
-        if (alive) modelSource = { bucket: 'mannequin-cache', ref: savedMannequinUrl };
-      }
-
+      // 5. Kaynak yoksa yapay manken üret (FASHN model-create — render gerekir)
       if (!modelSource) {
         // Sunucu mankeni <uid>/base_mannequin.png olarak yazar → DB'ye YOL kaydedilir
         const mannequin = await createMannequin(physProfile, renderId);
@@ -778,11 +794,11 @@ export default function CombosScreen() {
         await supabase.from('profiles').update({ mannequin_url: persistedRef }).eq('id', user.id);
       }
 
-      // 4. Üret (ilk try-on katmanı tamamlanınca sunucu render'ı başarılı sayar). Ara ve son
+      // 6. Üret (ilk try-on katmanı tamamlanınca sunucu render'ı başarılı sayar). Ara ve son
       //    çıktılar sunucuda mannequin-cache'e yazılır (tmp_)
       const final = await generateVirtualModelImage(physProfile, combo.items, renderId, modelSource);
 
-      // 5. Son çıktıyı cache anahtarına sunucuda kopyala + ara dosyaları sil (indirme yok)
+      // 7. Son çıktıyı cache anahtarına sunucuda kopyala + ara dosyaları sil (indirme yok)
       let saved = false;
       if (final.path) {
         try {
