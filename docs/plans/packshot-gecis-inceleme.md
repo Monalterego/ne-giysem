@@ -553,6 +553,36 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 14 | Ucuz model testi (b.4): önce prompt'un saf modüle taşınması, betik yerelde. Karar 2'ye göre test görselleri **orijinal + packshot** | OTA + yerel | Rapor; geçerse önce `ALLOWED_MODELS` (sunucu), ardından `visionAnalysis.ts:198` (OTA) |
 | 15 | Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
 
+### Açık iş (koşullu): FASHN'a gitmeden bırakılan rezervasyonun iadesi
+
+**Ne zaman açılır:** kapalı testte `runs_used = 0`, `succeeded_at` ve `failed_at` boş `tryon_renders` satırları sık görülürse. Bunlar rezerve edilip FASHN'a hiç ulaşmayan denemelerdir; hak 30 dk kilitli kalır.
+
+**Tespit:**
+```sql
+select user_id, id, created_at from tryon_renders
+ where runs_used = 0 and succeeded_at is null and failed_at is null
+ order by created_at desc;
+```
+Id'ler fashn-proxy loglarında aranır: 400 satırları `render_id` içerir; 403/426 satırları `user=` ve saatle bulunur. Log yoksa istemci `run` göndermemiştir (ağ, uygulamanın kapatılması, istemcide hata).
+
+**Yapılan (06.11.2026, (A), yalnızca OTA):** FASHN gerektirmeyen kontroller `startTryOn`'dan önceye alındı. Bu kontroller:
+- profil fotoğrafının ve parça görsellerinin bizim storage'da olması (imzalamadan)
+- kayıtlı mankenin varlığı ve model kaynağının belirlenmesi
+
+Bunlar başarısızsa rezervasyon açılmaz (`CombosScreen.tsx`, `handleVirtualModel` 2.–3. adımlar).
+
+**Yapılmayan (B):**
+- **Migration:** `cancel_unused_render(p_user, p_render)`.
+  - Render satırını `for update` ile kilitler.
+  - `runs_used = 0` ve `succeeded_at` / `failed_at` boşsa **mevcut `fail_render`'ı** çağırır.
+  - `start_tryon` / `register_run` / `fail_render` değişmez.
+- **fashn-proxy:** `cancel` eylemi; render'ın sahipliği kontrol edilir.
+- **OTA:** catch bloğunda `activeRender` varsa en iyi çabayla `cancel`.
+- **Neden kilit + `runs_used = 0`:**
+  - `register_run` rezervasyonu FASHN çağrısından önce alır (`fashn-proxy/index.ts:352`). Kilitsiz bir `cancel`, eşzamanlı bir `run` ile yarışırsa iade edilmiş render'da FASHN işi yine biter; kötü niyetli istemci kotasız katman alır.
+  - Kilitle birlikte `register_run` bekler ve `failed_at` doluysa artırmaz.
+- **Kapsam dışı:** PoseError `/run` 4xx olarak gelirse `runs_used = 1` olur ve bu yolla serbest kalmaz.
+
 ### Lansman sonrası
 
 | Adım | Etiket | Nasıl test edilir |
