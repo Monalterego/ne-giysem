@@ -51,6 +51,13 @@ const PINNED_VALUES: Record<string, Record<string, readonly unknown[]>> = {
   "tryon-max": { resolution: ["1k"], generation_mode: ["balanced"], output_format: ["jpeg"] },
 };
 
+// Gönderilmezse sunucunun eklediği değerler (PINNED_VALUES kontrolünden ÖNCE). Maliyeti
+// etkilemeyen anahtarlar için: eski bundle göndermiyor, 400 yerine sabit değer eklenir.
+// Gönderilmiş ama farklı değer → yine PINNED_VALUES'tan 400.
+const DEFAULT_VALUES: Record<string, Record<string, unknown>> = {
+  "tryon-max": { output_format: "jpeg" },
+};
+
 const IMAGE_FIELDS = ["model_image", "garment_image", "product_image"] as const;
 const STORAGE_BUCKETS = new Set(["avatars", "wardrobe-items", "mannequin-cache"]);
 
@@ -309,6 +316,9 @@ Deno.serve(async (req) => {
 
       for (const k of Object.keys(inputs)) {
         if (!allowedKeys.includes(k)) return bad(`input-not-allowed:${k}`);
+      }
+      for (const [k, v] of Object.entries(DEFAULT_VALUES[modelName] ?? {})) {
+        if (!(k in inputs)) inputs[k] = v;
       }
       for (const [k, values] of Object.entries(PINNED_VALUES[modelName] ?? {})) {
         if (!(k in inputs)) return bad(`value-required:${k}`);
