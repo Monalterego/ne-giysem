@@ -19,14 +19,16 @@
 // model_image olarak gönderir (isOwnStorageUrl kabul eder). Dosyalar alt klasörde DEĞİL:
 // delete-account ve export-my-data yalnızca <uid>/ kökünü listeliyor.
 //
-// Rıza (consent_events, 014) — eksikse 403 { error: 'consent-required', kinds }:
+// Rıza (consent_events, 014) — eksikse 403 { error: 'consent-required', kinds };
+// verilmiş ama metin sürümü eskiyse (_shared/consent.ts MIN_CONSENT_MAJOR)
+// 403 { error: 'consent-version-outdated', kinds }:
 //   start : tryon_photo YA DA tryon_physical'dan en az biri (kota düşmeden önce)
 //   run   : model-create                    → tryon_physical (fiziksel bilgi → manken tarifi)
 //           model_image avatars bucket'ında → tryon_photo    (profil fotoğrafı)
 
 import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
 import { reportOpsEvent, serviceUnavailable } from "../_shared/ops.ts";
-import { hasConsent, consentRequired } from "../_shared/consent.ts";
+import { consentState, consentRequired } from "../_shared/consent.ts";
 import type { ConsentKind } from "../_shared/consent.ts";
 import {
   fashnKey, fashnRun, fashnStatus, isOutOfCredits, parsePredictionId, parseStatus,
@@ -265,13 +267,18 @@ Deno.serve(async (req) => {
 
     // ── start ──────────────────────────────────────────────────────────────
     if (body.action === "start") {
-      // Sanal deneme rızalarından en az biri yoksa render açılmaz (kota düşmez)
+      // Sanal deneme rızalarından en az biri geçerli değilse render açılmaz (kota düşmez).
+      // Hiçbiri geçerli değil ama biri eski sürümle verilmişse → consent-version-outdated
       const [photo, physical] = await Promise.all([
-        hasConsent(admin, user.id, "tryon_photo"),
-        hasConsent(admin, user.id, "tryon_physical"),
+        consentState(admin, user.id, "tryon_photo"),
+        consentState(admin, user.id, "tryon_physical"),
       ]);
-      if (!photo && !physical) {
-        return consentRequired("consent-required", ["tryon_photo", "tryon_physical"]);
+      if (photo !== "granted" && physical !== "granted") {
+        const outdated = ([["tryon_photo", photo], ["tryon_physical", physical]] as const)
+          .filter(([, s]) => s === "outdated").map(([k]) => k as ConsentKind);
+        return outdated.length
+          ? consentRequired("consent-version-outdated", outdated)
+          : consentRequired("consent-required", ["tryon_photo", "tryon_physical"]);
       }
 
       // Yarım kalmış denemelerin (çökme, ağ kopması — finish gelmedi) ara dosyaları
@@ -340,12 +347,19 @@ Deno.serve(async (req) => {
         needed.push("tryon_photo");
       }
       const missing: ConsentKind[] = [];
+      const outdated: ConsentKind[] = [];
       for (const kind of needed) {
-        if (!(await hasConsent(admin, user.id, kind))) missing.push(kind);
+        const state = await consentState(admin, user.id, kind);
+        if (state === "missing") missing.push(kind);
+        else if (state === "outdated") outdated.push(kind);
       }
       if (missing.length) {
         console.error(`[fashn-proxy] 403 consent-required user=${user.id} model=${modelName} missing=${missing.join(",")}`);
         return consentRequired("consent-required", missing);
+      }
+      if (outdated.length) {
+        console.error(`[fashn-proxy] 403 consent-version-outdated user=${user.id} model=${modelName} kinds=${outdated.join(",")}`);
+        return consentRequired("consent-version-outdated", outdated);
       }
 
       // FASHN'a gitmeden ÖNCE çağrı bütçesinden yer ayır
