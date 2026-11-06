@@ -278,6 +278,21 @@ Web'de Poof atlanır (`UploadScreen.tsx:143`). İzin yoksa fotoğraf olduğu gib
 - **Edge function limitleri** (Supabase bellek ~256 MB, duvar saati ve CPU süresi planına göre): **[doğrulanmadı — Supabase dokümanından teyit edilmeli]**. Base64 decode + storage upload birkaç MB için sorun olmamalı. Asıl risk CPU süresi; ölçülmeli.
 - Kazanç: FASHN sunucusunda çıktı saklanmaz. Bu uyum metinlerinde "FASHN görselleri üç gün sonra siler" ifadesini değiştirir (bkz. c).
 
+### b.3a Profil fotoğrafı: tam boy ön kontrolü (öneri, uygulanmadı)
+
+**Sorun:** yüz odaklı bir selfie FASHN'da PoseError verdi (5 Kasım ölçümü). Hata yalnızca try-on sırasında ortaya çıkıyor. Adım 4'te tepki tarafı çözüldü: "Yapay mankenle dene" seçeneği. Ama yükleme anında bir kontrol yok: fotoğraf seçilir, 1200 px JPEG'e çevrilir ve kontrolsüz yüklenir (`ne-giysem/src/screens/main/profile/ProfilePhotoScreen.tsx:95-119`).
+
+| Seçenek | Maliyet | Uygunluk |
+|---|---|---|
+| **İstemcide en-boy oranı** (`asset.width/height`, `ProfilePhotoScreen.tsx:101`): oran < ~1,3 (kare/yatay) ise "tam boy değil gibi görünüyor" uyarısı + "yine de kullan" | 0. Ağ çağrısı yok | Kaba bir filtre: dikey bir yüz selfie'sini yakalayamaz. Ama kare selfie ve yatay kırpmaları yakalar. OTA ile gider |
+| **Cihaz üstü vücut pozu** (iOS Vision `VNDetectHumanBodyPoseRequest`, Android ML Kit Pose Detection): ayak bileği ve kalça noktaları görünüyor mu? | 0 kredi, veri cihazdan çıkmaz | En isabetli ve en mahremiyet dostu yol. **Native modül gerekir** → arka plan kaldırmayla aynı lansman sonrası build. Hazır Expo kütüphanesi **[doğrulanmadı]** |
+| **Claude analizi** (anthropic-proxy) | Görsel başına bir Sonnet çağrısı (tutar **[doğrulanmadı]**) | **Önerilmez:** yapay zekâ izni metni "Kendi fotoğrafın … gönderilmez" diyor (`tr.json` `aiConsent.whatBody`, `:846`). `tryon_photo` rızası da alıcı olarak yalnızca FASHN'ı sayıyor. Kullanmak rıza metni değişikliği ve yeni bir alıcı demek |
+| **FASHN** | Ayrı bir doğrulama uç noktası bilinmiyor **[doğrulanmadı]**. Poz kontrolü yalnızca try-on içinde (kredi + kota) | Ön kontrol için uygun değil. Mevcut tepkisel akış (adım 4) yeterli |
+
+**Öneri:** lansmanda en-boy oranı uyarısı (adım 4b, OTA, maliyet 0) ve adım 4'teki tepkisel akış. Lansman sonrasında cihaz üstü poz kontrolü, arka plan kaldırmayla aynı native build'de.
+
+**Açık nokta:** PoseError'ın `/status` "failed" olarak mı, yoksa `/run` 4xx olarak mı geldiği ölçülmedi. İlk durumda render iade ediliyor. İkincisinde render 30 dk açık sayılıyor ve hemen ardından yapılan yapay manken denemesi limit kenarındaki ücretsiz kullanıcıda reddedilebilir. FASHN function logundan (`[fashn-proxy] prediction failed` ya da `upstream /run 4xx`) doğrulanmalı.
+
 ### b.4 Daha ucuz analiz modeli: test planı (madde 7)
 
 **Model değişikliği nereden yapılır?**
@@ -449,7 +464,8 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 1 | Hata düzeltmeleri: Poof hatasında parça orijinal fotoğrafla eklenir; "poof" artık format hatası sayılmaz; başarısız tarama hak yakmaz (İş 2, ayrı commit) | OTA | Bkz. commit notu: geçersiz Poof anahtarıyla ekleme; "Uyar mı?" ile analiz hatası |
 | 2 | `app_limits` + `limit_for`; 4 fonksiyon tabloya bağlanır, **değerler bugünkülerle aynı**. Dosya: `ne-giysem/supabase/migrations/020_app_limits.sql` (geri alma SQL'i dosyanın sonunda) | sunucu | Test kullanıcısında uygulama öncesi ve sonrası `get_usage` çıktısı birebir aynı olmalı; tablodaki değer değişince `limit_for` ve `get_usage` yeni sayıyı göstermeli; satır silinince sabite dönmeli |
 | 3 | `_shared/fashn.ts` çıkarımı; tryon-max `generation_mode` doğrudan `['balanced']` olarak sabitlenir + istemci `virtualModel.ts:357` `'balanced'` (birlikte) | sunucu + OTA | `quality` gönderen istek 400 almalı; yeni paketle ayakkabılı deneme çalışmalı |
-| 4 | Try-on: dış giyim/yelek elenir, cache imzası güncellenir | OTA | Ceketli kombin: `runs_used` bir azalmalı, çıktıda ceket olmamalı, eski cache isabet vermemeli |
+| 4 | Try-on: dış giyim elenir (`isOuter`: kategori `outer` + hırka/yelek), sonuçta "dış giyim gösterilmiyor" notu, try-on cache'i ayrı ve sürümlü imzaya geçer (`v2_`; favori imzası değişmez). Fotoğraf varken de kaynak sorulur (kendi fotoğrafım / yapay manken). Fotoğrafta PoseError → "Yapay mankenle dene" | OTA | Ceketli kombin: FASHN panelinde ceket satırı olmamalı, `runs_used` bir azalmalı, eski cache isabet vermemeli; fotoğraflı hesapta seçim penceresi; yüz odaklı fotoğrafla PoseError → yapay manken önerisi |
+| 4b | Profil fotoğrafı ön kontrolü, ucuz sürüm (b.3a): yüklemede en-boy oranı uyarısı + "yine de kullan" | OTA | Kare/yatay selfie → uyarı; dikey tam boy → uyarı yok; maliyet 0 |
 | 5 | fashn-proxy'de `return_base64` + ara çıktıyı `mannequin-cache/<uid>/tmp/`'ye yazma; istemci storage yolunu kullanır | sunucu + OTA | 3 katman + ayakkabı: FASHN URL'i istemciye hiç gelmemeli; geçici dosyalar silinmeli; function süre/bellek logu |
 | 6 | **Sunucuda izin sürümü kontrolü** (Karar 5): `consent_granted` ya da `_shared/consent.ts` en son kaydın `text_version` ana sürümünü sunucu tarafı tablo/sabitle (`ai_processing` → 2, `tryon_*` → 1) karşılaştırır. Eski sürüm 403 döner. `anthropic-proxy`, `fashn-proxy` ve (adım 8'deki) `garment-image` kullanır. `bg-removal-proxy` da (silinene kadar) aynı kontrolü alır | sunucu | 1.1 onaylı test hesabı: proxy'ler 403 `ai-consent-required` döndürmeli; 2.0 onayından sonra 200; try-on 1.0 rızalarıyla çalışmaya devam etmeli |
 | 7 | İzin metni ve sürüm (Karar 5): tr/en `aiConsent` (Poof çıkar, FASHN eklenir), `privacy.aiBody`, `CONSENT_VERSIONS.ai_processing = '2.0'`; web sayfaları ve compliance dokümanları (c bölümü) | OTA + web + docs (adım 6 ile **aynı gün**) | 1.1 onaylı hesap: ilk eklemede izin ekranı yeniden açılmalı; `consent_events`'te 2.0 satırı; web sayfalarında Poof geçmemeli |
@@ -466,6 +482,7 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 
 | Adım | Etiket | Nasıl test edilir |
 |---|---|---|
+| Profil fotoğrafı cihaz üstü vücut pozu kontrolü (b.3a): iOS Vision `VNDetectHumanBodyPoseRequest`, Android ML Kit Pose Detection. Arka plan kaldırmayla aynı native build'e girer | **native** | Yüz odaklı selfie → yüklemede uyarı; tam boy fotoğraf → geçer; desteklenmeyen cihazda adım 4b'deki oran kontrolüne düşer |
 | Cihaz üstü arka plan kaldırma (Karar 4): ücretsiz plandaki 4.+ parçalar için iOS Vision (iOS 17+) / Android ML Kit Subject Segmentation. Olgun kütüphane yoksa kendi Expo modülümüz yazılır. Uygulama sürümü artırılır (`runtimeVersion: appVersion`). `image_source = 'device'` | **native** | iOS 17+ ve 16.x cihaz, Play services'li / servissiz Android; desteklenmeyen cihazda "olduğu gibi" fallback |
 
 ---

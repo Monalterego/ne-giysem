@@ -29,7 +29,10 @@ import { formatIstanbulDay } from '../../lib/premiumGate';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
-import { generateVirtualModelImage, getModelImage, comboSignatureForCache, startTryOn } from '../../utils/virtualModel';
+import {
+  generateVirtualModelImage, getModelImage, comboSignatureForCache, startTryOn,
+  tryOnCacheSignature, selectAndOrderGarments, hasOmittedOuterwear,
+} from '../../utils/virtualModel';
 import type { PhysicalProfile, ModelSource } from '../../utils/virtualModel';
 import { supabase } from '../../lib/supabase';
 import {
@@ -220,6 +223,7 @@ function ModelModal({
   visible,
   imageUrl,
   hasExtras,
+  hasOuter,
   isLoading,
   isFirstTryOn,
   shareable,
@@ -228,6 +232,8 @@ function ModelModal({
   visible: boolean;
   imageUrl: string | null;
   hasExtras: boolean;
+  /** Kombinde dış giyim var — try-on'a girmedi, sonuçta görünmez */
+  hasOuter: boolean;
   isLoading: boolean;
   isFirstTryOn: boolean;
   /** false: görsel kendi storage'ımıza yüklenemedi, imageUrl FASHN CDN linki → paylaşılmaz */
@@ -365,6 +371,9 @@ function ModelModal({
                   Çanta ve takılar mankene yansıtılamıyor — tam kombini kartta görebilirsin.
                 </Text>
               )}
+              {hasOuter && (
+                <Text style={modalStyles.modelNote}>{t('combos.outerNotShown')}</Text>
+              )}
             </ScrollView>
 
             <View style={modalStyles.footer}>
@@ -425,16 +434,22 @@ function PremiumModal({
   );
 }
 
-// ─── Fotoğraf yok modalı ─────────────────────────────────────────────────────
+// ─── Deneme kaynağı modalı (fotoğraf / yapay manken) ──────────────────────────
+// Her denemede sorulur (son seçim hatırlanmaz). Fotoğraf varsa: "kendi fotoğrafımla" /
+// "yapay mankenle"; yoksa: "fotoğraf ekle" / "yapay mankenle".
 
-function NoAvatarModal({
+function TryOnSourceModal({
   visible,
+  hasAvatar,
   onClose,
+  onUsePhoto,
   onGoToProfile,
   onUseAiModel,
 }: {
   visible: boolean;
+  hasAvatar: boolean;
   onClose: () => void;
+  onUsePhoto: () => void;
   onGoToProfile: () => void;
   onUseAiModel: () => void;
 }) {
@@ -442,13 +457,20 @@ function NoAvatarModal({
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={noAvatarStyles.overlay}>
         <View style={noAvatarStyles.card}>
-          <Text style={noAvatarStyles.title}>{t('combos.photoRequired')}</Text>
-          <Text style={noAvatarStyles.body}>
-            Bu özelliği kullanmak için tam boy bir fotoğrafın gerekiyor. Yüzün ve vücudun görünür
-            olmalı, iyi aydınlatmalı düz bir zeminde dur.
+          <Text style={noAvatarStyles.title}>
+            {hasAvatar ? t('combos.tryOnSourceTitle') : t('combos.photoRequired')}
           </Text>
-          <TouchableOpacity style={noAvatarStyles.primaryBtn} onPress={onGoToProfile} activeOpacity={0.85}>
-            <Text style={noAvatarStyles.primaryBtnText}>{t('combos.addPhoto')}</Text>
+          <Text style={noAvatarStyles.body}>
+            {hasAvatar ? t('combos.tryOnSourceBody') : t('combos.photoRequiredBody')}
+          </Text>
+          <TouchableOpacity
+            style={noAvatarStyles.primaryBtn}
+            onPress={hasAvatar ? onUsePhoto : onGoToProfile}
+            activeOpacity={0.85}
+          >
+            <Text style={noAvatarStyles.primaryBtnText}>
+              {hasAvatar ? t('combos.useMyPhoto') : t('combos.addPhoto')}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={noAvatarStyles.secondaryBtn} onPress={onUseAiModel} activeOpacity={0.75}>
             <Text style={noAvatarStyles.secondaryBtnText}>{t('combos.useVirtualModel')}</Text>
@@ -509,6 +531,7 @@ export default function CombosScreen() {
   const [modelImageUrl,        setModelImageUrl]         = useState<string | null>(null);
   const [modelModalVisible,    setModelModalVisible]     = useState(false);
   const [modelHasExtras,       setModelHasExtras]        = useState(false);
+  const [modelHasOuter,        setModelHasOuter]         = useState(false);
   const [modelLoading,         setModelLoading]          = useState(false);
   const [modelShareable,       setModelShareable]        = useState(true);
   const [lightboxItemId,       setLightboxItemId]        = useState<string | null>(null);
@@ -631,6 +654,7 @@ export default function CombosScreen() {
     }
 
     setModelHasExtras(combo.items.some((i) => i.category === 'bag' || i.category === 'accessory'));
+    setModelHasOuter(hasOmittedOuterwear(combo.items));
 
     // Fiziksel profil + kayıtlı manken URL'i. Kota istemcide kontrol EDİLMEZ:
     // önce cache (isabet kotasız), miss'te sunucu start_tryon karar verir.
@@ -672,7 +696,8 @@ export default function CombosScreen() {
         ? (avatarUrl.split('?v=')[1] ?? 'a')
         : 'm';
 
-      const cacheKey = `${user.id}/${comboSignatureForCache(combo.items)}_${modelVersion}.jpg`;
+      // Yalnızca giydirilen parçalar (dış giyim hariç) + sürüm: eski dış giyimli çıktılar isabet vermez
+      const cacheKey = `${user.id}/${tryOnCacheSignature(combo.items)}_${modelVersion}.jpg`;
 
       // Kimlikli HEAD (storage-js exists) — private bucket'ta da çalışır; hata → miss
       if (await storageExists('mannequin-cache', cacheKey)) {
@@ -777,8 +802,19 @@ export default function CombosScreen() {
       // 403: rıza başka yerde geri çekilmiş → yerel durumu tazele (mesaj friendlyError'da)
       if (err instanceof EdgeError && err.code === 'consent-required') useConsentStore.getState().refresh();
       const staleMannequin = !avatarUrl && err instanceof EdgeError && err.code === 'image-not-allowed:model_image';
-      if ((isModelImageError(err) || staleMannequin) && user?.id) {
+      // Yalnızca yapay manken yolunda: profil fotoğrafının poz hatası kayıtlı mankeni bozmaz
+      if (!avatarUrl && (isModelImageError(err) || staleMannequin) && user?.id) {
         await supabase.from('profiles').update({ mannequin_url: null }).eq('id', user.id);
+      }
+      // Profil fotoğrafında poz bulunamadı (PoseError — yüz odaklı selfie vb.) → yapay mankeni
+      // doğrudan öner. Yeni deneme yeni render açar. /status 'failed' ise ilk render iade
+      // edildi (fashn-proxy); /run 4xx ise iade yok, render 30 dk açık sayılır.
+      if (avatarUrl && isModelImageError(err)) {
+        Alert.alert(t('combos.photoPoseFailedTitle'), t('combos.photoPoseFailedBody'), [
+          { text: t('combos.close'), style: 'cancel' },
+          { text: t('combos.tryWithMannequin'), onPress: () => setTimeout(() => handleVirtualModel(combo, undefined), 350) },
+        ]);
+        return;   // finally loading'i kapatır
       }
       // 503: üst servis (FASHN) kullanılamıyor — 429 run-budget mesajından (tryOnBusy) ayrı
       const unavailable = err instanceof EdgeError && err.status === 503;
@@ -806,16 +842,18 @@ export default function CombosScreen() {
     }
   }, [user, tryOnConsent, handleVirtualModel]);
 
-  // Avatar kontrolü: varsa direkt IDM-VTON, yoksa seçenek modalı
+  // Her denemede kaynak sorulur: fotoğraf varsa "kendi fotoğrafım / yapay manken",
+  // yoksa "fotoğraf ekle / yapay manken". Son seçim hatırlanmaz.
   // (handleVirtualModel'den SONRA tanımlı — bağımlılık dizisi render sırasında okunur)
   const handleVirtualModelPress = useCallback((combo: Combo) => {
-    if (!user?.avatarUrl) {
-      setPendingCombo(combo);
-      setNoAvatarModalVisible(true);
+    // Giydirilecek üst/alt/elbise yoksa (örn. yalnızca dış giyim + ayakkabı) kota açmadan dur
+    if (!selectAndOrderGarments(combo.items).length) {
+      Alert.alert(t('combos.tryOnNothingTitle'), t('combos.tryOnNothingBody'));
       return;
     }
-    handleVirtualModel(combo, user.avatarUrl);
-  }, [user, handleVirtualModel]);
+    setPendingCombo(combo);
+    setNoAvatarModalVisible(true);
+  }, []);
 
   // Stabil callback referansları — custom comparator sayesinde lightbox state
   // değiştiğinde memo kart render tetiklemez; yine de stable ref sağlıyoruz.
@@ -1122,6 +1160,7 @@ export default function CombosScreen() {
         visible={modelModalVisible}
         imageUrl={modelImageUrl}
         hasExtras={modelHasExtras}
+        hasOuter={modelHasOuter}
         isLoading={modelLoading}
         isFirstTryOn={isFirstTryOn}
         shareable={modelShareable}
@@ -1137,9 +1176,18 @@ export default function CombosScreen() {
           setTimeout(() => openPaywall('tryon'), 350);
         }}
       />
-      <NoAvatarModal
+      <TryOnSourceModal
         visible={noAvatarModalVisible}
+        hasAvatar={!!user?.avatarUrl}
         onClose={() => { setNoAvatarModalVisible(false); setPendingCombo(null); }}
+        onUsePhoto={() => {
+          setNoAvatarModalVisible(false);
+          const combo = pendingCombo;
+          const avatarUrl = user?.avatarUrl;
+          setPendingCombo(null);
+          // iOS: RN Modal kapanırken ikinci modal (rıza / sonuç) açılamaz → kapanışı bekle
+          if (combo && avatarUrl) setTimeout(() => handleVirtualModel(combo, avatarUrl), 350);
+        }}
         onGoToProfile={() => {
           setNoAvatarModalVisible(false);
           setPendingCombo(null);
@@ -1148,8 +1196,9 @@ export default function CombosScreen() {
         }}
         onUseAiModel={() => {
           setNoAvatarModalVisible(false);
-          if (pendingCombo) handleVirtualModel(pendingCombo, undefined);
+          const combo = pendingCombo;
           setPendingCombo(null);
+          if (combo) setTimeout(() => handleVirtualModel(combo, undefined), 350);
         }}
       />
       {/* Sanal deneme rızası eksik — yalnız bu akışın gerektirdiği rıza sorulur */}

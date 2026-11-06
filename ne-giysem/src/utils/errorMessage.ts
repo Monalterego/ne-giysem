@@ -34,7 +34,7 @@ export function friendlyError(err: unknown): string {
     return t('combos.tryOnBusy');
 
   // FASHN: manken pozu tespit edilemedi
-  if (m.includes('body pose') || m.includes('detect body'))
+  if (isModelImageError(err))
     return t('combos.tryOnPoseFailed');
 
   // Format reddi — yalnızca açık format kodları (415/422) ya da "unsupported" mesajı.
@@ -54,5 +54,5 @@ export function friendlyError(err: unknown): string {
 /** Manken görselinin bozuk olduğunu gösteren hata mı? (cache temizlemek için) */
 export function isModelImageError(err: unknown): boolean {
   const m = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
-  return m.includes('body pose') || m.includes('detect body');
+  return m.includes('poseerror') || m.includes('body pose') || m.includes('detect body');
 }

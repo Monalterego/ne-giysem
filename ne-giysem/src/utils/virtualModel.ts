@@ -1,6 +1,7 @@
 import type { WardrobeItem } from '../types';
 import { callEdge, edgeError, EdgeError } from '../lib/edgeFunctions';
 import { signedUrlForFashn } from '../lib/storageUrls';
+import { isOuter } from './comboEngine';
 
 // ─── Açıklama eşlemeleri ──────────────────────────────────────────────────────
 
@@ -173,7 +174,8 @@ export async function runFashn(
     }
 
     if (s.status === 'failed') {
-      const msg = s.error?.message ?? s.error?.name ?? 'bilinmeyen hata';
+      // Ad + mesaj birlikte: PoseError gibi hata adları errorMessage eşleşmesine ulaşsın
+      const msg = [s.error?.name, s.error?.message].filter(Boolean).join(': ') || 'bilinmeyen hata';
       throw new Error(`FASHN prediction başarısız: ${msg}`);
     }
   }
@@ -231,49 +233,46 @@ export async function getModelImage(
 
 // FASHN tryon-v1.6 geçerli kategoriler: tops | bottoms | one-pieces
 // Shoes/footwear FASHN'de desteklenmiyor → selectAndOrderGarments'tan çıkarılır.
+// Dış giyim ('outer' + hırka/yelek, comboEngine isOuter) try-on'a girmez: katman
+// başına bir FASHN çağrısı ve önceki katmanı bozma riski — kartta yine görünür.
 const FASHN_CATEGORY: Partial<Record<WardrobeItem['category'], string>> = {
   upper:          'tops',
   lower:          'bottoms',
   dress_jumpsuit: 'one-pieces',
-  outer:          'tops',
 };
 
 const LAYER_ORDER: Partial<Record<WardrobeItem['category'], number>> = {
   lower:          1,
   dress_jumpsuit: 1,
   upper:          2,
-  outer:          3,
 };
 
-// Dış katman olarak giydirilen yelek — üstün (2) üstünde, outer'ın (3) altında:
-// gömlek → yelek → blazer
-const VEST_LAYER = 2.5;
-
 /**
- * FASHN'in desteklemediği kategorileri (shoes, bag, accessory) eler;
+ * FASHN'in desteklemediği kategorileri (shoes, bag, accessory) ve dış giyimi eler;
  * kalan parçaları katmanlama sırasına dizer.
  * Elbise varsa kombindeteki üst ve alt parçalar atlanır.
  */
 export function selectAndOrderGarments(items: WardrobeItem[]): WardrobeItem[] {
   const hasDress = items.some((i) => i.category === 'dress_jumpsuit');
 
-  // Yelek DB'de 'upper' ama kombin motoru onu dış katman havuzunda kullanıyor
-  // (comboEngine OUTER_SUBCATEGORIES). İki upper varsa ve biri yelekse → yelek diğer
-  // üstün üzerine, outer'ın altına giydirilir. Tek upper yelekse normal upper kalır.
-  const uppers = items.filter((i) => i.category === 'upper');
-  const vestAsOuter = uppers.length >= 2 && uppers.some((i) => i.subCategory === 'yelek');
-  const layerOf = (i: WardrobeItem) =>
-    vestAsOuter && i.category === 'upper' && i.subCategory === 'yelek'
-      ? VEST_LAYER
-      : (LAYER_ORDER[i.category] ?? 99);
-
   return items
     .filter((i) => {
-      if (!(i.category in FASHN_CATEGORY)) return false;   // shoes/bag/accessory elenir
+      if (!(i.category in FASHN_CATEGORY)) return false;   // outer/shoes/bag/accessory elenir
+      if (isOuter(i)) return false;                         // hırka/yelek ('upper' kategorisinde)
       if (hasDress && (i.category === 'upper' || i.category === 'lower')) return false;
       return true;
     })
-    .sort((a, b) => layerOf(a) - layerOf(b));
+    .sort((a, b) => (LAYER_ORDER[a.category] ?? 99) - (LAYER_ORDER[b.category] ?? 99));
+}
+
+/** Kombinde try-on'da gösterilmeyen dış giyim var mı? (sonuç ekranı notu için) */
+export function hasOmittedOuterwear(items: WardrobeItem[]): boolean {
+  return items.some(isOuter);
+}
+
+/** Try-on'a giren ayakkabı (tryon-max adımı) — ilk ayakkabı */
+function tryOnShoe(items: WardrobeItem[]): WardrobeItem | undefined {
+  return items.find((i) => i.category === 'shoes');
 }
 
 // ─── Katmanlı giydirme ────────────────────────────────────────────────────────
@@ -318,9 +317,25 @@ export async function layeredTryOn(
 
 // ─── Cache anahtar yardımcısı ────────────────────────────────────────────────
 
+// Try-on cache sürümü. v1 (önek yok) dış giyimi de içeriyordu; v2 yalnızca gerçekten
+// giydirilen parçalardan oluşur → eski (dış giyimli) çıktılar isabet vermez.
+const TRYON_CACHE_VERSION = 'v2';
+
 /**
- * Kombinin giyilebilir parçalarından (bag/accessory hariç) sıralı, güvenli bir
- * cache anahtar dizgisi üretir. Supabase storage path'inde kullanılır.
+ * Try-on cache anahtarı: yalnızca giydirilen parçalar (selectAndOrderGarments + ayakkabı),
+ * sıralı id'ler, sürüm önekli. Dosya adında parça id'leri kalır — parça silinince ilgili
+ * cache'i bulmak için (privacyActions.deleteWardrobeItemFiles).
+ */
+export function tryOnCacheSignature(items: WardrobeItem[]): string {
+  const shoe = tryOnShoe(items);
+  const ids  = [...selectAndOrderGarments(items), ...(shoe ? [shoe] : [])].map((i) => i.id).sort();
+  return `${TRYON_CACHE_VERSION}_${ids.join('_')}`;
+}
+
+/**
+ * Kombinin giyilebilir parçalarından (bag/accessory hariç) sıralı imza.
+ * Favoriler bunu DB'ye yazar (favorite_combos.signature) — değiştirilirse mevcut
+ * favoriler eşleşmez. Try-on cache'i artık tryOnCacheSignature kullanır.
  */
 export function comboSignatureForCache(items: WardrobeItem[]): string {
   return items
@@ -342,7 +357,7 @@ export async function generateVirtualModelImage(
   const garments = selectAndOrderGarments(items);
   if (!garments.length) throw new Error('Giydirilecek parça yok');
 
-  const shoe = items.find((i) => i.category === 'shoes');
+  const shoe = tryOnShoe(items);
 
   let result = await layeredTryOn(model, garments, renderId);
 

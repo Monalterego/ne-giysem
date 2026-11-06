@@ -49,7 +49,8 @@ const OUTER_SUBCATEGORIES = [
   'hirka', 'yelek', 'ceket', 'blazer', 'mont', 'kaban', 'trenchkot', 'yagmurluk',
 ];
 
-function isOuter(item: WardrobeItem): boolean {
+/** Dış giyim: kategori 'outer' ya da dış katman alt kategorisi (hırka/yelek 'upper' olsa da). Try-on da kullanır. */
+export function isOuter(item: WardrobeItem): boolean {
   return item.category === 'outer' || OUTER_SUBCATEGORIES.includes(item.subCategory ?? '');
 }
 
