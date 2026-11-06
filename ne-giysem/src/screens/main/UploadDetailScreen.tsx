@@ -28,6 +28,7 @@ import { Feather } from '@expo/vector-icons';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
 import { friendlyError } from '../../utils/errorMessage';
 import { isAiConsentError } from '../../lib/edgeFunctions';
+import { withAiReconsent } from '../../lib/aiConsent';
 import { useConsentStore } from '../../store/useConsentStore';
 import { GARMENT_SWATCHES, MAX_ITEM_COLORS } from '../../constants/garmentColors';
 import { t } from '../../i18n';
@@ -123,7 +124,8 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (isEditMode || !processedBase64 || manualParam) return;
     let cancelled = false;
-    analyzeClothingImage(processedBase64)
+    // İzin metni eskiyse güncel metin sorulur, onaylanırsa analiz yeniden denenir
+    withAiReconsent(() => analyzeClothingImage(processedBase64))
       .then((result) => {
         if (cancelled) return;
         if (result.failed) {

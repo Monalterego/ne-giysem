@@ -1,5 +1,5 @@
 import type { ClothingCategory, Season } from '../types';
-import { callEdge, edgeError, EdgeError, isAiConsentError } from '../lib/edgeFunctions';
+import { callEdge, edgeError, EdgeError, isAiConsentError, isConsentOutdatedError } from '../lib/edgeFunctions';
 import { getLocale } from '../i18n';
 
 /** Kullanıcıya nedeni gösterilmesi gereken proxy hatası (oturum yok / günlük sınır). */
@@ -253,7 +253,9 @@ export async function analyzeClothingImage(base64: string): Promise<VisionResult
   } catch (firstErr) {
     // Oturum yok / günlük sınır: tekrar denemek anlamsız, sessiz fallback da yanıltıcı →
     // çağıran ekran kullanıcıya nedenini göstersin
-    if (isUserFacingEdgeError(firstErr) || isAiConsentError(firstErr)) throw firstErr;
+    if (isUserFacingEdgeError(firstErr) || isAiConsentError(firstErr) || isConsentOutdatedError(firstErr)) {
+      throw firstErr;
+    }
     console.warn('[vision] ilk deneme başarısız, yeniden deneniyor:', firstErr);
     try {
       return await attemptRequest();

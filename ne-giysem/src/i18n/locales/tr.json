@@ -603,7 +603,8 @@
     "productImageNotFound": "Bu sayfada ürün görseli bulunamadı. Ürün fotoğrafını ekran görüntüsüyle yüklemeyi deneyebilirsin.",
     "productUrlInvalid": "Bu bağlantı açılamıyor. Mağazanın ürün sayfası linkini yapıştırdığından emin ol.",
     "aiConsentRequired": "Bu işlem için yapay zekâ izni gerekiyor. Profil → Gizlilik ve izinler'den açabilirsin.",
-    "tryOnConsentRequired": "Sanal deneme için gereken rıza verilmemiş. Profil → Gizlilik ve izinler'den verebilirsin."
+    "tryOnConsentRequired": "Sanal deneme için gereken rıza verilmemiş. Profil → Gizlilik ve izinler'den verebilirsin.",
+    "consentOutdated": "İzin metnimiz güncellendi. Devam etmek için yeni metni Profil → Gizlilik ve izinler'den onaylayabilirsin."
   },
   "scan": {
     "preparingImage": "Görsel hazırlanıyor…",
@@ -845,14 +846,16 @@
   "aiConsent": {
     "eyebrow": "Yapay zekâ izni",
     "title": "Fotoğraflarını yapay zekâ ile işleyelim mi?",
-    "intro": "Kıyafet eklerken ve “Uyar mı?” taramasında fotoğrafını iki hizmet sağlayıcısına gönderiyoruz. Göndermeden önce iznini istiyoruz.",
+    "intro": "Kıyafet eklerken ve “Uyar mı?” taramasında fotoğrafını aşağıdaki hizmet sağlayıcılarına gönderiyoruz. Göndermeden önce iznini istiyoruz.",
     "whatTitle": "Hangi veri?",
-    "whatBody": "Yalnızca eklediğin kıyafetin ya da taradığın ürünün fotoğrafı. İzin verirsen Stil DNA adını oluşturmak için seçtiğin stil adları da Anthropic'e gönderilir. Kendi fotoğrafın, fiziksel bilgilerin, adın ve e-posta adresin gönderilmez.",
+    "whatBody": "Yalnızca eklediğin kıyafetin ya da taradığın ürünün fotoğrafı. İzin verirsen Stil DNA adını oluşturmak için seçtiğin stil adları da Anthropic'e gönderilir. Bu izin kapsamında kendi fotoğrafın, fiziksel bilgilerin, adın ve e-posta adresin gönderilmez. Kendi fotoğrafın Claude'a (Anthropic) gönderilmez.",
     "whoTitle": "Kime ve neden?",
     "poofName": "Poof · Almanya",
-    "poofPurpose": "Fotoğrafın arka planını kaldırmak için.",
+    "poofPurpose": "Geçiş süresince fotoğrafın arka planını kaldırmak için. Bu iş tamamen FASHN'a geçince Poof'a fotoğraf gönderilmez.",
     "anthropicName": "Anthropic · ABD",
     "anthropicPurpose": "Kıyafetin kategori, renk, desen ve mevsim gibi özelliklerini tanımak için.",
+    "fashnName": "FASHN · Birleşik Krallık",
+    "fashnPurpose": "Kıyafet görselini hazırlamak için: arka planı temizlemek ve ürün görseli oluşturmak. Sanal denemede kıyafet görsellerin de FASHN'a gider; bu, sanal deneme rızalarına dayanır. Görseller yalnızca işlem için gönderilir, FASHN'da en geç 60 dakika tutulur ve model eğitiminde kullanılmaz.",
     "trainingTitle": "Model eğitimi",
     "trainingBody": "Sağlayıcıların beyanına göre, gönderilen fotoğraflar onların yapay zekâ modellerini eğitmek için kullanılmaz.",
     "declineTitle": "İzin vermezsen",
@@ -864,7 +867,7 @@
     "title": "Gizlilik ve izinler",
     "intro": "Her izni ayrı ayrı verebilir ya da geri çekebilirsin. Durum, verdiğin son karara göre gösterilir.",
     "aiTitle": "Yapay zekâ ile fotoğraf işleme",
-    "aiBody": "Kıyafet ve ürün fotoğrafların arka plan kaldırma için Poof'a (Almanya), özellik tanıma için Anthropic'e (ABD) gönderilir.",
+    "aiBody": "Kıyafet ve ürün fotoğrafların özellik tanıma için Anthropic'e (ABD), kıyafet görselini hazırlamak için FASHN'a (Birleşik Krallık) gönderilir. Geçiş süresince arka plan kaldırma Poof (Almanya) ile yapılır. Kendi fotoğrafın Claude'a gönderilmez.",
     "aiWithdrawEffect": "Geri çekersen mevcut kıyafetlerin ve bilgileri silinmez. Yeni eklediğin kıyafetlerin fotoğrafı olduğu gibi kaydedilir; kategori, renk ve mevsimi sen seçersin. “Uyar mı?” taraması kapanır.",
     "photoTitle": "Sanal deneme · fotoğrafın",
     "photoBody": "Tam boy fotoğrafın, kıyafetlerin üzerinde denenmesi için FASHN'a gönderilir.",

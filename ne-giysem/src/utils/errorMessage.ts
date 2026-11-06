@@ -11,6 +11,7 @@ export function friendlyError(err: unknown): string {
     if (err.code === 'daily-limit') return t('errors.dailyLimit');
     if (err.code === 'ai-consent-required') return t('errors.aiConsentRequired');
     if (err.code === 'consent-required') return t('errors.tryOnConsentRequired');
+    if (err.code === 'consent-version-outdated') return t('errors.consentOutdated');
     if (err.code === 'quota-exceeded') return t('combos.limitReached');
     if (err.code === 'run-budget-exceeded') return t('combos.tryOnBusy');
     if (err.code === 'image-too-large') return t('errors.imageTooLarge');

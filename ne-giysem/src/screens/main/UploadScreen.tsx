@@ -18,7 +18,7 @@ import { colors, fonts, typography, spacing, radius, shadows, layout } from '../
 import { callEdge, edgeError, EdgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { toUploadJpeg, alertAfterPicker } from '../../utils/imageNormalize';
-import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
+import { ensureAiDecision, openAiConsent, withAiReconsent } from '../../lib/aiConsent';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { t } from '../../i18n';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
@@ -143,7 +143,10 @@ export default function UploadScreen({ navigation }: Props) {
 
     try {
       // Web: Remove.bg atla, picker'dan gelen base64'ü direkt kullan
-      const processed = Platform.OS === 'web' ? base64Input : await removeBackground(base64Input);
+      // İzin metni eskiyse güncel metin sorulur, onaylanırsa yeniden denenir (withAiReconsent)
+      const processed = Platform.OS === 'web'
+        ? base64Input
+        : await withAiReconsent(() => removeBackground(base64Input));
       setProcessedBase64(processed);
     } catch (err) {
       // İzin başka cihazda geri çekilmiş olabilir (sunucu 403) → elle akışa düş

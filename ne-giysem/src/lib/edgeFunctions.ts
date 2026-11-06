@@ -24,6 +24,11 @@ export function isAiConsentError(err: unknown): err is EdgeError {
   return err instanceof EdgeError && err.code === 'ai-consent-required';
 }
 
+/** İzin verilmiş ama onaylanan metin eski (sunucu _shared/consent.ts) → güncel metinle yeniden sorulur */
+export function isConsentOutdatedError(err: unknown): err is EdgeError {
+  return err instanceof EdgeError && err.code === 'consent-version-outdated';
+}
+
 /** Oturum yoksa çağrı YAPILMAZ — 401 sayılır. */
 async function accessToken(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();

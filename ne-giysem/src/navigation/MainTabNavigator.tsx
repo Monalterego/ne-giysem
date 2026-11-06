@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Image } from 'expo-image';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/theme';
 import { t } from '../i18n';
 import type { MainTabParamList } from './types';
+import { useConsentStore } from '../store/useConsentStore';
+import { promptAiReconsentOnLaunch } from '../lib/aiConsent';
 
 import HomeNavigator from './HomeNavigator';
 import WardrobeNavigator from './WardrobeNavigator';
@@ -18,6 +20,15 @@ import comboActiveIcon from '../../assets/icons/combo_active.png';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
+  // Açılışta yapay zekâ izni metni güncellendiyse (ana sürüm) yeni metni göster.
+  // Rızalar okununca tetiklenir; gecikme: Main yığını ve navigationRef hazır olsun
+  const consentLoaded = useConsentStore((s) => s.loaded);
+  useEffect(() => {
+    if (!consentLoaded) return;
+    const timer = setTimeout(promptAiReconsentOnLaunch, 600);
+    return () => clearTimeout(timer);
+  }, [consentLoaded]);
+
   return (
     <Tab.Navigator
       screenOptions={{

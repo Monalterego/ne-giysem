@@ -20,7 +20,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { ScanStackParamList } from '../../navigation/types';
 import { usePlanStore } from '../../store/usePlanStore';
 import { guardScan } from '../../lib/premiumGate';
-import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
+import { ensureAiDecision, openAiConsent, withAiReconsent } from '../../lib/aiConsent';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
@@ -122,7 +122,7 @@ export default function ScanScreen({ navigation }: Props) {
         base64Input = (await toUploadJpeg(uri, asset.width, asset.height)).base64;
         setLoadingStep(t('scan.removingBg'));
       }
-      const processedBase64 = await processBase64(base64Input);
+      const processedBase64 = await withAiReconsent(() => processBase64(base64Input));
       navigation.navigate('StoreResult', { processedBase64, originalUri: uri });
     } catch (err) {
       console.warn(`[Scan] ${source} hazırlama/arka plan başarısız:`, err);
@@ -151,7 +151,7 @@ export default function ScanScreen({ navigation }: Props) {
         ? scraped
         : (await toUploadJpeg(`data:image/jpeg;base64,${scraped}`)).base64;
       setLoadingStep(Platform.OS === 'web' ? t('scan.preparingImage') : t('scan.removingBg'));
-      const processedBase64 = await processBase64(imageBase64);
+      const processedBase64 = await withAiReconsent(() => processBase64(imageBase64));
       navigation.navigate('StoreResult', { processedBase64, originalUri: url });
     } catch (err) {
       console.warn('[Scan] url akışı başarısız:', err);

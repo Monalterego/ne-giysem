@@ -20,6 +20,7 @@ import { spendScan } from '../../lib/premiumGate';
 import { openPaywall } from '../../navigation/navigationRef';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
 import { isAiConsentError } from '../../lib/edgeFunctions';
+import { withAiReconsent } from '../../lib/aiConsent';
 import { useConsentStore } from '../../store/useConsentStore';
 import { friendlyError } from '../../utils/errorMessage';
 import type { VisionResult } from '../../utils/visionAnalysis';
@@ -169,7 +170,8 @@ export default function StoreResultScreen({ route, navigation }: Props) {
     let cancelled = false;
     setAnalyzing(true);
     setAnalysisError(null);
-    analyzeClothingImage(processedBase64)
+    // İzin metni eskiyse güncel metin sorulur, onaylanırsa analiz yeniden denenir
+    withAiReconsent(() => analyzeClothingImage(processedBase64))
       .then(async (result) => {
         if (cancelled) return;
         // Analiz başarısız (failed: varsayılan 'upper') → hak düşmez, sonuç gösterilmez

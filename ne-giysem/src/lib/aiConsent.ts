@@ -1,5 +1,6 @@
 import { navigationRef } from '../navigation/navigationRef';
-import { useConsentStore, aiStatus } from '../store/useConsentStore';
+import { useConsentStore, aiStatus, needsAiReconsent } from '../store/useConsentStore';
+import { EdgeError, isConsentOutdatedError } from './edgeFunctions';
 
 // ─── Yapay zekâ izni (Apple 5.1.2(i)) ────────────────────────────────────────
 // İlk kıyafet eklemeden / ilk "Uyar mı?" taramasından önce tam ekran AiConsent
@@ -41,4 +42,39 @@ export async function ensureAiDecision(): Promise<AiConsentResult> {
   if (status === 'granted')  return 'granted';
   if (status === 'declined') return 'declined';
   return openAiConsent();
+}
+
+/**
+ * Yapay zekâ çağrısı (bg-removal-proxy / anthropic-proxy). Sunucu onaylanan metni eski
+ * bulursa (403 consent-version-outdated) güncel metinle izin ekranı açılır; onay
+ * verilirse çağrı BİR KEZ yeniden yapılır (işlem kaldığı yerden sürer). Onay verilmezse
+ * 'ai-consent-required' fırlatılır → çağıranın mevcut "izin yok" yolu (elle akış /
+ * tarama kapalı) çalışır.
+ */
+export async function withAiReconsent<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (err) {
+    if (!isConsentOutdatedError(err)) throw err;
+    await useConsentStore.getState().refresh();
+    const decision = await openAiConsent();
+    if (decision !== 'granted') throw new EdgeError(403, 'ai-consent-required');
+    return call();
+  }
+}
+
+// Açılışta bir kez sorulur — "Şimdi değil" kaydedilir; karar verilmeden kapatılırsa
+// bu oturumda yeniden açılmaz (ilk ekleme / taramada ensureAiDecision yine sorar)
+let launchPromptShown = false;
+
+/**
+ * Uygulama açılışı: izin verilmiş ama onaylanan metnin ana sürümü eskiyse güncel
+ * metni göster (Main yığını hazırken çağrılır — AiConsent ekranı orada).
+ */
+export function promptAiReconsentOnLaunch(): void {
+  if (launchPromptShown) return;
+  const { loaded, records } = useConsentStore.getState();
+  if (!loaded || !needsAiReconsent(records)) return;
+  launchPromptShown = true;
+  void openAiConsent();
 }

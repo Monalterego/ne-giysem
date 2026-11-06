@@ -94,6 +94,12 @@ export function aiStatus(records: ConsentMap): 'granted' | 'declined' | 'undecid
   return isGranted(records, 'ai_processing') ? 'granted' : 'undecided';
 }
 
+/** Yapay zekâ izni verilmiş ama onaylanan metnin ana sürümü eski → güncel metin yeniden gösterilmeli */
+export function needsAiReconsent(records: ConsentMap): boolean {
+  const r = records.ai_processing;
+  return r?.granted === true && versionState(r, 'ai_processing') === 'major';
+}
+
 /**
  * Mevcut kullanıcı kapısı (ConsentGate): elindeki veriye göre eksik açık rızalar.
  * Avatar var ama 'tryon_photo' yok → fotoğraf; fiziksel alan var ama 'tryon_physical'

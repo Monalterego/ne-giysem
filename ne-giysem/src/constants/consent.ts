@@ -13,7 +13,9 @@ export type TryOnConsentKind = 'tryon_photo' | 'tryon_physical';
 
 export const CONSENT_VERSIONS: Record<ConsentKind, string> = {
   notice_shown:   '2.0',   // 2.0: özel nitelikli veri paragrafı (ana — "Okudum" yeniden istenir)
-  ai_processing:  '1.1',   // 1.1: model eğitimi cümlesi "sağlayıcıların beyanına göre" (kapsam aynı)
+  // 2.0: FASHN alıcı olarak eklendi (ana — yeniden onay istenir). Sunucudaki en düşük
+  // sürüm: supabase/functions/_shared/consent.ts MIN_CONSENT_MAJOR (önce OTA, sonra deploy)
+  ai_processing:  '2.0',
   tryon_photo:    '1.0',
   tryon_physical: '1.0',
 };

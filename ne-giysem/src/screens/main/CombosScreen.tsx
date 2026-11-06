@@ -841,7 +841,9 @@ export default function CombosScreen() {
       //    Pose hatasında cache'i temizle ki sonraki denemede YENİ manken üretilsin.
       //    Deploy öncesi kaydedilmiş FASHN URL'i proxy'nin izin listesinde değil (400) → aynı tedavi.
       // 403: rıza başka yerde geri çekilmiş → yerel durumu tazele (mesaj friendlyError'da)
-      if (err instanceof EdgeError && err.code === 'consent-required') useConsentStore.getState().refresh();
+      if (err instanceof EdgeError && (err.code === 'consent-required' || err.code === 'consent-version-outdated')) {
+        useConsentStore.getState().refresh();
+      }
       const staleMannequin = !avatarUrl && err instanceof EdgeError && err.code === 'image-not-allowed:model_image';
       // Yalnızca yapay manken yolunda: profil fotoğrafının poz hatası kayıtlı mankeni bozmaz
       if (!avatarUrl && (isModelImageError(err) || staleMannequin) && user?.id) {
