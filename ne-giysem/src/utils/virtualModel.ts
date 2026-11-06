@@ -251,23 +251,32 @@ const LAYER_ORDER: Partial<Record<WardrobeItem['category'], number>> = {
  * FASHN'in desteklemediği kategorileri (shoes, bag, accessory) ve dış giyimi eler;
  * kalan parçaları katmanlama sırasına dizer.
  * Elbise varsa kombindeteki üst ve alt parçalar atlanır.
+ * İstisna: normal üst ve elbise yoksa 'upper' kategorisindeki ilk hırka/yelek üst olarak
+ * giydirilir. Motor bunu üretmez (comboEngine çekirdek üstü isOuter'ı dışlar); motor dışı
+ * kombinlerde olur — örn. favori kaydedildikten sonra üstü "Hırka" olarak düzenlenmişse.
  */
 export function selectAndOrderGarments(items: WardrobeItem[]): WardrobeItem[] {
-  const hasDress = items.some((i) => i.category === 'dress_jumpsuit');
+  const hasDress   = items.some((i) => i.category === 'dress_jumpsuit');
+  const hasCoreTop = items.some((i) => i.category === 'upper' && !isOuter(i));
+  // 'outer' kategorisi (ceket, mont…) hiçbir durumda üst sayılmaz
+  const layerAsTop = !hasDress && !hasCoreTop
+    ? items.find((i) => i.category === 'upper' && isOuter(i))
+    : undefined;
 
   return items
     .filter((i) => {
       if (!(i.category in FASHN_CATEGORY)) return false;   // outer/shoes/bag/accessory elenir
-      if (isOuter(i)) return false;                         // hırka/yelek ('upper' kategorisinde)
+      if (isOuter(i) && i !== layerAsTop) return false;    // hırka/yelek — üst yerine geçmiyorsa
       if (hasDress && (i.category === 'upper' || i.category === 'lower')) return false;
       return true;
     })
     .sort((a, b) => (LAYER_ORDER[a.category] ?? 99) - (LAYER_ORDER[b.category] ?? 99));
 }
 
-/** Kombinde try-on'da gösterilmeyen dış giyim var mı? (sonuç ekranı notu için) */
+/** Kombinde giydirilmeyen dış giyim var mı? (sonuç ekranı notu — üst yerine giydirilen hırka sayılmaz) */
 export function hasOmittedOuterwear(items: WardrobeItem[]): boolean {
-  return items.some(isOuter);
+  const dressed = new Set(selectAndOrderGarments(items).map((i) => i.id));
+  return items.some((i) => isOuter(i) && !dressed.has(i.id));
 }
 
 /** Try-on'a giren ayakkabı (tryon-max adımı) — ilk ayakkabı */
