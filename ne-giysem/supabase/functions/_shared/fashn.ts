@@ -3,7 +3,8 @@
 // FASHN API'nin ortak çağrı katmanı — model bağımsız (/v1/run + /v1/status).
 // Yetki, kota, girdi izin listesi ve sahiplik kontrolleri ÇAĞIRANDA kalır
 // (fashn-proxy; ileride garment-image: packshot / background-remove).
-// Yanıt gövdesi ham metin olarak döner: proxy'ler FASHN yanıtını istemciye aynen geçirir.
+// Yanıt gövdesi ham metin olarak döner: proxy'ler FASHN yanıtını istemciye aynen geçirir
+// (fashn-proxy completed + base64 çıktıda yanıtı kendi storage URL'iyle yeniden yazar).
 
 export const FASHN_BASE = "https://api.fashn.ai/v1";
 
@@ -73,4 +74,33 @@ export function parseStatus(text: string): FashnStatusBody | null {
 export function httpsOutputs(s: FashnStatusBody): string[] {
   return (Array.isArray(s.output) ? s.output : [])
     .filter((u: unknown): u is string => typeof u === "string" && u.startsWith("https://"));
+}
+
+/** return_base64 çıktısı (data:image/<jpeg|png>;base64,...) — tür, uzantı ve base64 gövdesi */
+export interface DataUriImage {
+  mime: "image/jpeg" | "image/png";
+  ext: "jpg" | "png";
+  base64: string;
+}
+
+/**
+ * completed çıktısının ilk elemanı bir görsel data URI'si mi? Değilse null
+ * (https URL, "_expired" vb.). Gövde burada doğrulanmaz — decodeBase64 hatalıysa fırlatır.
+ */
+export function parseImageDataUri(raw: unknown): DataUriImage | null {
+  if (typeof raw !== "string" || !raw.startsWith("data:")) return null;
+  const comma = raw.indexOf(",");
+  if (comma < 0) return null;
+  const header = raw.slice(5, comma).toLowerCase();
+  if (header === "image/jpeg;base64") return { mime: "image/jpeg", ext: "jpg", base64: raw.slice(comma + 1) };
+  if (header === "image/png;base64")  return { mime: "image/png",  ext: "png", base64: raw.slice(comma + 1) };
+  return null;
+}
+
+/** base64 → bayt dizisi (geçersiz karakterde atob fırlatır) */
+export function decodeBase64(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }

@@ -8,6 +8,16 @@
 //                   görsel URL'leri kullanıcının kendi storage'ı veya kendi FASHN çıktısı
 // action 'status' → prediction id kullanıcının bir render'ına ait olmalı (403);
 //                   completed ise çıktılar kaydedilir; model-create değilse render başarılı
+// action 'finish' → deneme sonu: son ara çıktıyı try-on cache anahtarına kopyalar (isteğe
+//                   bağlı) ve render'ın ara dosyalarını (tmp_) siler
+//
+// Çıktılar (return_base64, sunucu ekler): FASHN çıktıyı CDN'e koymaz, base64 döner (FASHN
+// beyanı: 60 dk erişilebilir). completed'da proxy görseli mannequin-cache'e yazar:
+//   try-on katmanı → <uid>/tmp_<render>_<prediction>.<jpg|png>  (deneme bitince silinir)
+//   model-create   → <uid>/base_mannequin.png
+// ve istemciye base64 yerine 10 dk'lık imzalı URL + path döner. Sonraki katman bu URL'i
+// model_image olarak gönderir (isOwnStorageUrl kabul eder). Dosyalar alt klasörde DEĞİL:
+// delete-account ve export-my-data yalnızca <uid>/ kökünü listeliyor.
 //
 // Rıza (consent_events, 014) — eksikse 403 { error: 'consent-required', kinds }:
 //   start : tryon_photo YA DA tryon_physical'dan en az biri (kota düşmeden önce)
@@ -20,27 +30,141 @@ import { hasConsent, consentRequired } from "../_shared/consent.ts";
 import type { ConsentKind } from "../_shared/consent.ts";
 import {
   fashnKey, fashnRun, fashnStatus, isOutOfCredits, parsePredictionId, parseStatus,
-  httpsOutputs, PREDICTION_ID_RE,
+  httpsOutputs, parseImageDataUri, decodeBase64, PREDICTION_ID_RE,
 } from "../_shared/fashn.ts";
+import type { DataUriImage, FashnStatusBody } from "../_shared/fashn.ts";
 
-// Model → izinli inputs anahtarları (src/utils/virtualModel.ts'te kullanılanlar)
+// Model → izinli inputs anahtarları (src/utils/virtualModel.ts'te kullanılanlar).
+// return_base64 burada YOK: istemci gönderemez (400), sunucu her çağrıya ekler.
 const ALLOWED_INPUTS: Record<string, readonly string[]> = {
   "model-create": ["prompt", "aspect_ratio"],
   "tryon-v1.6":   ["model_image", "garment_image", "garment_photo_type", "category",
                    "mode", "segmentation_free", "seed", "output_format"],
-  "tryon-max":    ["model_image", "product_image", "prompt", "resolution", "generation_mode"],
+  "tryon-max":    ["model_image", "product_image", "prompt", "resolution", "generation_mode",
+                   "output_format"],
 };
 
 // Maliyeti etkileyen değerler koddaki değere sabit. Sabitlenen anahtar ZORUNLU:
 // gönderilmezse FASHN varsayılanı (maliyeti bilinmiyor) devreye girerdi → 400.
+// tryon-max output_format: varsayılan png idi, cache'e .jpg adıyla yazılıyordu → jpeg
 const PINNED_VALUES: Record<string, Record<string, readonly unknown[]>> = {
-  "tryon-max": { resolution: ["1k"], generation_mode: ["balanced"] },
+  "tryon-max": { resolution: ["1k"], generation_mode: ["balanced"], output_format: ["jpeg"] },
 };
 
 const IMAGE_FIELDS = ["model_image", "garment_image", "product_image"] as const;
 const STORAGE_BUCKETS = new Set(["avatars", "wardrobe-items", "mannequin-cache"]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// ─── Çıktı depolama ──────────────────────────────────────────────────────────
+const OUTPUT_BUCKET     = "mannequin-cache";
+const BASE_MANNEQUIN    = "base_mannequin.png";          // privacyActions.ts ile aynı ad
+const TMP_PREFIX        = "tmp_";
+const MAX_OUTPUT_BYTES  = 10 * 1024 * 1024;              // bucket sınırı (019_storage_limits)
+const OUTPUT_LINK_TTL_S = 10 * 60;                       // FASHN'a giden bağlantılarla aynı (storageUrls.ts)
+const TMP_MAX_AGE_MS    = 60 * 60 * 1000;                // start'ta bundan eski ara dosyalar silinir
+// tmp_<render uuid>_<prediction id>.<jpg|png> — prediction id PREDICTION_ID_RE karakterleri
+const TMP_NAME_RE   = /^tmp_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[A-Za-z0-9_-]{1,128}\.(jpg|png)$/i;
+// Try-on cache adı: v2_<sıralı parça id'leri>_<manken sürümü>.jpg (virtualModel tryOnCacheSignature)
+const CACHE_NAME_RE = /^v2_[A-Za-z0-9_-]{1,900}\.jpg$/;
+
+/** İşçinin CPU süresi (ms, user+system). Çalışma ortamı sunmuyorsa null. */
+function cpuMs(): number | null {
+  // deno-lint-ignore no-explicit-any
+  const u = (globalThis as any).process?.cpuUsage?.();
+  return u && typeof u.user === "number" ? (u.user + u.system) / 1000 : null;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Çıktı okunamıyor (süresi dolmuş "_expired", bozuk base64, sınır üstü) → 410; istemci yoklamayı bırakır */
+function outputUnavailable(id: string, reason: string) {
+  console.error(`[fashn-proxy] 410 output-unavailable id=${id} reason=${reason}`);
+  return json({ error: "output-unavailable" }, 410);
+}
+
+/**
+ * Kullanıcının <uid>/ kökündeki tmp_ dosyalarından `shouldRemove` true dönenleri siler.
+ * Asla fırlatmaz (temizlik ana akışı bozmasın); silinen sayısını döner.
+ */
+async function removeTemp(
+  // deno-lint-ignore no-explicit-any
+  admin: any, uid: string, shouldRemove: (f: { name: string; created_at?: string | null }) => boolean,
+): Promise<number> {
+  try {
+    const { data, error } = await admin.storage.from(OUTPUT_BUCKET)
+      .list(uid, { limit: 1000, search: TMP_PREFIX });
+    if (error) { console.error(`[fashn-proxy] tmp listelenemedi: ${error.message}`); return 0; }
+    const paths = (data ?? [])
+      // deno-lint-ignore no-explicit-any
+      .filter((f: any) => f.id && typeof f.name === "string" && f.name.startsWith(TMP_PREFIX) && shouldRemove(f))
+      // deno-lint-ignore no-explicit-any
+      .map((f: any) => `${uid}/${f.name}`);
+    if (!paths.length) return 0;
+    const { error: rmErr } = await admin.storage.from(OUTPUT_BUCKET).remove(paths);
+    if (rmErr) { console.error(`[fashn-proxy] tmp silinemedi: ${rmErr.message}`); return 0; }
+    return paths.length;
+  } catch (e) {
+    console.error("[fashn-proxy] tmp temizliği", e);
+    return 0;
+  }
+}
+
+/**
+ * completed + base64 çıktı → mannequin-cache'e yaz, yanıtı imzalı URL + path ile yeniden yaz.
+ * Storage hatası → 503: istemci 5xx'te yoklamaya devam eder, sonraki completed yanıtında
+ * (FASHN'da 60 dk erişilebilir) yeniden denenir. complete_prediction tekrarı zararsız
+ * (mark_render_success coalesce, output_urls distinct).
+ */
+async function persistOutput(
+  // deno-lint-ignore no-explicit-any
+  admin: any, uid: string, renderId: string, id: string,
+  s: FashnStatusBody, img: DataUriImage, cpuStart: number | null,
+): Promise<Response> {
+  // Tür sunucu kaydından: try-on katmanı mı, model-create mi (register_run p_is_tryon)
+  const { data: render, error: rErr } = await admin
+    .from("tryon_renders")
+    .select("tryon_prediction_ids")
+    .eq("id", renderId)
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (rErr) throw new Error(`tryon_renders: ${rErr.message}`);
+  const isTryon = ((render?.tryon_prediction_ids ?? []) as string[]).includes(id);
+  const path = isTryon ? `${uid}/${TMP_PREFIX}${renderId}_${id}.${img.ext}` : `${uid}/${BASE_MANNEQUIN}`;
+
+  const t0 = performance.now();
+  let bytes: Uint8Array;
+  try { bytes = decodeBase64(img.base64); } catch { return outputUnavailable(id, "invalid-base64"); }
+  const decodeMs = performance.now() - t0;
+  if (bytes.length > MAX_OUTPUT_BYTES) return outputUnavailable(id, `too-large:${bytes.length}`);
+
+  const t1 = performance.now();
+  const { error: upErr } = await admin.storage.from(OUTPUT_BUCKET)
+    .upload(path, bytes, { upsert: true, contentType: img.mime });
+  const uploadMs = performance.now() - t1;
+  if (upErr) {
+    console.error(`[fashn-proxy] çıktı yazılamadı id=${id}: ${upErr.message}`);
+    return serviceUnavailable();
+  }
+
+  const { data: signed, error: sErr } = await admin.storage.from(OUTPUT_BUCKET)
+    .createSignedUrl(path, OUTPUT_LINK_TTL_S);
+  if (sErr || !signed?.signedUrl) {
+    console.error(`[fashn-proxy] çıktı imzalanamadı id=${id}: ${sErr?.message ?? "boş"}`);
+    return serviceUnavailable();
+  }
+
+  const cpuEnd = cpuMs();
+  console.log("[fashn-proxy] output saved", JSON.stringify({
+    id, render: renderId, kind: isTryon ? "tryon" : "mannequin", mime: img.mime,
+    bytes: bytes.length, b64_chars: img.base64.length,
+    decode_ms: round1(decodeMs), upload_ms: round1(uploadMs),
+    // İstek başından beri işçi CPU'su (ağ beklemesi dahil değil); ortam sunmuyorsa null
+    cpu_ms: cpuStart !== null && cpuEnd !== null ? round1(cpuEnd - cpuStart) : null,
+  }));
+
+  return json({ ...s, output: [signed.signedUrl], path }, 200);
+}
 
 /** https://<proje>/storage/v1/object/(public|sign)/<bucket>/<uid>/<dosya...> mı? */
 function isOwnStorageUrl(raw: string, uid: string): boolean {
@@ -103,6 +227,7 @@ async function isAllowedImage(admin: any, raw: unknown, uid: string): Promise<bo
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST")    return json({ error: "method-not-allowed" }, 405);
+  const cpuStart = cpuMs();
 
   try {
     const key = fashnKey();
@@ -141,6 +266,11 @@ Deno.serve(async (req) => {
       if (!photo && !physical) {
         return consentRequired("consent-required", ["tryon_photo", "tryon_physical"]);
       }
+
+      // Yarım kalmış denemelerin (çökme, ağ kopması — finish gelmedi) ara dosyaları
+      const swept = await removeTemp(admin, user.id, (f) =>
+        !f.created_at || Date.now() - Date.parse(f.created_at) > TMP_MAX_AGE_MS);
+      if (swept) console.log(`[fashn-proxy] start: ${swept} eski ara dosya silindi user=${user.id}`);
 
       const { data, error } = await admin.rpc("start_tryon", { p_user: user.id });
       if (error) throw new Error(`start_tryon: ${error.message}`);
@@ -215,7 +345,8 @@ Deno.serve(async (req) => {
       if (resErr) throw new Error(`register_run: ${resErr.message}`);
       if (reserved !== true) return json({ error: "run-budget-exceeded" }, 429);
 
-      const res  = await fashnRun(key, modelName, inputs);
+      // Çıktı CDN'e değil yanıta (base64) — completed'da bizim storage'a yazılır
+      const res  = await fashnRun(key, modelName, { ...inputs, return_base64: true });
       const text = res.text;
       // FASHN'ın kendi hatası istemciye aynı status ile geçer (400 dahil) — ayırt edilsin
       if (!res.ok) {
@@ -283,6 +414,15 @@ Deno.serve(async (req) => {
             p_user: user.id, p_render: renderId, p_prediction_id: id, p_urls: outputs,
           });
           if (error) throw new Error(`complete_prediction: ${error.message}`);
+
+          // base64 çıktı → bizim storage'a; https (FASHN base64'ü yok saydıysa) → eskisi gibi
+          // aynen geçer; ikisi de değilse ("_expired" vb.) → 410
+          const first = Array.isArray(s.output) ? s.output[0] : undefined;
+          const img = parseImageDataUri(first);
+          if (img) return await persistOutput(admin, user.id, renderId, id, s, img, cpuStart);
+          if (!outputs.length) {
+            return outputUnavailable(id, typeof first === "string" ? first.slice(0, 40) : typeof first);
+          }
         } else if (s?.status === "failed") {
           // FASHN işin kendisinin başarısız olduğunu bildirdi (biçim: virtualModel.ts
           // `s.status === 'failed'`, `s.error.name/message`).
@@ -309,6 +449,55 @@ Deno.serve(async (req) => {
         }
       }
       return new Response(text, { status: res.status, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+
+    // ── finish ─────────────────────────────────────────────────────────────
+    // { render_id, final_path?, cache_key? } — final_path ile cache_key birlikte gelir.
+    // Kopyalama sunucuda (istemci indirip yüklemez); sonra render'ın tmp_ dosyaları silinir.
+    if (body.action === "finish") {
+      const renderId = body.render_id;
+      if (typeof renderId !== "string" || !UUID_RE.test(renderId)) return bad("render_id required");
+
+      const { data: render, error: rErr } = await admin
+        .from("tryon_renders")
+        .select("id")
+        .eq("id", renderId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (rErr) throw new Error(`tryon_renders: ${rErr.message}`);
+      if (!render) return bad("render-not-owned");
+
+      const finalPath = body.final_path;
+      const cacheKey  = body.cache_key;
+      if ((finalPath === undefined) !== (cacheKey === undefined)) return bad("final-path-cache-key-pair");
+
+      const prefix = `${TMP_PREFIX}${renderId}_`;
+      let copied = false;
+      if (finalPath !== undefined) {
+        // Yalnızca bu kullanıcının bu render'a ait ara dosyası: <uid>/tmp_<render_id>_<id>.<ext>
+        const ownPrefix = `${user.id}/`;
+        if (typeof finalPath !== "string" || !finalPath.startsWith(ownPrefix)) {
+          return bad("final-path-not-allowed");
+        }
+        const name = finalPath.slice(ownPrefix.length);
+        if (!name.startsWith(prefix) || !TMP_NAME_RE.test(name)) return bad("final-path-not-allowed");
+        if (typeof cacheKey !== "string" || !CACHE_NAME_RE.test(cacheKey)) return bad("cache-key-not-allowed");
+
+        // copy hedefin üzerine yazmaz → önce hedefi kaldır (yoksa sessizce geçer)
+        const dest = `${user.id}/${cacheKey}`;
+        await admin.storage.from(OUTPUT_BUCKET).remove([dest]);
+        const { error: cpErr } = await admin.storage.from(OUTPUT_BUCKET).copy(finalPath, dest);
+        if (cpErr) {
+          // Ara dosyalar SİLİNMEZ: istemci yedek yolda imzalı URL'den indirip yükler
+          console.error(`[fashn-proxy] finish copy ${renderId}: ${cpErr.message}`);
+          return serviceUnavailable();
+        }
+        copied = true;
+      }
+
+      const removed = await removeTemp(admin, user.id, (f) => f.name.startsWith(prefix));
+      console.log(`[fashn-proxy] finish render=${renderId} copied=${copied} removed=${removed}`);
+      return json({ ok: true, copied, removed });
     }
 
     return bad("invalid action");
