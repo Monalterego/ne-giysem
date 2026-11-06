@@ -278,6 +278,51 @@ Web'de Poof atlanır (`UploadScreen.tsx:143`). İzin yoksa fotoğraf olduğu gib
 - **Edge function limitleri** (Supabase bellek ~256 MB, duvar saati ve CPU süresi planına göre): **[doğrulanmadı — Supabase dokümanından teyit edilmeli]**. Base64 decode + storage upload birkaç MB için sorun olmamalı. Asıl risk CPU süresi; ölçülmeli.
 - Kazanç: FASHN sunucusunda çıktı saklanmaz. Bu uyum metinlerinde "FASHN görselleri üç gün sonra siler" ifadesini değiştirir (bkz. c).
 
+### b.3b Adım 5 uygulandı (06.11.2026): `return_base64` + ara çıktılar bizim storage'da
+
+Commit'ler: `39e7351` (sunucu), `805bc7f` (OTA).
+
+**FASHN dokümanı:**
+- `return_base64: true` → çıktı CDN URL'i yerine `data:image/<jpeg|png>;base64,...` döner ([tryon-v1.6](https://docs.fashn.ai/api-reference/tryon-v1-6), [tryon-max](https://docs.fashn.ai/api-reference/tryon-max), [model-create](https://docs.fashn.ai/api-reference/model-create)).
+- *"Outputs are available for up to 60 minutes instead of the standard three-day window. Request history contains only a … placeholder."*
+- [Veri saklama sayfası](https://docs.fashn.ai/api-overview/data-retention-privacy):
+  - Base64 çıktı 60 dk sonra `"_expired"` döner. URL çıktısı (varsayılan) üç gün sonra silinir.
+  - URL ile gönderilen girdiler: yalnızca işlem için indirilir, URL metni istek kaydında kalır.
+  - İstek kayıtları otomatik silinmez; silme yalnızca legal@fashn.ai'ye prediction id'leriyle yazılarak yapılır.
+  - Ayrıca bir CDN kopyası kalıp kalmadığı **[doğrulanamadı — dokümanda yok]**.
+- [DPA yayımlanmış](https://fashn.ai/legal/dpa): §6.1 talimatla silme *"without undue delay"*, §6.2 sözleşme sonunda silme/iade. **Gün sayısı yok**; 60 dk / 3 gün yalnızca doküman sayfasında.
+- Supabase [edge function limitleri](https://supabase.com/docs/guides/functions/limits):
+  - Bellek 256 MB; CPU 2 sn (async I/O hariç); duvar saati Free'de 150 sn.
+  - İstek/yanıt gövdesi sınırı yazmıyor.
+
+**Akış:**
+
+| Adım | Ne olur | Kod |
+|---|---|---|
+| `run` | Sunucu `return_base64: true` ekler. İstemci gönderemez (izin listesinde yok → 400). tryon-max `output_format` `['jpeg']` olarak sabitlendi (önceden png gelip `.jpg` adıyla saklanıyordu) | `fashn-proxy/index.ts:38-51`, `:349` |
+| `status` completed | Önce `complete_prediction` (değişmedi). Sonra base64 çözülüp yazılır:<br>• try-on katmanı → `mannequin-cache/<uid>/tmp_<render>_<prediction>.<ext>`<br>• model-create → `<uid>/base_mannequin.png`<br>Yanıt: 10 dk imzalı URL + `path`. Storage hatası → 503 (istemci yoklamaya devam eder, sonraki completed'da yeniden yazılır). Okunamayan çıktı → 410 | `:411-425`, `persistOutput` `:119-170` |
+| Sonraki katman | İmzalı URL `model_image` olur; `isOwnStorageUrl` kabul eder | `virtualModel.ts:307-345` |
+| `finish` | `render_id` bu kullanıcının olmalı; `final_path` `<uid>/tmp_<render_id>_…` olmalı, `cache_key` `v2_….jpg` desenine uymalı (aksi 400). Sunucu kopyalar (`v2_` cache anahtarı) ve render'ın `tmp_` dosyalarını siler. Kopyalama hatası → 503, istemci eski yola (indir + yükle) düşer | `fashn-proxy/index.ts:457-500`, `CombosScreen.tsx:783-819` |
+| Hata | İstemci catch'te `finish`'i yalnızca silme için çağırır | `CombosScreen.tsx:823` |
+| `start` | 1 saatten eski `tmp_` dosyaları silinir | `fashn-proxy/index.ts:271-273` |
+| Gizlilik işlemleri | Parça silme, fotoğraf kaldırma ve fiziksel veri silme `tmp_` dosyalarını da siler. Hesap silme zaten `<uid>/` kökünü siler (bu yüzden alt klasör kullanılmadı) | `privacyActions.ts:19, 68, 116` |
+| Log | `[fashn-proxy] output saved {bytes, b64_chars, decode_ms, upload_ms, cpu_ms}`. `cpu_ms` = istek başından beri işçi CPU'su (`process.cpuUsage`). Ortam sunmuyorsa `null`. `decode_ms` senkron olduğu için doğrudan CPU'dur | `:72-76`, `:158-165` |
+
+- `output_urls` / `user_owns_output` bu adımda kaldı (FASHN https dönerse eski yol çalışır). Kaldırma ayrı adım.
+- Kredi değişmez.
+- Depolama: kalıcı yük değişmez. Deneme başına 1–3 ara dosya birkaç saniye–dakika kalır.
+- Egress: FASHN ara dosyaları bizden indirir; son görselde istemci indirmesi kalkar. Gerçek boyutlar loglardan okunacak **[ölçülmedi]**.
+
+**`"_expired"` gelirse ne olur (kota/iade koduna dokunulmadı, mevcut davranış):**
+
+1. **Ne zaman:** FASHN base64 çıktıyı tamamlandıktan sonra 60 dk tutar. İstemci 2 sn'de bir yoklar ve completed'ı görünce durur. 240 sn sonra da vazgeçer (`virtualModel.ts:65-66`). Dolayısıyla `_expired`'a normal akışta ulaşılmaz. Ulaşmanın tek yolu completed'dan 60 dk sonra status çağrılması; ayrıca `register_run` 30 dk penceresi (`006:131-141`) render'ı zaten kapatır.
+2. **Olursa:**
+   - `status` completed dalında `complete_prediction` çıktıdan **önce** çağrılır (`fashn-proxy/index.ts:413-416`). Try-on katmanıysa `mark_render_success` render'ı başarılı işaretler (`008_render_refund.sql:151-153`).
+   - Ardından çıktı data URI ya da https değilse 410 `output-unavailable` döner (`:421-424`). İstemci bunu genel "tekrar dene" mesajı olarak gösterir: `errorMessage.ts`'te 410'a özel eşleme yok.
+3. **Hak yanar, iade yok.** İade yalnızca iki durumda var: `/run`'da OutOfCredits veya 5xx (`:361` ve sonrası, `refundAndUnavailable` `:86-91`), ya da `/status` **failed** ve hiçbir katman tamamlanmamışsa (`:426-447`). completed dalında iade yolu yok.
+4. **Benzer durum:** storage'a yazma kalıcı olarak başarısız olursa (503'ler) istemci 240 sn sonra zaman aşımına düşer. Render ilk completed'da başarılı işaretlendiği için hak yine yanar. Bu, bugünkü "FASHN görseli indirilemedi" (`CombosScreen` `imageDownloadError`) davranışıyla aynı.
+5. `_expired`'ın tam biçimi (çıktı dizisinde metin mi, ayrı bir durum mu) **[doğrulanmadı]**. Ayrı bir `status` değeri gelirse proxy aynen geçirir; istemci 240 sn'de zaman aşımına düşer.
+
 ### b.3a Profil fotoğrafı: tam boy ön kontrolü (öneri, uygulanmadı)
 
 **Sorun:** yüz odaklı bir selfie FASHN'da PoseError verdi (5 Kasım ölçümü). Hata yalnızca try-on sırasında ortaya çıkıyor. Adım 4'te tepki tarafı çözüldü: "Yapay mankenle dene" seçeneği. Ama yükleme anında bir kontrol yok: fotoğraf seçilir, 1200 px JPEG'e çevrilir ve kontrolsüz yüklenir (`ne-giysem/src/screens/main/profile/ProfilePhotoScreen.tsx:95-119`).
@@ -451,6 +496,36 @@ Sonrasında limit değişikliği yalnızca `update app_limits …` olur; build g
   - `:100`, `:122`: veri minimizasyonu
 - Ayrıca `ozel-nitelikli-veri-siniflandirmasi.md:25, 44` (kıyafet fotoğrafında kişi görünmesi artık FASHN'a da gider), `saklama-imha-politikasi.md:20`, `veri-ihlali-mudahale-proseduru.md:24, 33, 103`.
 
+### c.4 Adım 5'in (return_base64 + ara çıktılar) metinlere etkisi — 7. adımda yapılacak (yalnızca liste)
+
+Bu adımda metin değiştirilmedi. Satır numaraları 06.11.2026 haliyle:
+
+- **`docs/compliance/saklama-imha-politikasi.md`**
+  - `:15` mannequin-cache içeriğine try-on ara çıktıları (`tmp_`)
+  - `:20` ve `:38` FASHN süresi: base64 çıktı 60 dk; istek kaydı otomatik silinmez
+  - Bölüm 2: "try-on ara çıktıları — deneme bitince, en geç 1 saat — silme — `finish` + `start` temizliği" satırı
+  - `:27-29` gizlilik işlemleri `tmp_` dosyalarını da siler
+  - Bölüm 3 (otomatik temizlik): `start`'taki 1 saat temizliği
+- **`sestina-web/gizlilik.html` + `privacy.html`**
+  - `:115` "sonuç bağlantıları": artık FASHN URL'i kaydedilmiyor (`output_urls` boş kalır)
+  - `:126` "sonuç depomuza kaydedilemediyse paylaşılan bağlantı FASHN'ın kendi bağlantısıdır … üç gün": geçersiz (paylaşım zaten kapalı; gösterilen bağlantı bizim ara dosyamız)
+  - `:228` "üretilen görseller üç gün sonra silinir" → 60 dk; istek kaydı notu
+- **`sestina-web/hesap-silme.html` + `delete-account.html`**
+  - `:55` "FASHN ürettiği görselleri üç gün sonra siler"
+  - FASHN istek kayıtlarının silinmesi prediction id ister; hesap silmede `tryon_renders` cascade ile gidiyor. Bu kayıt silme talebi akışında dikkate alınmalı.
+- **`docs/compliance/data-inventory.md`**
+  - `:33` (#13) saklama süresi
+  - `:34` (#14) "FASHN çıktısı depomuza kopyalanır" → sunucu yazar; ara çıktılar
+  - `:35` (#15) "çıktı URL'leri"
+  - `:112` DPA artık yayımlanmış ([fashn.ai/legal/dpa](https://fashn.ai/legal/dpa)); imza/kabul durumu teyit
+- **Diğer uyum dokümanları**
+  - `docs/compliance/ozel-nitelikli-veri-siniflandirmasi.md:23`: FASHN'a giden bağlantılar artık ara dosyalar için de bizim storage'ımız
+  - `docs/compliance/guvenlik-tedbirleri.md:58` (sahiplik: imzalı ara dosya; `user_owns_output` yedek) ve `:69` (sabit `return_base64`, tryon-max `output_format`)
+- **Değişmesi gerekmeyenler:**
+  - Açık rıza metinleri (`acik-riza.html:67`, `consent.html:67`, `tr.json:815`): "10 dakika geçerli bağlantı" doğru kalıyor
+  - Aydınlatma metni süre içermiyor
+  - Rıza sürümü değişmez
+
 ---
 
 ## d. Uygulama sırası
@@ -466,9 +541,9 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 3 | `_shared/fashn.ts` çıkarımı; tryon-max `generation_mode` doğrudan `['balanced']` olarak sabitlenir + istemci `virtualModel.ts:357` `'balanced'` (birlikte) | sunucu + OTA | `quality` gönderen istek 400 almalı; yeni paketle ayakkabılı deneme çalışmalı |
 | 4 | Try-on: dış giyim elenir (`isOuter`: kategori `outer` + hırka/yelek), sonuçta "dış giyim gösterilmiyor" notu, try-on cache'i ayrı ve sürümlü imzaya geçer (`v2_`; favori imzası değişmez). Fotoğraf varken de kaynak sorulur (kendi fotoğrafım / yapay manken). Fotoğrafta PoseError → "Yapay mankenle dene" | OTA | Ceketli kombin: FASHN panelinde ceket satırı olmamalı, `runs_used` bir azalmalı, eski cache isabet vermemeli; fotoğraflı hesapta seçim penceresi; yüz odaklı fotoğrafla PoseError → yapay manken önerisi |
 | 4b | Profil fotoğrafı ön kontrolü, ucuz sürüm (b.3a): yüklemede en-boy oranı uyarısı + "yine de kullan" | OTA | Kare/yatay selfie → uyarı; dikey tam boy → uyarı yok; maliyet 0 |
-| 5 | fashn-proxy'de `return_base64` + ara çıktıyı `mannequin-cache/<uid>/tmp/`'ye yazma; istemci storage yolunu kullanır | sunucu + OTA | 3 katman + ayakkabı: FASHN URL'i istemciye hiç gelmemeli; geçici dosyalar silinmeli; function süre/bellek logu |
+| 5 | ✅ (06.11.2026, `39e7351` + `805bc7f`) fashn-proxy'de `return_base64` + ara çıktılar `mannequin-cache/<uid>/tmp_<render>_<prediction>.<ext>` (alt klasör değil — hesap silme yalnızca kökü listeliyor); `finish` eylemi; tryon-max `output_format: 'jpeg'`. Ayrıntı b.3b, metin listesi c.4 (adım 7'de) | sunucu + OTA | 3 katman + ayakkabı: FASHN URL'i istemciye hiç gelmemeli; geçici dosyalar silinmeli; `output saved` logunda boyut ve CPU |
 | 6 | **Sunucuda izin sürümü kontrolü** (Karar 5): `consent_granted` ya da `_shared/consent.ts` en son kaydın `text_version` ana sürümünü sunucu tarafı tablo/sabitle (`ai_processing` → 2, `tryon_*` → 1) karşılaştırır. Eski sürüm 403 döner. `anthropic-proxy`, `fashn-proxy` ve (adım 8'deki) `garment-image` kullanır. `bg-removal-proxy` da (silinene kadar) aynı kontrolü alır | sunucu | 1.1 onaylı test hesabı: proxy'ler 403 `ai-consent-required` döndürmeli; 2.0 onayından sonra 200; try-on 1.0 rızalarıyla çalışmaya devam etmeli |
-| 7 | İzin metni ve sürüm (Karar 5): tr/en `aiConsent` (Poof çıkar, FASHN eklenir), `privacy.aiBody`, `CONSENT_VERSIONS.ai_processing = '2.0'`; web sayfaları ve compliance dokümanları (c bölümü) | OTA + web + docs (adım 6 ile **aynı gün**) | 1.1 onaylı hesap: ilk eklemede izin ekranı yeniden açılmalı; `consent_events`'te 2.0 satırı; web sayfalarında Poof geçmemeli |
+| 7 | İzin metni ve sürüm (Karar 5): tr/en `aiConsent` (Poof çıkar, FASHN eklenir), `privacy.aiBody`, `CONSENT_VERSIONS.ai_processing = '2.0'`; web sayfaları ve compliance dokümanları (c bölümü, adım 5'in etkisi c.4) | OTA + web + docs (adım 6 ile **aynı gün**) | 1.1 onaylı hesap: ilk eklemede izin ekranı yeniden açılmalı; `consent_events`'te 2.0 satırı; web sayfalarında Poof geçmemeli |
 | 8 | `garment-image` fonksiyonu (packshot + background-remove, `garment_jobs`, packshot sayacı, adım 6'daki sürüm kontrolü); istemci henüz çağırmıyor | sunucu | Test kullanıcısıyla curl: başarılı, moderasyon (mayo), OutOfCredits (sahte anahtar), sahiplik (başkasının id'si → 403), 1.1 izinle 403 |
 | 9 | `wardrobe_items.image_source` migration (`'packshot' \| 'fashn_bg' \| 'original'`; `'device'` lansman sonrası) | sunucu | Sütun null'able; mevcut uygulama etkilenmez |
 | 10 | Yeni yükleme akışı (Karar 2, 4, 6): geçici `_orig.jpg` yükle → Claude(orijinal) ∥ packshot → yan yana seçim → onay: packshot / ret: FASHN background-remove → karar verilince `_orig.jpg` silinir. Ücretsiz plan 4.+ parça: packshot yok, orijinal olduğu gibi + "düz zemine ser, iyi ışıkta çek" ipucu. Hata durumunda: orijinal olduğu gibi | OTA | Ücretsiz: 3 parça packshot, 4. parça olduğu gibi + ipucu; premium: tüm parçalar packshot; onay/ret/zaman aşımı/moderasyon/OutOfCredits; kayıttan sonra storage'da `_orig.jpg` kalmamalı; vazgeçince de silinmeli |
@@ -503,12 +578,12 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 3. **Ücretsiz try-on 3 → 1 geçişi:** mevcut ücretsiz kullanıcılara kalan hak tanınacak mı? Premium 8 → 5 ay ortasında mı, ay başında mı?
 4. **Ücretsiz plan, 4. parça ve sonrası, desteklenmeyen cihaz:** "olduğu gibi" mi (0 maliyet), FASHN background-remove mi (1 kredi)?
 5. **Yapay zekâ izni 2.0 dayanağı:** FASHN'a kıyafet fotoğrafı gönderimi `ai_processing` tercihi altında mı kalacak (m. 5/2-c), yoksa ayrı bir onay mı gerekir? Hukuki görüş **[doğrulanmadı]**.
-6. FASHN ile DPA ve "return_base64'te saklanmıyor" beyanının yazılı teyidi (`data-inventory.md:112` açık noktası).
+6. FASHN ile DPA ve "return_base64'te saklanmıyor" beyanının yazılı teyidi (`data-inventory.md:112` açık noktası). Güncelleme (06.11.2026): DPA yayımlanmış ([fashn.ai/legal/dpa](https://fashn.ai/legal/dpa)) ama gün sayısı içermiyor. Base64'te CDN kopyası olup olmadığı dokümanda yok (b.3b).
 
 **Riskler:**
 
 - **Maliyet:** her eklemede packshot (1 kredi), "orijinali kullan" seçilirse +1 kredi. Premium kullanıcı 200 parça eklerse 200–400 kredi. Günlük tavan (mevcut 150) yeni fonksiyonda da olmalı; global harcama alarmı yok (a.4).
-- **Edge function limitleri** (`return_base64` + sunucuda storage yazma; packshot süresi) ölçülmedi.
+- **Edge function limitleri** (`return_base64` + sunucuda storage yazma; packshot süresi) ölçülmedi. Adım 5'ten sonra `[fashn-proxy] output saved` logu boyut, decode/upload süresi ve CPU'yu yazıyor; ilk denemelerden okunmalı.
 - **OTA'yı almamış eski binary'ler** `bg-removal-proxy`'yi çağırmaya devam eder. Kapatma zamanlaması benimseme oranına bağlı.
 - **Sunucuda rıza sürümü kontrol edilmiyor** (c.2). Karar 5 ile çözülüyor (d, adım 6). Adım 6 ile 7 aynı gün yayınlanmazsa, test hesapları yeni metni görmeden 403 alır.
 - **Ücretsiz plan 4.+ parçalar arka planlı kaydediliyor** (Karar 4). Kombin kartı ve try-on kalitesi bu parçalarda düşük olabilir. `garment_photo_type: 'auto'` kalmalı.
