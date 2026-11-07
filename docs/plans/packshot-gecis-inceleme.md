@@ -681,6 +681,243 @@ Bunlar başarısızsa rezervasyon açılmaz (`CombosScreen.tsx`, `handleVirtualM
 
 ---
 
+## Adım 8-10 tasarım (07.11.2026) — onay bekliyor
+
+Bu bölüm yalnızca tasarım; kod yazılmadı. **Kararlar (07.11.2026)** aşağıdaki kurallarla, "Kararlar (05.11.2026)" bölümünün **4. maddesinin yerine geçer** (cihaz üstü kesim artık lansmanda):
+
+- `garment-image` = FASHN packshot (1 kredi). "Orijinali kullan" → FASHN background-remove (1 kredi). `ai_processing` 2.0 şart.
+- Packshot ile orijinal yan yana gösterilir, kullanıcı seçer. Orijinal kalıcı saklanmaz.
+- `image_source`: `'packshot' | 'bg_removed' | 'device_cutout' | 'original'`. b.1'deki `'fashn_bg' | 'device'` adlarının yerine.
+- Cihaz üstü kesim: iOS 17+ Vision, Android ML Kit Subject Segmentation. Desteklenmeyen cihazda parça olduğu gibi kaydedilir ve çekim ipucu gösterilir.
+- Packshot kotası dolunca parça cihaz üstü kesimle kaydedilir.
+  - Ücretsiz plan: ilk 3 parça. Premium: aylık kota, değeri 15. adımda belirlenecek.
+  - Kota yenilenince "stüdyo kalitesine yükselt" ile elle yükseltilir; otomatik yükseltme yok.
+- Packshot başarısız olursa ya da içerik denetimine takılırsa: iade mevcut kurala göre, parça cihaz üstü kesimle kaydedilir.
+
+### 8-10.0 Engelleyici açık nokta: FASHN packshot API'de belgelenmemiş
+
+- **Packshot:** `https://docs.fashn.ai/api-reference/packshot` ve `.../product-to-packshot` → **404**.
+  - Doküman dizininde ([llms.txt](https://docs.fashn.ai/llms.txt)) ve [model listesinde](https://docs.fashn.ai/api-overview/model-lifecycle) packshot / ghost mannequin / flat lay yok.
+  - Mevcut API modelleri: Agent Images, Background Remove, Edit, Face to Model, Image to Video, Model Create, Model Swap, Product to Model, Reframe, Try-On Max, Try-On v1.6.
+  - `model_name`, parametreler, kredi, süre, çıktı biçimi ve moderasyon davranışı **[doğrulanamadı]**.
+- **Gereken:** FASHN'dan (support@fashn.ai) yazılı teyit:
+  - (a) packshot API'de var mı, `model_name` ne
+  - (b) girdiler ve maliyeti etkileyen alanlar
+  - (c) kredi
+  - (d) `return_base64` desteği
+  - (e) moderasyon ve hata adları
+  - (f) yanıt süresi
+- **Teyit gelene kadar:**
+  - Packshot dalı dışındaki her şey (native modül, background-remove dalı, kota altyapısı, akış) yapılabilir. Packshot dalı istemcide bir bayrakla kapalı kalır.
+  - "Edit" ya da "Agent Images" ile prompt üzerinden packshot denemek bir seçenek ama **önerilmez**: maliyeti ve sonuç tutarlılığı bilinmiyor.
+- **Background Remove belgelenmiş** ([kaynak](https://docs.fashn.ai/api-reference/background-remove)):
+  - `model_name: "background-remove"`, girdi `image` (URL ya da data URI), `return_base64` (çıktı `data:image/png;base64,…`).
+  - **1 kredi**. Tipik süre **1–3 sn**. Çıktı **şeffaf PNG**. En küçük girdi 128×128 px; en büyük boyut belirtilmemiş.
+- **Ortak kurallar** ([hata yönetimi](https://docs.fashn.ai/api-overview/error-handling), [temeller](https://docs.fashn.ai/api-overview/api-fundamentals)):
+  - *"Failed predictions do not consume credits."*
+  - Çalışma hataları: `ImageLoadError`, `ContentModerationError`, `InputValidationError`, `ThirdPartyError`, `UnavailableError`, `PipelineError`.
+  - Sınırlar: `/run` 100 istek / 60 sn, `/status` 50 istek / 10 sn, eşzamanlı 6 istek.
+
+### 8-10.1 Native modül
+
+**Platform API'leri:**
+
+| Platform | API | Kaynak |
+|---|---|---|
+| iOS | `VNGenerateForegroundInstanceMaskRequest`, **iOS 17.0+**. Sonuç `VNInstanceMaskObservation`; `generateMaskedImage(ofInstances:from:croppedToInstancesExtent:)` arka planı saydam yüksek çözünürlüklü görüntü verir. Uygulama içinde (in-process) çalışır. Donanım kısıtı ve simülatör desteği belgede yok **[doğrulanmadı]**; bir kütüphane README'sine göre simülatörde çalışmıyor | [Apple doc (JSON)](https://developer.apple.com/tutorials/data/documentation/vision/vngenerateforegroundinstancemaskrequest.json), [WWDC23 10176](https://developer.apple.com/videos/play/wwdc2023/10176/) |
+| Android | ML Kit Subject Segmentation, **beta** (SLA yok). API **24+**. Bağımlılık `com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1`. Model **Play services üzerinden indirilir** ("unbundled", ~200 KB APK artışı); kurulumda indirme için manifest `com.google.mlkit.vision.DEPENDENCIES = subject_segment`. İndirme bitmeden yapılan istek **sonuç vermez**. Pixel 7 Pro'da ~200 ms. Play services olmayan cihazda davranış belgede yok **[doğrulanmadı]** | [Genel bakış](https://developers.google.com/ml-kit/vision/subject-segmentation), [Android](https://developers.google.com/ml-kit/vision/subject-segmentation/android) |
+| Expo SDK 56 | iOS **16.4+**, Android **7+** (= API 24, çıkarım) | [SDK 56](https://docs.expo.dev/versions/v56.0.0/) |
+
+Sonuç: iOS 16.4–16.x cihazlarda kesim yok, `@available(iOS 17, *)` ile korunur. Android minSdk zaten uyumlu.
+
+**Hazır kütüphaneler** (npm kaydı, 07.11.2026):
+
+| Paket | Son sürüm (tarih) | iOS / Android | Expo modülü / config plugin | Not |
+|---|---|---|---|---|
+| `@rbayuokt/expo-background-removal` | 0.1.0 (2026-09-11) | iOS 17 Vision / API 24 ML Kit (beta) | Expo modülü, autolink; plugin yok | En iyi belgelenmiş Expo adayı. Örnek SDK 55. README: SDK 56/57 için Swift 6.3.1 gerekiyor. ML Kit tüm-kare çıktısında SIGSEGV'ye karşı geçici çözüm var. Haftalık ~100 indirme, 9 yıldız |
+| `@westwood-dev/expo-segmentation` | 0.1.0 (2026-06-07) | iOS 17 Vision / API 24 ML Kit | Expo modülü; plugin belirtilmemiş | SDK 56 devDeps. 6 commit, haftalık ~2 indirme |
+| `@six33/react-native-bg-removal` | 1.3.4 (2026-01-09) | iOS 17 Vision (15.1–16 için `REQUIRES_API_FALLBACK`) / API 24 ML Kit | Expo'ya özel değil, RN kütüphanesi; codegen var | En çok kullanılan (haftalık ~1900). Expo ve yeni mimari uyumu **[belirtilmemiş]**. atlj fork'u |
+| `react-native-nitro-vision-kit` | 0.4.1 (2026-10-25) | iOS 17 / API 24 ML Kit (beta) | Nitro modülü, Expo belirtilmemiş | Yeni mimari şart; OCR vb. fazladan |
+| `expo-segmentation` | yayından kaldırılmış (2026-06-07) | — | — | **Kullanılamaz** (b.2'deki öneri geçersiz) |
+
+Kaynak: npm registry JSON ve GitHub sayfaları (kütüphane taraması, 07.11.2026). Son commit tarihleri **[doğrulanmadı]**.
+
+**Önerim: yerel Expo modülü** (`modules/garment-cutout`, `npx create-expo-module@latest --local`; [Expo](https://docs.expo.dev/modules/get-started/)). Gerekçeler:
+- Adayların hepsi çok yeni ya da Expo SDK 56 ile çalıştığı belgelenmemiş.
+- İhtiyacımız küçük: tek kesim fonksiyonu ve **beyaz zemine birleştirme**. FASHN background-remove da şeffaf PNG verdiği için birleştirmeye ayrıca ihtiyaç var; dolap JPEG kullanıyor ve JPEG'de saydamlık yok.
+- Gizlilik açısından hassas yolda üçüncü taraf bağımlılık olmaz.
+- MIT lisanslı `@rbayuokt` ve `@six33` kodu referans alınabilir (SIGSEGV notu dahil).
+- Alternatif: önce bir günlük deneme olarak `@rbayuokt` ile dev build. SDK 56'da derlenirse onu kullanmak, `flattenOnWhite` için yine küçük bir yerel fonksiyon gerektirir.
+
+**Modül arayüzü (öneri):**
+```ts
+isSupported(): Promise<{ supported: boolean; reason?: 'os' | 'no-play-services' | 'model-downloading' }>
+cutout(uri: string): Promise<{ uri: string; width: number; height: number } | null>  // beyaz zemin JPEG; özne yoksa null
+flattenOnWhite(pngUri: string): Promise<{ uri: string }>                             // FASHN bg-remove PNG → JPEG
+```
+- **iOS:** Vision isteği → `generateMaskedImage(allInstances, croppedToInstancesExtent: true)` → beyaz zemine birleştir → JPEG. Ana iş parçacığında çalışmaz.
+- **Android:** `SubjectSegmentation.getClient(enableForegroundBitmap)` → beyaz zemin → JPEG.
+  - Model indirilmemişse `model-downloading` döner, akış "olduğu gibi"ye düşer.
+  - Config plugin (`withAndroidManifest`) kurulumda indirmeyi açar.
+- **JS koruması:** `requireOptionalNativeModule('GarmentCutout')` modül yoksa `null` döner. Expo Go, web ve eski binary'de "desteklenmiyor" sayılır ([Expo](https://docs.expo.dev/versions/latest/sdk/expo.md)).
+- **Kaç özne:** `allInstances` (askı ve aksesuar da kesilebilir). Tek özne seçimi lansman sonrası.
+
+### 8-10.2 Build ve yayın
+
+- **Neden yeni build:** native modül JS'ten çağrıldığı için yeni EAS build şart.
+  - `runtimeVersion.policy = appVersion` (`app.json:98-100`).
+  - `version` **1.0.1 → 1.1.0**. Böylece runtime 1.1.0 olur.
+  - *"Only binaries with a matching runtime version can load the remote update"* ([Expo](https://docs.expo.dev/versions/latest/sdk/updates.md)).
+- **1.0.1 kullanıcıları:**
+  - 1.1.0 build'ini kurana kadar runtime 1.0.1 için yayınlanmış son OTA'yı kullanır: Poof akışı, adım 7'ye kadarki değişiklikler.
+  - 1.1.0 için yayınlanan OTA'lar onlara **gitmez**. 1.0.1'e düzeltme gerekirse `version: 1.0.1` olan bir daldan ayrıca `eas update` yapılır.
+  - Eski OTA'lar da yeni build'e gitmez; 1.1.0 kendi bundle'ıyla çıkar.
+- **Sunucunun eski istemcilere desteği:**
+  - `bg-removal-proxy` (Poof) ve mevcut `anthropic-proxy` girdisi, son 1.0.1 cihazı kalkana kadar durmalı. Bu yüzden **13. adım (Poof kaldırma), test hesaplarının ve demo hesabının 1.1.0'a geçmesinden sonra**.
+  - Mağazada 1.0.1 incelemede ya da yayındaysa 1.1.0 incelemeden geçene kadar Poof kalır.
+- `ios.deploymentTarget` yükseltilmez (16.4). iOS 17 API'si çalışma zamanında korunur.
+
+| Değişiklik | Nereye |
+|---|---|
+| Migration 021: `image_source`, `garment_jobs`, `limit_for` yeni anahtarları | **sunucu** |
+| `garment-image` edge function | **sunucu** |
+| `modules/garment-cutout` (Swift/Kotlin + config plugin), `version` 1.1.0 | **build** (EAS + mağaza) |
+| Yeni yükleme akışı, karşılaştırma ekranı, "stüdyo kalitesine yükselt", çekim ipucu | **1.1.0 bundle'ı** (build ile çıkar; sonraki düzeltmeler runtime 1.1.0 OTA'sı) |
+| 1.0.1'e giden her şey | yalnızca `version: 1.0.1` dalından OTA (gerekmedikçe yok) |
+
+### 8-10.3 Akış
+
+Girdi: picker → `toUploadJpeg` (≤1400 px, ≤2 MB base64; mevcut). `uploadId = uuid` (parça id'si).
+
+```
+ensureAiDecision ─ izin yok ──────────────────────────────► [D] cihaz kesimi* / olduğu gibi
+      │ izin var
+      ├─ paralel: Claude analizi (orijinal base64)            kredi 0 · anthropic sayacı
+      ├─ paralel: cihaz kesimi (destekleniyorsa, cache'te)    kredi 0 · kota yok
+      └─ packshot hakkı var mı? (garment-image start, sunucu karar verir)
+            ├─ hayır (kota dolu) ───────────────────────────► [C] cihaz kesimi / olduğu gibi + ipucu
+            └─ evet → FASHN packshot (data URI girdi)         1 kredi · kota: rezerve
+                  ├─ başarısız / moderasyon / OutOfCredits / zaman aşımı
+                  │     → iş failed (kota iadesi) ──────────► [C]
+                  └─ tamamlandı → [Yan yana: packshot | orijinal]
+                        ├─ "Bu benim kıyafetim" → [A] kaydet: image_source='packshot'
+                        └─ "Orijinali kullan" → FASHN background-remove (orijinal data URI)
+                              1 kredi · packshot kotası DÜŞMEZ (8-10.4)
+                              ├─ tamamlandı → flattenOnWhite → [B] 'bg_removed'
+                              └─ başarısız → [C]
+[C] cihaz kesimi varsa 'device_cutout', yoksa 'original' + "düz zemine ser, iyi ışıkta çek"
+```
+\* **İzin yokken cihaz kesimi:** veri cihazdan çıkmaz, bu yüzden teknik olarak mümkün. Ancak izin metninin "İzin vermezsen … arka planı kaldırılmadan kaydedilir" cümlesini değiştirir. Senin kararın: (a) izin yokken de cihaz kesimi + metin alt sürümü 2.1 (önerim), (b) izin yokken olduğu gibi.
+
+**Dosyalar:**
+
+| Ne | Nerede | Ne zaman silinir |
+|---|---|---|
+| Orijinal | **Yalnızca cihaz belleği / cache.** Sunucuya data URI olarak gider (`garment-image` gövdesi; `anthropic-proxy` zaten ≤2 MB base64 kabul ediyor). Storage'a geçici dosya **yazılmaz** | Kayıt ya da vazgeçme sonrası cache dosyası silinir. FASHN: base64 girdinin geçici kopyası iş bitince, en geç bir günde silinir [beyan] |
+| Cihaz kesimi | Cihaz cache'i (`garment-cutout/…jpg`) | Kayıt ya da vazgeçme sonrası |
+| Packshot / bg-remove çıktısı | Yanıtta base64, yalnızca bellek. Proxy storage'a **yazmaz** | Kayıt sonrası bellekten |
+| Kalıcı | Mevcut yollar: `wardrobe-items/<uid>/<uuid>.jpg` (1000 px) + `<uuid>_thumb.jpg` (400 px); `image_url = processed_image_url = <uuid>.jpg` | Parça silinince (mevcut `deleteWardrobeItemFiles`) |
+
+b.1'deki `_orig.jpg` geçici dosyası ve yetim temizliği **gerekmez**: orijinal storage'a hiç yazılmıyor.
+
+- **Kredi özeti (yükleme başına):**
+  - packshot onay: 1
+  - "Orijinali kullan": 2 (packshot + bg-remove)
+  - kota dolu ya da başarısız: 0
+  - iade: FASHN başarısız işi ücretlendirmiyor
+- **Açık soru:** "Orijinali kullan"da cihaz kesimi varsa bg-remove yerine o önerilebilir; kredi 1 → 0 olur. Kararlar bg-remove dediği için tasarım öyle; istersen değiştiririz.
+- **Zaman aşımı (istemci):** packshot 90 sn (değer önerisi; süre belgede yok), bg-remove 30 sn. Geç gelen sonuç yok sayılır. İş sunucuda `failed` sayılmaz; FASHN tamamlarsa kredi harcanmış olur.
+
+**"Stüdyo kalitesine yükselt"** (Dolap; `image_source in ('device_cutout','original')`):
+- Kullanıcı parçaları seçer. Her biri için `garment-image start packshot { item_id }` çağrılır. Sunucu parçanın `processed_image_url`'ini sahiplik kontrolüyle 10 dk imzalar. Orijinal saklanmadığı için girdi mevcut temiz görsel ya da orijinal fotoğraftır.
+- Sonuç yine yan yana gösterilir (eski | yeni):
+  - **Onay:** yeni `<uuid>_s.jpg` + `_s_thumb.jpg` yazılır, satır güncellenir, eski dosyalar silinir.
+  - **Ret:** hiçbir şey değişmez; kredi harcanmıştır, kota düşer.
+- Try-on cache anahtarı yalnızca parça id'lerinden oluşuyor (`virtualModel.ts` `tryOnCacheSignature`). Yükseltilen parçanın eski try-on'ları **eski görselle** kalır. Onayda, adında o parça id'si geçen `mannequin-cache` dosyaları silinmeli (`deleteWardrobeItemFiles`'ın try-on kısmıyla aynı mantık).
+- Otomatik yükseltme yok. Kota yenilenince Dolap'ta yalnızca bir öneri kartı gösterilir.
+
+### 8-10.4 Kota sayımı (try-on koduna dokunmadan)
+
+**Yeni tablo `garment_jobs`** (migration 021; `tryon_renders` deseni, ama ayrı):
+```
+id uuid pk · user_id → auth.users on delete cascade · kind text ('packshot'|'bg_remove')
+item_id uuid null (yükseltmede) · parent_job uuid null (bg_remove → hangi packshot işinin "Orijinali kullan"ı)
+prediction_id text null · created_at · succeeded_at null · failed_at null
+```
+- RLS açık, policy yok; yalnızca service_role.
+- Sahiplik: `status` çağrısı yalnızca kullanıcının kendi işinin prediction id'siyle yapılabilir (b.1'deki öneri).
+
+**Fonksiyonlar (yeni, security definer, yalnızca service_role):**
+- `start_garment_job(p_user, p_kind, p_item, p_parent)`:
+  - **packshot:** kullanılan = `kind='packshot' and failed_at is null and (succeeded_at is not null or created_at > now() - 10 min)`. Pencere ücretsizde ömür boyu, premium'da İstanbul ayı (`istanbul_month_start()` 013 ile aynı).
+  - Limit: `limit_for('free.packshot_lifetime')` = 3 / `limit_for('premium.packshot_monthly')`. Değer 15. adımda belirlenecek; şimdilik `limit_for`'a bir varsayılan eklenir (örn. 20 **[değer kararı]**). Doluysa `{allowed:false, used, limit, reset_at}`.
+  - **bg_remove:** packshot kotasından düşmez. `p_parent` zorunlu: aynı kullanıcının, **başarılı** ve henüz bg_remove çocuğu olmayan packshot işi olmalı. Packshot başına en çok 1 bg-remove.
+  - **İkisi için de:** kötüye kullanım tavanı `bump_usage(p_user, 'garment', 60)` günlük. `bg` sayacının deseni; değer önerisi.
+- `complete_garment_job` → `succeeded_at`. `fail_garment_job` → `failed_at`; kota kendiliğinden iade olur (`tryon_used` mantığı).
+- **İade kuralı** (try-on ile aynı ilke):
+  - İade **yalnızca üst servis hatasında**: `/run` OutOfCredits ya da 5xx, `/status` failed (moderasyon dahil). FASHN başarısız işi ücretlendirmediği için kredi kaybı yok.
+  - Bizim 400/403 doğrulamalarımız rezervasyondan **önce** yapılır, böylece iade gerekmez.
+  - Kullanıcı packshot'ı reddederse iade **yok** (kredi harcandı).
+- `limit_for`: yeni anahtarlar `free.packshot_lifetime`, `premium.packshot_monthly` CASE'e ve `app_limits`'e eklenir. `limit_for_unknown` korunur.
+- `get_usage`: `packshot { used, limit, reset_at }` alanı eklenir (15a göstergesi için).
+- **Neden `api_usage` değil:** `api_usage` 13 ay sonra `purge_retention` ile siliniyor (`saklama-imha-politikasi.md`). Ömür boyu "ilk 3 parça" sayımı bu yüzden zamanla sıfırlanırdı. Ayrıca sahiplik için prediction id saklamak gerekiyor.
+
+**Dokunulmayanlar:** `start_tryon`, `tryon_used`, `register_run`, `fail_render`, `tryon_renders`.
+
+**`garment-image` (edge function):**
+- `start {kind, image_b64? | item_id?, parent_job?}`:
+  1. `aiConsentGate` (2.0).
+  2. Girdi doğrulama: base64 ≤ 2 MB jpeg; `item_id` sahipliği.
+  3. `start_garment_job`.
+  4. FASHN `/run` (`return_base64: true`; packshot parametreleri teyitten sonra sabitlenir).
+  5. OutOfCredits / 5xx → `fail_garment_job` + 503 (`reportOpsEvent`).
+- `status {job_id}`:
+  - Sahiplik kontrolü, FASHN `/status`.
+  - Tamamlandıysa `complete_garment_job` ve yanıtta `image_b64`. Packshot çıktısı birkaç MB olabilir; edge yanıt sınırı belgede yok, ölçülmeli.
+  - `failed` → `fail_garment_job` ve `error.name`'i istemciye geçirir (`ContentModerationError` → istemcide "bu parça için stüdyo görseli oluşturulamadı").
+- Ortak katman `_shared/fashn.ts` (mevcut).
+
+### 8-10.5 Gizlilik ve silme
+
+- **Storage'a yeni geçici dosya yok.** `privacyActions` ve `delete-account` değişmeden kapsıyor:
+  - Kalıcı dosyalar mevcut yollar.
+  - Yükseltmenin yeni adı `<uuid>_s.jpg`. `deleteWardrobeItemFiles` `image_url` / `processed_image_url` / `thumb_url`'i yoldan siliyor, yani yeni ad satırda olduğu için kapsanır.
+  - `delete-account` `<uid>/` kökünü siliyor.
+- **`garment_jobs` satırları:** kota kaydı (prediction id dahil), hesap silinince cascade. Parça silinince **silinmez**; aksi halde hak geri gelirdi. Envanter #15'e benzer yeni bir satır ve saklama politikasına giriş gerekir (7. adımın benzeri, metin listesi aşağıda).
+- **Cihaz cache'i:** kesim ve orijinal dosyaları kayıt ya da vazgeçme sonrası `FileSystem.deleteAsync`. Uygulama çökerse işletim sisteminin cache temizliğine kalır; cihazdan çıkmadığı için kabul edilebilir.
+- **FASHN:**
+  - Girdi data URI → geçici kopya iş bitince silinir [beyan]. İstek kaydında URL yok.
+  - Yükseltmede 10 dk imzalı URL → kayıtta süresi dolmuş URL kalır.
+  - Çıktı base64, 60 dk.
+- **Uyum metinleri (yalnızca liste; ayrı adımda yazılır):**
+  - Gizlilik amaç tablosu: cihaz üstü kesim (veri cihazdan çıkmaz), FASHN background-remove satırı.
+  - `image_source` / `garment_jobs` için envanter satırları.
+  - Saklama politikasında `garment_jobs`.
+  - İzin yokken cihaz kesimi kararı (8-10.3, a) alınırsa `aiConsent.declineBody` 2.1.
+  - App Store gizlilik beyanında değişiklik yok (veri türü aynı).
+
+### 8-10.6 Uygulama sırası (commit grupları) ve test
+
+Krediyle ilgili testler en sonda.
+
+| # | Grup | Katman | Test |
+|---|---|---|---|
+| G1 | Migration 021: `image_source` (CHECK, null = eski), `garment_jobs`, `start/complete/fail_garment_job`, `limit_for` anahtarları, `get_usage.packshot`. Geri alma SQL'i dahil | sunucu | Kredi yok. SQL ile test kullanıcısında 3 packshot rezervasyonu → 4.'sü `allowed:false`. `fail` → hak geri gelir. bg_remove `parent` olmadan reddedilir; aynı parent'a ikinci bg_remove reddedilir. Premium'da `reset_at` dolu. try-on `get_usage` çıktısı değişmemeli |
+| G2 | `modules/garment-cutout` (Swift + Kotlin + config plugin), `version` 1.1.0, dev build | build | Kredi yok. Gerçek cihazlar: iOS 17+ (kesim), iOS 16.x (`supported:false`, reason `os`), Android (Play services, model indirme anı), ilk açılışta model yokken `model-downloading`. Askılı, yatakta, mankende ve beyaz zeminde 10 fotoğraf; çıktı beyaz zemin JPEG |
+| G3 | `garment-image` yalnızca **bg-remove** dalı + `status` | sunucu | Önce kredisiz testler: 1.1 izinle 403 `consent-version-outdated`, izinsiz 403, başkasının `job_id`'si 403, parent'sız bg_remove 400, sahte FASHN anahtarıyla OutOfCredits ya da 401 → `failed_at` dolu. Sonra **1 kredi**: gerçek bg-remove → şeffaf PNG `image_b64` |
+| G4 | Yeni yükleme akışı, packshot dalı **bayrakla kapalı**: cihaz kesimi, olduğu gibi + ipucu, Claude orijinal üzerinde, `image_source` yazımı, cache temizliği | 1.1.0 dev build (JS) | Kredi yok. iOS 17 cihazda `device_cutout`, iOS 16 cihazda `original` + ipucu, izin yokken (karara göre) davranış. Kayıttan sonra cache'te dosya kalmamalı, storage'da yalnızca `<uuid>.jpg` + `_thumb` olmalı |
+| G5 | FASHN teyidinden sonra: packshot dalı (`garment-image` packshot, yan yana ekran, "Orijinali kullan" → bg-remove → `flattenOnWhite`) | sunucu + JS | Kredili. Ücretsiz: 3 parça packshot, 4.'sü cihaz kesimi. Mayo ya da iç giyim → moderasyon → cihaz kesimi ve hak geri gelir. "Orijinali kullan" → 2 kredi, packshot kotası 1 düşer. Zaman aşımı → kesim |
+| G6 | "Stüdyo kalitesine yükselt" | JS (+ G1/G5) | Kredili. Kota yenilenince öneri kartı, seçilen parçalar, onay → yeni dosya ve eski dosyalar silinir, ilgili try-on cache dosyaları silinir. Ret → değişiklik yok, kota düşmüş |
+| G7 | Production build 1.1.0 + mağaza; ardından 12. adım (tarama Poof'suz) ve 13. adım (Poof kaldırma, test ve demo hesapları 1.1.0'dayken) | build + sunucu | 1.0.1 cihazında Poof akışı sürmeli; 1.1.0'da `bg` sayacı artmamalı |
+| — | Uyum metinleri (8-10.5 listesi) | web + docs | G5 yayınından önce |
+
+**Senin kararın gereken konular:**
+1. **FASHN packshot teyidi** (8-10.0). Gelmezse alternatif: stüdyo görseli yerine yalnızca FASHN background-remove (1 kredi) ya da yalnızca cihaz kesimi.
+2. **Native modül yöntemi:** yerel modül (önerim) ya da `@rbayuokt` ile bir günlük deneme.
+3. **İzin yokken cihaz kesimi:** (a) evet + metin 2.1 (önerim), (b) hayır.
+4. **"Orijinali kullan" kaynağı:** bg-remove (kararlar) ya da cihaz kesimi varsa o (0 kredi).
+5. **Değerler:** premium aylık packshot varsayılanı (15. adıma kadar) ve günlük `garment` tavanı.
+
 ## e. Riskler ve açık sorular
 
 **Açık sorular:**
