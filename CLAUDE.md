@@ -104,18 +104,23 @@ Kullanıcıların gardrobunu dijitalleştiren, yapay zeka ile kombin önerileri 
 - Bilgi sunar: "7 parçayla uyumlu", "bu renk paletine ters", "aynı işlevde 4 parçan var", "şu ayakkabılarınla iyi gider"
 - Potansiyel kombinlerin görsel kartları
 
-### 5. Monetizasyon (Freemium)
+### 5. Monetizasyon (Hard paywall + ücretsiz deneme)
 
-| Özellik | Ücretsiz | Premium |
+Ücretsiz plan yok: onboarding (stil testi) sonrası paywall; abonelik ya da deneme olmadan ana ekranlara girilmez (sunucuda da zorunlu, `has_access`). Yıllık plan 7 gün ücretsiz denemeli (mağazada tanımlı), aylık plan denemesiz.
+
+| Özellik | Ücretsiz deneme (7 gün, toplam) | Premium |
 |---|---|---|
-| Dolap | 50 parça | Sınırsız |
-| Sanal deneme (try-on) | 3 (ömür boyu) | 8 / ay (takvim ayı, Europe/Istanbul) |
-| "Uyar mı?" (mağaza uyum) | 3 / ay | Sınırsız |
-| Takvim | Geçmiş | Geçmiş + planlama |
+| Dolap | Sınırsız | Sınırsız |
+| Stüdyo görseli (packshot) | 15 | 40 / ay; yıllık planda ilk ücretli 30 gün 150; günde en fazla 60 |
+| Sanal deneme (try-on, ayakkabılı) | 2 | 5 / ay |
+| "Uyar mı?" (mağaza uyum) | 5 | 40 / ay |
+| Takvim | Geçmiş + planlama | Geçmiş + planlama |
 
-**Fiyat:** TR ₺229,99/ay – ₺2.299,99/yıl · Global $9.99/ay – $69.99/yıl. Paywall'da yıllık plan varsayılan seçili.
+Aylar takvim ayı (Europe/Istanbul). Değerler `app_limits` tablosunda (koda sayı yazılmaz; paywall `get_limits`, göstergeler `get_usage`). Denemeden ücretliye geçişte sayaçlar sıfırlanır.
 
-**Premium bitince:** mevcut planlar ve limit üstü parçalar korunur (silinmez); yalnızca yeni ekleme yapılamaz.
+**Fiyat:** TR ₺229,99/ay – ₺2.299,99/yıl · Global $9.99/ay – $69.99/yıl. Paywall'da yıllık plan varsayılan seçili. Fiyatlar ve tasarruf oranı mağazadan (RevenueCat) okunur.
+
+**Abonelik / deneme bitince:** veri silinmez (dolap, fotoğraflar, planlar korunur); yalnızca paywall görünür. Hareketsiz hesap: hiç erişimi olmamış hesap 12 ay, erişimi bitmiş hesap 24 ay girişsiz kalırsa silinir (30 gün önce e-posta).
 
 **Lansman:** AB ülkeleri hariç.
 

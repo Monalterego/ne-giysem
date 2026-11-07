@@ -553,7 +553,7 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 12 | ✅ kod (07.11.2026, `f990376`; yayın bekliyor, ayrıntı "Adım 12 + 13" bölümü) "Uyar mı?" Poof’suz (Karar 1): `ScanScreen` arka plan kaldırmaz, orijinal base64 `StoreResult`'a ve Claude'a gider | OTA | Tarama: `bg` sayacı artmamalı; sonuç ekranı orijinali göstermeli; storage'a dosya yazılmamalı |
 | 13 | ✅ kod (07.11.2026, `891e7ba` + web `draft` `226a6ab`; deploy/secret silme veri sorumlusunda) Poof kaldırma: `bg-removal-proxy` deploy'dan silinir, `POOF_API_KEY` secret'ı silinir, Poof hesabı kapanır, kod/çeviri temizliği (c.1) | sunucu + OTA | Adım 10 ve 12 test hesaplarında doğrulandıktan sonra; `grep -i poof` yalnızca tarihsel dokümanlarda sonuç vermeli |
 | 14 | Ucuz model testi (b.4): önce prompt'un saf modüle taşınması, betik yerelde. Karar 2'ye göre test görselleri **orijinal + packshot** | OTA + yerel | Rapor; geçerse önce `ALLOWED_MODELS` (sunucu), ardından `visionAnalysis.ts:198` (OTA) |
-| 15 | **Yerine geçti: "Adım 15 tasarım" (07.11.2026, hard paywall + deneme).** Eski tanım: Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
+| 15 | ✅ kod (07.11.2026, H1–H6; yayın bekliyor, ayrıntı "15.9 Uygulama durumu"). **Yerine geçti: "Adım 15 tasarım" (07.11.2026, hard paywall + deneme).** Eski tanım: Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
 | 15a | **Yerine geçti: "Adım 15 tasarım", 15.5–15.6.** Eski tanım: **Kalan hak göstergesi** (15'in alt maddesi): try-on ve "Uyar mı?" için kalan/toplam hak `get_usage`'dan okunup gösterilecek. Yerler: deneme butonu yanında ve "Uyar mı?" ekranında. Metinler (TR + EN): premium "Bu ay X / Y deneme hakkın kaldı", ücretsiz "X ücretsiz deneme hakkın var" (toplam hak), hak bitince "Z tarihinde yenilenir" (premium) ya da paywall'a yönlendirme (ücretsiz). Açık rezervasyonlar (son 30 dk) kullanılmış sayıldığı için göstergeyle tutarlı olmalı | OTA | Premium ve ücretsiz test hesabında gösterge `get_usage` ile aynı sayıyı vermeli; deneme başlayınca (açık rezervasyon) ve iade sonrası güncellenmeli; hak bitince premium'da yenilenme tarihi, ücretsizde paywall; TR ve EN metinler |
 
 ### Adım 6 + 7 (07.11.2026): sunucuda izin sürümü kontrolü + izin metni 2.0
@@ -1349,6 +1349,90 @@ Gerçek kullanıcı yok (Karar 3). Sunucu ve OTA aynı gün yayınlanır; test h
 3. **Paywall'da limit sayıları:** göstermemek (önerim) ya da `get_limits()` RPC'siyle göstermek.
 4. **Kota kayıtlarının saklama süresi:** `garment_jobs` / `tryon_renders` / `scan_jobs` için 13 ay (önerim) ya da hesap süresince.
 5. **Deneme → ücretli geçişte sayaç sıfırlama** (15.5): önerim sıfırlamak (deneme harcamaları ilk ücretli ayda sayılmaz).
+
+### 15.9 Uygulama durumu (07.11.2026)
+
+**Kararlar (onay, 07.11.2026):**
+1. Paywall'da Hesap: verilerimi indir, çıkış yap, hesabı sil.
+2. Hareketsiz hesap (a): hiç abone olmamış hesap 12 ay, erişimi bitmiş hesap 24 ay girişsiz kalırsa silinir; 30 gün önce e-posta. Bu adımda yalnızca metin (saklama politikası, gizlilik, envanter); otomatik iş açık iş olarak aşağıda.
+3. Paywall'da limitler gösterilir: tek satır, `get_limits()` (app_limits).
+4. Kota kayıtları (`garment_jobs`, `scan_jobs`, `tryon_renders`) 13 ay.
+5. Denemeden ücretliye geçişte sayaçlar sıfırlanır; yıllık planın 150'lik kurulum ayı ilk ücretli günde başlar.
+
+**Commit'ler:**
+
+| Grup | Commit | Ne |
+|---|---|---|
+| H1 | `432ad63` | `022_hard_paywall_trial.sql` |
+| H2 | `bc60b9a` | `_shared/revenuecat.ts` (`period_started_at`), `export-my-data` (deneme kaydı) |
+| H3 | `124d3a4` | `_shared/access.ts`, dört fonksiyonda erişim kapısı, `anthropic-proxy` purpose `scan` |
+| H4 | `0a50bf7` | İstemci: gate, paywall, ücretsiz plan UI'ının kaldırılması, 15a, TR + EN metinler |
+| H5 | `cd976f5` | `023_drop_start_scan.sql` (OTA sonrası) + `annual_products` şablonu |
+| H6 | web `draft` `e4ab5e6` + bu docs commit'i | Koşullar / terms bölüm 4–5, gizlilik / privacy, envanter #31–#33, saklama 1.4, `store-listing.md`, `CLAUDE.md` |
+
+**Tasarımdan sapmalar:**
+- **15a try-on göstergesi** kart üzerindeki butonun yanında değil, her denemede açılan kaynak penceresinde (`TryOnSourceModal`) ve Profil kartında. Kart `React.memo` comparator'ıyla çiziliyor; butonun yanına sayı koymak her kartı kota değişiminde yeniden çizdirirdi.
+- **Paywall modalı yok:** tek paywall gate'tir (`RootNavigator`). `openPaywall` ve `PaywallReason` kaldırıldı. Hak bitince paywall değil, neden + tarih mesajı (`quota.*`). Uygulama açıkken erişim biterse sunucunun `subscription-required` yanıtı planı tazeler, gate kendiliğinden açılır.
+- **`start_scan`** 022'de saymayan uyumluluk fonksiyonu olarak kaldı; 023 ile silinir (OTA'dan sonra).
+- **`garment-image`** erişim kapısı tüm eylemlerde (start + status). Erişim deneme / üretim sırasında biterse iş 10 dk sonra kotadan kendiliğinden düşer.
+- **`get_usage`**: `ended` (`'trial' | 'subscription' | null`, paywall başlığı) eklendi; `premium_expires_at` eski ad olarak `access_expires_at` ile birlikte dönüyor.
+- **`trials`** satırı yalnızca `period_started_at` doluyken açılır (H2 deploy'undan sonra). Önceki senkronda deneme penceresi `-infinity` sayılır (sıkı taraf; test hesaplarını etkiler, gerçek kullanıcı yok).
+- **Deneme süresi** mağazadan; yalnızca gün / hafta birimi okunur. Başka birimde ya da okunamazsa paywall deneme vaat etmez.
+- **Doğrulanmadı:** bu makinede Node yok. `npx tsc --noEmit` ve uygulama çalıştırılmadı; OTA'dan önce şart. i18n anahtarları iki dilde betikle kontrol edildi (eksik yok). SQL bir veritabanında çalıştırılmadı.
+
+**Yayın sırası:**
+1. **SQL:** `022_hard_paywall_trial.sql` (SQL Editor). Önce dosya sonundaki "Mevcut hesaplar" sorgusu.
+   - 022 olmadan yeni bundle'da `get_usage` eski biçimi döner (`plan: 'free'`) ve herkes gate'e düşer. Bu yüzden 022 OTA'dan önce gelir.
+2. **Deploy:** `npx supabase functions deploy anthropic-proxy garment-image fashn-proxy fetch-product sync-entitlement export-my-data --project-ref bdvrgbylirftuxmrpbea` + `npx supabase functions deploy revenuecat-webhook --no-verify-jwt --project-ref bdvrgbylirftuxmrpbea`.
+3. **Mağaza:** yıllık üründe 7 günlük deneme (kullanıcı); ardından `annual_products`'a ürün kimlikleri (023 dosyasındaki şablon).
+4. **OTA** (runtime 1.1.0): önce `npx tsc --noEmit`.
+5. **Web:** `sestina-web` `draft` → `main`, OTA ile aynı gün.
+6. **023** (`start_scan` silinir): test ve demo hesapları yeni bundle'dayken.
+7. **Mağaza metinleri** (`docs/store-listing.md`) ve App Review notu (aşağıda).
+
+**Test (kredisiz önce):**
+1. **SQL** (022 sonundaki bloklar): deneme penceresi (2 / 5 / 15), 3./6./16. red, iade; ücretliye geçişte `converted_at`, sayaçlar sıfır, yıllıkta `packshot_setup` dönüşüm anında; süresi geçmiş → `subscription-required` (try-on, packshot, parça ekleme). Demo hesabı `plan: 'premium'`.
+2. **Edge (curl, kredisiz):** erişimsiz hesap → dört fonksiyonda 403 `subscription-required`, FASHN'a istek yok. SQL ile 40 `scan_jobs` → tarama 402 `scan-limit`, Claude çağrısı yok.
+3. **Uygulama (kredisiz):**
+   - Yeni hesap → onboarding → gate (kapatılamaz, Android geri tuşu çıkarmaz).
+   - Yıllık seçili ve üstte; tasarruf rozeti ve aylık karşılık mağaza fiyatından. Deneme uygunsa "7 gün ücretsiz dene" ve deneme koşulları; aylıkta otomatik yenileme metni.
+   - Limit satırı `get_limits` ile aynı sayılar; `app_limits`'te bir değeri değiştirince paywall yeni sayıyı göstermeli.
+   - Geri yükle, Koşullar, Gizlilik; Hesap → verilerimi indir, çıkış, hesabı sil.
+   - Sandbox deneme satın al → ana ekranlar; Profil "Ücretsiz deneme · … biter", göstergeler `get_usage` ile aynı.
+   - Uçak modu açıkken yeniden açılış → son bilinen erişimle ana ekranlar.
+   - TR ve EN.
+4. **Az maliyetli / kredili (en son):**
+   - Tarama: tanınan ürün → `scan_jobs.succeeded_at`; bulanık fotoğraf → "tanıyamadık", `failed_at` (hak geri). 5. taramadan sonra deneme hesabında "Tarama hakkın bitti" + deneme sonu tarihi.
+   - Try-on: 2 deneme, 3.'sünde "Sanal deneme hakkın bitti".
+   - Packshot: SQL ile 14 iş + 1 gerçek packshot; sonraki parça cihaz kesimi + "hak doldu".
+
+**App Review notu (App Store Connect → App Review Information → Notes):**
+
+```
+Sestina uses a hard paywall: after onboarding (a short style quiz) a subscription or the 7-day free trial of the yearly plan is required to use the app.
+
+The demo account (demo@sestinaapp.com) has a lifetime promotional Premium entitlement, so it goes straight to the app and does not show the paywall.
+
+To see the paywall, the free trial and the purchase flow, create a new account (Sign up with email) and complete the style quiz; the paywall appears after it. The trial can be started with a sandbox Apple ID. The paywall also shows Restore Purchases, links to the Terms of Use and Privacy Policy, and Account options (download my data, sign out, delete account).
+```
+
+TR (iç kayıt): Sestina hard paywall kullanır; stil testinden sonra abonelik ya da yıllık planın 7 günlük ücretsiz denemesi gerekir. Demo hesabı ömür boyu promosyonel Premium olduğu için paywall'u göstermez. Paywall, deneme ve satın alma akışı yeni bir hesap açılıp stil testi tamamlanarak görülebilir.
+
+### Açık iş: hareketsiz hesap silme (ilk silme tarihinden önce yapılacak)
+
+**Karar (07.11.2026):** hiç erişimi (abonelik / deneme) olmamış hesap **12 ay**, erişimi bitmiş hesap erişim bitiminden sonra **24 ay** girişsiz kalırsa silinir; silmeden **30 gün önce** e-posta. Metinler yazıldı (saklama 1.4, gizlilik bölüm 9, envanter); **otomatik iş yok**.
+
+**Son tarih:** ilk bildirim, lansmandan itibaren en erken **11. ayda** gider (12 ay − 30 gün). İş en geç lansman + 10 ayda canlıda olmalı.
+
+**Yapılacaklar:**
+- **Seçim (SQL fonksiyonu, service_role):**
+  - `auth.users.last_sign_in_at` + `entitlements` + `trials`.
+  - Hiç erişim yok (`entitlements` satırı ve `trials` yok) ve giriş > 12 ay; ya da erişim bitmiş (`expires_at < now()` veya satır silinmiş ama `trials` var) ve `greatest(last_sign_in_at, expires_at)` > 24 ay.
+  - `last_sign_in_at` oturum yenilemede güncellenmiyor olabilir **[doğrulanmadı]**. Gerekirse uygulama açılışında `profiles.last_seen_at` yazılır.
+- **Bildirim:** yeni tablo `inactive_notices(user_id, notified_at, delete_after)`. E-posta gönderimi (Supabase Auth e-postası değil; Gmail SMTP / transactional sağlayıcı; yeni alıcıysa envanter ve gizlilik güncellenir). Girişte satır silinir.
+- **Silme:** `delete-account` mantığı (depo kökü, RevenueCat abone kaydı, Apple token iptali mümkünse, `auth.admin.deleteUser`) ortak modüle alınır. `deletion_log.source` CHECK'ine `'inactive'` eklenir (014: `'app' | 'email' | 'under18'`).
+- **Zamanlama:** günlük pg_cron + edge function (cron → `net.http_post` ya da Supabase scheduled function).
+- **Test:** test hesabında `last_sign_in_at`'i geriye alıp bildirim ve silme; girişte bildirim satırının silinmesi; `deletion_log` kaydı.
 
 ## e. Riskler ve açık sorular
 

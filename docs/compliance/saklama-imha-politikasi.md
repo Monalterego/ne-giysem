@@ -1,6 +1,6 @@
 # Kişisel Veri Saklama ve İmha Politikası
 
-**Sürüm:** 1.3 · **Son güncelleme:** 7 Kasım 2026 · **Sorumlu:** Hasan Can Demircan (veri sorumlusu; tüm roller)
+**Sürüm:** 1.4 · **Son güncelleme:** 7 Kasım 2026 (1.4: hareketsiz hesap, kota kayıtları 13 ay, ücretsiz deneme kaydı) · **Sorumlu:** Hasan Can Demircan (veri sorumlusu; tüm roller)
 **Kaynak:** `data-inventory.md` · **Dayanak:** KVKK m. 7; Kişisel Verilerin Silinmesi, Yok Edilmesi veya Anonim Hale Getirilmesi Hakkında Yönetmelik ("Yönetmelik")
 
 Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kayıtla yükümlü veri sorumluları içindir. Veri sorumlusu bundan istisnadır (`verbis-degerlendirmesi.md`); bu politika iyi uygulama olarak tutulur.
@@ -23,7 +23,9 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 
 | Veri (envanter #) | Süre | İmha yöntemi | Nasıl tetiklenir |
 |---|---|---|---|
-| Hesap, stil, dolap, kombinler, favoriler, abonelik, kota kayıtları, rıza kayıtları (#1–5, 15, 16, 18, 19) | Hesap süresince | **Silme** (DB satırı + depo dosyası) | Hesap silme: `delete-account` → depo temizliği + `auth.admin.deleteUser` (cascade) |
+| Hesap, stil, dolap, kombinler, favoriler, abonelik, ücretsiz deneme kaydı, rıza kayıtları (#1–5, 16, 18, 19, 33) | Hesap süresince | **Silme** (DB satırı + depo dosyası) | Hesap silme: `delete-account` → depo temizliği + `auth.admin.deleteUser` (cascade) |
+| **Hareketsiz hesap** (hesabın tüm verisi, #1–#33) | Hiç erişimi (abonelik / deneme) olmamış hesapta **12 ay**, erişimi bitmiş hesapta erişim bitiminden sonra **24 ay** girişsiz kalırsa | **Silme** (hesap silmeyle aynı: `delete-account` mantığı, `deletion_log` kanalı `inactive`) | **Otomatik iş henüz yok** — lansman sonrası, ilk silme tarihinden önce yazılacak (plan dokümanı, "Açık iş: hareketsiz hesap silme"). Silmeden **en az 30 gün önce** kayıtlı e-postaya bildirim; bu sürede giriş silmeyi iptal eder |
+| Kota kayıtları: sanal deneme (#15), stüdyo görseli (#31), "Uyar mı?" (#32) | **13 ay** (en uzun sayım penceresi 30 günlük kurulum ayı) | Silme | Otomatik, günlük (bölüm 3, `022`) + hesap silme (cascade) |
 | Tek parça ve ilgili try-on görselleri (#4, #14) | Kullanıcı silene kadar | Silme | Uygulamada parça silme (`privacyActions.deleteWardrobeItemFiles`; try-on ara çıktıları `tmp_` de silinir) |
 | Profil fotoğrafı ve ondan türeyen görseller (#11, #14) | Kaldırma / rıza geri çekme / hesap silme | Silme | `privacyActions.removeAvatarAndTryOns` (ara çıktılar `tmp_` dahil) |
 | Fiziksel profil, manken ve mankenli görseller (#12, #14) | Rıza geri çekme / hesap silme | Silme (alanlar NULL, dosyalar silinir) | `privacyActions.removePhysicalData` (ara çıktılar `tmp_` dahil) |
@@ -44,13 +46,13 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 - FASHN istek kayıtlarında yalnızca süresi dolmuş imzalı bağlantılar ve çıktı yer tutucuları kalır; görsel verisi kalmaz, bu nedenle hesap silmede FASHN'a ayrı talep gönderilmez.
 - **Açık nokta [doğrulanmadı]:** yapay manken üretiminde (model-create) fiziksel profilden oluşan metin tarifi (yaş, boy, kilo, vücut tipi, ten rengi, saç) FASHN'a gider. Bu tarifin istek kaydında kalıp kalmadığını FASHN dokümanı belirtmiyor; ten rengi özel nitelikli veri sayılabilir (`ozel-nitelikli-veri-siniflandirmasi.md`). Ayrıca imzalı bağlantının yolunda kullanıcı kimliği (uid) yer alır.
   - FASHN'dan (legal@fashn.ai) yazılı teyit alınacak.
-  - Tarif kayıtta kalıyorsa hesap silmede prediction id'leriyle silme talebi gönderilmesi değerlendirilir (id'ler `tryon_renders.prediction_ids`'te; hesap silinince cascade ile gider).
+  - Tarif kayıtta kalıyorsa hesap silmede prediction id'leriyle silme talebi gönderilmesi değerlendirilir (id'ler `tryon_renders.prediction_ids`'te; hesap silinince cascade ile, aksi halde 13 ay sonra `purge_retention` ile gider).
 
 ## 3. Otomatik temizlik
 
 **Try-on ara çıktıları** (pg_cron dışında): fashn-proxy her deneme sonunda (`finish`) o denemenin `tmp_` dosyalarını siler. Bir deneme yarım kalırsa, kullanıcının bir sonraki denemesinin başında (`start`) 1 saatten eski `tmp_` dosyaları silinir (`supabase/functions/fashn-proxy/index.ts`, `removeTemp`). Dosyalar `<uid>/` kökünde durur; hesap silme (`delete-account`) bu kökü sildiği için kapsanır.
 
-- **Fonksiyon:** `public.purge_retention()` — tanım: `014_privacy_consent.sql`, `015_deletion_log_retention.sql`, son hâli `016_auth_audit_retention.sql`. Dönüş değeri: silinen satır sayıları (`api_usage`, `ops_events`, `deletion_log`, `auth_audit`).
+- **Fonksiyon:** `public.purge_retention()` — tanım: `014_privacy_consent.sql`, `015_deletion_log_retention.sql`, `016_auth_audit_retention.sql`, son hâli `022_hard_paywall_trial.sql`. Dönüş değeri: silinen satır sayıları (`api_usage`, `ops_events`, `deletion_log`, `auth_audit`, `garment_jobs`, `scan_jobs`, `tryon_renders`).
 - **Zamanlama:** pg_cron işi `sestina_retention_purge`, her gün 03:17 UTC (`014_privacy_consent.sql`, sondaki `do` bloğu).
 - **Periyot:** Yönetmelik m. 11 uyarınca periyodik imha süresi 6 ayı aşamaz; günlük çalıştırma bu sınırın içinde.
 - **Kontrol (ayda bir):**
