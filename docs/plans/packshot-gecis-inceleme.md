@@ -550,8 +550,8 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 9 | `wardrobe_items.image_source` migration (`'packshot' \| 'fashn_bg' \| 'original'`; `'device'` lansman sonrası) | sunucu | Sütun null'able; mevcut uygulama etkilenmez |
 | 10 | Yeni yükleme akışı (Karar 2, 4, 6): geçici `_orig.jpg` yükle → Claude(orijinal) ∥ packshot → yan yana seçim → onay: packshot / ret: FASHN background-remove → karar verilince `_orig.jpg` silinir. Ücretsiz plan 4.+ parça: packshot yok, orijinal olduğu gibi + "düz zemine ser, iyi ışıkta çek" ipucu. Hata durumunda: orijinal olduğu gibi | OTA | Ücretsiz: 3 parça packshot, 4. parça olduğu gibi + ipucu; premium: tüm parçalar packshot; onay/ret/zaman aşımı/moderasyon/OutOfCredits; kayıttan sonra storage'da `_orig.jpg` kalmamalı; vazgeçince de silinmeli |
 | 11 | `segmentation_free: true` denemesi — packshot'lı parçalarla, adım 10'dan sonra. Yöntem: fashn-proxy'de **yalnızca belirli test kullanıcı kimlikleri için** `segmentation_free: true` gönderen geçici sunucu bayrağı (secret, örn. `FASHN_SEGFREE_TEST_UIDS`, ya da `app_limits` benzeri bir ayar). Proxy, istemcinin gönderdiği değeri bu kullanıcılar için ezer. Dev build gerekmez. Deneme bitince bayrak ve kod kaldırılır, sonuca göre değer kalıcı yapılır | sunucu | Aynı 10 kombin, bayrak açık ve kapalı test hesabıyla; function logunda gönderilen değer; görsel karşılaştırma tablosu. Bayrak dışındaki kullanıcıların isteği değişmemeli |
-| 12 | "Uyar mı?" Poof'suz (Karar 1): `ScanScreen` arka plan kaldırmaz, orijinal base64 `StoreResult`'a ve Claude'a gider | OTA | Tarama: `bg` sayacı artmamalı; sonuç ekranı orijinali göstermeli; storage'a dosya yazılmamalı |
-| 13 | Poof kaldırma: `bg-removal-proxy` deploy'dan silinir, `POOF_API_KEY` secret'ı silinir, Poof hesabı kapanır, kod/çeviri temizliği (c.1) | sunucu + OTA | Adım 10 ve 12 test hesaplarında doğrulandıktan sonra; `grep -i poof` yalnızca tarihsel dokümanlarda sonuç vermeli |
+| 12 | ✅ kod (07.11.2026, `476f7ed`; yayın bekliyor, ayrıntı "Adım 12 + 13" bölümü) "Uyar mı?" Poof’suz (Karar 1): `ScanScreen` arka plan kaldırmaz, orijinal base64 `StoreResult`'a ve Claude'a gider | OTA | Tarama: `bg` sayacı artmamalı; sonuç ekranı orijinali göstermeli; storage'a dosya yazılmamalı |
+| 13 | ✅ kod (07.11.2026, `233329e` + web `draft` `226a6ab`; deploy/secret silme veri sorumlusunda) Poof kaldırma: `bg-removal-proxy` deploy'dan silinir, `POOF_API_KEY` secret'ı silinir, Poof hesabı kapanır, kod/çeviri temizliği (c.1) | sunucu + OTA | Adım 10 ve 12 test hesaplarında doğrulandıktan sonra; `grep -i poof` yalnızca tarihsel dokümanlarda sonuç vermeli |
 | 14 | Ucuz model testi (b.4): önce prompt'un saf modüle taşınması, betik yerelde. Karar 2'ye göre test görselleri **orijinal + packshot** | OTA + yerel | Rapor; geçerse önce `ALLOWED_MODELS` (sunucu), ardından `visionAnalysis.ts:198` (OTA) |
 | 15 | Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
 | 15a | **Kalan hak göstergesi** (15'in alt maddesi): try-on ve "Uyar mı?" için kalan/toplam hak `get_usage`'dan okunup gösterilecek. Yerler: deneme butonu yanında ve "Uyar mı?" ekranında. Metinler (TR + EN): premium "Bu ay X / Y deneme hakkın kaldı", ücretsiz "X ücretsiz deneme hakkın var" (toplam hak), hak bitince "Z tarihinde yenilenir" (premium) ya da paywall'a yönlendirme (ücretsiz). Açık rezervasyonlar (son 30 dk) kullanılmış sayıldığı için göstergeyle tutarlı olmalı | OTA | Premium ve ücretsiz test hesabında gösterge `get_usage` ile aynı sayıyı vermeli; deneme başlayınca (açık rezervasyon) ve iade sonrası güncellenmeli; hak bitince premium'da yenilenme tarihi, ücretsizde paywall; TR ve EN metinler |
@@ -977,6 +977,51 @@ Krediyle ilgili testler en sonda.
    - Mayo ya da iç giyim → moderasyon → kesim, `garment_jobs.failed_at` dolu.
    - Yükseltme: menü → onay → yeni `_s.jpg`, eski dosyalar ve o parçanın try-on cache dosyaları silinmiş olmalı.
 4. **Storage:** hiçbir akışta `wardrobe-items`'a `<uuid>.jpg` / `_thumb.jpg` (yükseltmede `_s.jpg` / `_s_thumb.jpg`) dışında dosya oluşmamalı.
+
+## Adım 12 + 13 (07.11.2026): "Uyar mı?" Poof'suz, Poof kaldırma, izin metni 2.1
+
+**Commit'ler:**
+
+| Commit | Ne |
+|---|---|
+| `476f7ed` | Tarama orijinali Claude'a gönderir; sonuç ekranında "Dolaba ekle" |
+| `233329e` | `bg-removal-proxy` silindi, izin metni 2.1, yorum temizliği |
+| `c8f6b03` | `isUpgradeEligible`: `image_source` null (021 öncesi) parçalar da yükseltilebilir |
+| web `draft` `226a6ab` | Poof tüm sayfalardan çıktı, izin 2.1, yürürlük 7 Kasım 2026 |
+
+**Kararlar:**
+- **"Dolaba ekle"** (sonuç ekranı, analiz başarılıysa). `guardWardrobeAdd` → Dolap sekmesinde `Upload { preset }`. Seçim adımı atlanır, akışın geri kalanı aynıdır: cihaz kesimi, packshot (kota sunucuda), yan yana onay. Girdi taramada normalize edilmiş JPEG'dir (`toUploadJpeg` çıktısı). Taramanın analizi `pendingAnalysis` ile devredilir, ikinci Claude çağrısı yapılmaz.
+- **İzin 2.1 (alt sürüm):** yeniden onay istenmez. Sunucuda `MIN_CONSENT_MAJOR.ai_processing` 2 olarak kaldı.
+- **`notice_shown` 2.1:** sanal deneme bilgilendirmesindeki "Anthropic'e ya da Poof'a gönderilmez" cümlesinden Poof çıkarıldı. Alt sürüm, "Okudum" yeniden istenmez. Rapor dışı küçük ek; `grep -i poof` temiz kalsın diye yapıldı.
+- **Bilerek bırakılanlar:**
+  - Uygulanmış migration yorumları (`014_privacy_consent.sql:7`, `021_garment_jobs.sql:7`).
+  - Tarihsel kayıtlar: `guvenlik-tedbirleri.md` git geçmişi taraması ve remove.bg satırı, `data-inventory.md` "Geçmiş sağlayıcılar".
+  - Sürüm notları (`acik-riza` / `consent`).
+  - `kosullar` / `terms`: Poof adı geçmiyor. "Yapay zekâ izni verirsen arka planın kaldırılması" ifadesi artık eksik (izinsiz de cihazda kaldırılıyor) ama yanlış değil. Koşul değişikliği gerektirdiği için dokunulmadı.
+- **Açık:** `garment_jobs` için envanter satırı ve saklama politikası girişi (8-10.5) hâlâ yazılmadı. Envanter #6 bu nota bağlantı veriyor.
+
+**Yayın sırası** (sunucu değişikliği yalnızca silme):
+1. **OTA** (runtime 1.0.1 ve/veya 1.1.0 build'ine göre, 8-10.2). Yeni bundle tarama için Poof'u çağırmaz; metin 2.1.
+2. **Web:** `sestina-web` `draft` → `main` (OTA ile aynı gün).
+3. **Poof'u kapatma:** test hesapları ve demo hesabı yeni bundle'dayken, mağazadaki sürüm Poof'lu değilken (8-10.2):
+   - `npx supabase functions delete bg-removal-proxy --project-ref bdvrgbylirftuxmrpbea`
+   - `npx supabase secrets unset POOF_API_KEY --project-ref bdvrgbylirftuxmrpbea`
+   - Poof panelinde anahtarı iptal et, hesabı kapat. Tarihi `guvenlik-tedbirleri.md` bölüm 6'daki `POOF_API_KEY` satırına yaz.
+   - `_shared/consent.ts` yalnızca yorumda değişti; başka fonksiyonun yeniden deploy'u gerekmez.
+
+**Test:**
+1. **Tarama:** kamera ve galeriyle bir ürün tara.
+   - Sonuç ekranında arka planlı orijinal görünmeli.
+   - `api_usage`'da `bg` artmamalı, `anthropic` 1 artmalı. Storage'a dosya yazılmamalı.
+   - Function loglarında `bg-removal-proxy` çağrısı olmamalı.
+2. **Dolaba ekle:** sonuç ekranından ekle.
+   - Seçim ekranı atlanmalı, packshot hakkı varsa yan yana ekran çıkmalı. Kotası dolu hesapta "hak doldu" notu ve kesim görünmeli.
+   - UploadDetail'de alanlar taramanın analiziyle dolu gelmeli; ikinci `anthropic` sayacı artmamalı.
+   - Dolap 50/50 hesapta paywall açılmalı.
+3. **İzin 2.1:** 2.0 onaylı hesapta izin ekranı yeniden açılmamalı. Yeni karar verilirse `consent_events`'e `2.1` yazılmalı.
+   - İzin ekranında Poof satırı olmamalı. "İzin vermezsen" bölümü cihaz üstü kesimi anlatmalı.
+4. **Yükseltme:** `image_source` null olan bir parçanın menüsünde "Stüdyo kalitesine yükselt" görünmeli; öneri kartı bu parçayı saymalı.
+5. **grep:** `grep -rni poof ne-giysem/src ne-giysem/supabase/functions` boş olmalı. Repoda yalnızca tarihsel dokümanlarda ve migration yorumlarında sonuç vermeli.
 
 ## e. Riskler ve açık sorular
 

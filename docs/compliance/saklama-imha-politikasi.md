@@ -17,7 +17,7 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 | Veritabanı yedekleri | Haftalık DB dökümü (fotoğraflar yok) | Veri sorumlusunun kişisel Google Drive'ı ("Sestina Yedekler"), AES-256 (gpg) |
 | E-posta | Destek ve başvuru yazışmaları | Cloudflare (yönlendirme) → Gmail |
 | Kullanıcı cihazı | Oturum, dil, görünüm tercihi | Cihaz (bizim kontrolümüzde değil) |
-| Üçüncü taraflar | Poof (geçiş süresince), Anthropic, FASHN, RevenueCat, Expo, OpenWeather | Sağlayıcıların beyan ettiği süreler (FASHN: bölüm 2, "FASHN" notu) |
+| Üçüncü taraflar | Anthropic, FASHN, RevenueCat, Expo, OpenWeather | Sağlayıcıların beyan ettiği süreler (FASHN: bölüm 2, "FASHN" notu) |
 
 ## 2. Saklama süreleri ve imha yöntemi
 

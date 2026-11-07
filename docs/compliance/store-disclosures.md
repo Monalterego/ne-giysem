@@ -32,7 +32,7 @@ Gösterim: **[T#]** = tartışmalı karar, gerekçesi bölüm D'de. `#n` = envan
 |---|---|
 | Do you or your third-party partners collect data from this app? | **Yes, we collect data from this app** |
 
-Apple tanımı: veri cihazdan çıkıp geliştiriciye **veya** üçüncü taraf ortağa (Supabase, Poof, Anthropic, FASHN, RevenueCat, OpenWeather, Expo) gidiyorsa "collected". Cihazdan doğrudan OpenWeather'a giden konum da dahil.
+Apple tanımı: veri cihazdan çıkıp geliştiriciye **veya** üçüncü taraf ortağa (Supabase, Anthropic, FASHN, RevenueCat, OpenWeather, Expo) gidiyorsa "collected". Cihazdan doğrudan OpenWeather'a giden konum da dahil.
 
 ### A2. Veri türleri (arayüz sırası)
 
@@ -102,7 +102,7 @@ Tüm satırlarda **Used for tracking: No**. Amaçlar Apple listesinden: *Third-P
 ### B2. Veri türleri
 
 **Sharing (paylaşım) — hepsi No.** Google tanımında aşağıdakiler "sharing" sayılmaz ve bu tabloda uygulanmıştır:
-- Bizim adımıza ve talimatımızla çalışan **servis sağlayıcılara** aktarım: Supabase, Poof, Anthropic, FASHN, RevenueCat, OpenWeather, Expo.
+- Bizim adımıza ve talimatımızla çalışan **servis sağlayıcılara** aktarım: Supabase, Anthropic, FASHN, RevenueCat, OpenWeather, Expo.
 - **Kullanıcının başlattığı** aktarım: paylaşım menüsü (#30), Verilerimi indir (#26).
 - Apple / Google'ın giriş için kendi topladığı veri (biz alıcıyız, aktaran değil).
 
@@ -142,7 +142,7 @@ Amaç seçenekleri: *App functionality, Analytics, Developer communications, Adv
 | App info and performance | Crash logs / Diagnostics / Other app performance data | No [T10] | | | | | |
 | Device or other IDs | Device or other IDs | **Yes** [T8] | No | No | Required | App functionality | #27 |
 
-**Ephemeral notu:** Fotoğraf türünde tarama fotoğrafı (#9) ve Poof / Anthropic'e giden kopyalar geçici işlenir, ama dolap ve profil fotoğrafları saklandığı için tür olarak "ephemeral = No". Konumda sunucumuz yok; Google'ın tanımındaki "yalnızca bellekte işlenip isteğe yanıt verecek kadar tutulur" koşulu OpenWeather'ın beyanına dayanır [beyan].
+**Ephemeral notu:** Fotoğraf türünde tarama fotoğrafı (#9) ve Anthropic / FASHN'a giden kopyalar geçici işlenir; cihaz üstü kesimde veri cihazdan çıkmaz, ama dolap ve profil fotoğrafları saklandığı için tür olarak "ephemeral = No". Konumda sunucumuz yok; Google'ın tanımındaki "yalnızca bellekte işlenip isteğe yanıt verecek kadar tutulur" koşulu OpenWeather'ın beyanına dayanır [beyan].
 
 ---
 

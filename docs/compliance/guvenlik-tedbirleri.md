@@ -1,6 +1,6 @@
 # Teknik ve İdari Güvenlik Tedbirleri
 
-**Sürüm:** 1.2 · **Tarih:** 7 Kasım 2026 · **Dayanak:** KVKK m. 12 · **Kaynak:** `data-inventory.md`
+**Sürüm:** 1.3 · **Tarih:** 7 Kasım 2026 (1.3: Poof kaldırıldı) · **Dayanak:** KVKK m. 12 · **Kaynak:** `data-inventory.md`
 Kod referansları `ne-giysem/` altındaki yollardır (`1ae49a9` sonrası). `[?]` = kodda doğrulanamayan, veri sorumlusunun teyit etmesi gereken nokta.
 
 ---
@@ -18,7 +18,6 @@ Kod referansları `ne-giysem/` altındaki yollardır (`1ae49a9` sonrası). `[?]`
 | RevenueCat | Yalnızca veri sorumlusu | Açık | |
 | Apple Developer | Yalnızca veri sorumlusu | Zorunlu (Apple) | |
 | FASHN | Yalnızca veri sorumlusu | **Sunmuyor** — benzersiz, güçlü parola | Anahtar yalnızca sunucuda (bölüm 5) |
-| Poof | Yalnızca veri sorumlusu | GitHub ile giriş — GitHub 2FA'sıyla korunuyor | |
 
 2FA durumu veri sorumlusu beyanıdır (23.10.2026). Yeni panel eklenince 2FA açılır ve bu tabloya yazılır; 2FA sunmayan sağlayıcıda benzersiz güçlü parola kullanılır.
 
@@ -63,12 +62,12 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 | Kontrol | Referans |
 |---|---|
 | Her proxy'de kullanıcı doğrulaması (`auth.getUser`; yalnızca anon key yetmez) | `supabase/functions/_shared/auth.ts:29` |
-| Yapay zekâ izni yoksa 403 `ai-consent-required`; onaylanan metin ana sürümü < 2 ise 403 `consent-version-outdated` | `bg-removal-proxy/index.ts:35`, `anthropic-proxy/index.ts:81` (`aiConsentGate`) |
+| Yapay zekâ izni yoksa 403 `ai-consent-required`; onaylanan metin ana sürümü < 2 ise 403 `consent-version-outdated` | `anthropic-proxy/index.ts:81`, `garment-image/index.ts:97` (`aiConsentGate`) |
 | Sanal deneme rızası yoksa 403 (start: biri; run: manken → fiziksel, avatar → fotoğraf); eski sürüm → `consent-version-outdated` | `fashn-proxy/index.ts:273`, `:352` |
 | Rıza kararı (son satır + en düşük ana sürüm; tek yer) | `supabase/functions/_shared/consent.ts:20` (`MIN_CONSENT_MAJOR`), `:36` (`consentState`); tablo `014_privacy_consent.sql` (`consent_events`) |
 | Anthropic isteği beyaz listeyle yeniden kuruluyor (model, token, görsel sayısı / boyutu) | `anthropic-proxy/index.ts` (`sanitizeMessages`) |
 | FASHN model / girdi beyaz listesi, maliyet sabitleri; `return_base64` istemciden kabul edilmez, sunucu ekler; tryon-max `output_format` `jpeg` (yoksa sunucu ekler) | `fashn-proxy/index.ts` (`ALLOWED_INPUTS`, `PINNED_VALUES`, `DEFAULT_VALUES`) |
-| Boyut tavanı ve günlük kullanım tavanları | `bg-removal-proxy/index.ts:9-11`, `:39-41`; `export-my-data/index.ts:68` (günde 3) |
+| Boyut tavanı ve günlük kullanım tavanları | `anthropic-proxy/index.ts:11`, `:17`, `:117`; `garment-image/index.ts:38`, `:120`; `021_garment_jobs.sql:277` (`garment` 60/gün); `export-my-data/index.ts:68` (günde 3) |
 | Kota ve plan sınırları sunucuda (istemci atlayamaz) | `013_premium_entitlements.sql` (`start_tryon`, `start_scan`, trigger'lar) |
 | RevenueCat webhook kimliği: paylaşılan secret | `supabase/functions/revenuecat-webhook/index.ts:46` |
 | İstemci tarafı ön kontroller (ek katman; asıl karar sunucuda) | `src/screens/main/CombosScreen.tsx:627-629`, `src/screens/main/UploadScreen.tsx:59`, `src/screens/main/ScanScreen.tsx:65` |
@@ -82,7 +81,6 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 |---|---|
 | `SUPABASE_SERVICE_ROLE_KEY` (otomatik) | `_shared/auth.ts:24`, `delete-account/index.ts:172` |
 | `ANTHROPIC_API_KEY` | `anthropic-proxy/index.ts:122` |
-| `POOF_API_KEY` | `bg-removal-proxy/index.ts:54` |
 | `FASHN_API_KEY` | `fashn-proxy/index.ts:113` |
 | `REVENUECAT_SECRET_API_KEY`, `REVENUECAT_ENTITLEMENT_ID` | `_shared/revenuecat.ts:23`, `:27` |
 | `REVENUECAT_WEBHOOK_SECRET` | `revenuecat-webhook/index.ts:46` |
@@ -96,7 +94,7 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Herkese açık olacak şekilde tasarlanmış; güvenlik RLS'ye ve sunucu kontrollerine dayanır | `src/lib/supabase.ts:4-5` |
 | `EXPO_PUBLIC_REVENUECAT_IOS_KEY` / `_ANDROID_KEY` | RevenueCat herkese açık SDK anahtarı | `src/lib/purchases.ts:24-26` |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, `_IOS_CLIENT_ID` | OAuth istemci kimliği (gizli değil) | `src/lib/socialAuth.ts:8-9` |
-| **`EXPO_PUBLIC_OPENWEATHER_API_KEY`** | **Üçüncü taraf API anahtarı cihazda.** Kişisel veri riski yok, ama kota kötüye kullanımı riski var. Web metni buna göre düzeltildi (yalnızca Anthropic / FASHN / Poof anahtarları sunucuda). Öneri: proxy'ye taşı ya da OpenWeather'da kullanım sınırı koy | `src/utils/weatherService.ts:3` |
+| **`EXPO_PUBLIC_OPENWEATHER_API_KEY`** | **Üçüncü taraf API anahtarı cihazda.** Kişisel veri riski yok, ama kota kötüye kullanımı riski var. Web metni buna göre düzeltildi (yalnızca Anthropic / FASHN anahtarları sunucuda). Öneri: proxy'ye taşı ya da OpenWeather'da kullanım sınırı koy | `src/utils/weatherService.ts:3` |
 
 **Repo kuralları:** `.env` ve `.env*.local` git dışında (`ne-giysem/.gitignore`); yalnızca `.env.example` (değersiz) repoda. Git geçmişinde `sk-ant-`, `FASHN_API_KEY=`, `POOF_API_KEY=` ve service_role JWT kalıbı **bulunmadı** (`git log -S`, 22.10.2026). Tek `sk_` eşleşmesi yorum satırı (`0e29a79`).
 
@@ -113,6 +111,7 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 | ≤ 2026-07-08 | `EXPO_PUBLIC_FASHN_API_KEY` | İstemci derlemesi; `70e4db4` ile kaldırıldı | **Yenilendi; eski anahtar geçersiz** (beyan) | Supabase secret `FASHN_API_KEY` | Eski anahtarla geçmiş işler artık sorgulanamaz | HCD |
 | Mayıs–Temmuz 2026 | OpenAI API anahtarı | Geçmiş kod (`cf3d402`: anahtar cihaz loguna yazılıyordu) | **İptal edildi** (beyan) | — (koddan kaldırıldı) | Yok — yalnızca geliştirici / test görselleri, gerçek kullanıcı verisi gönderilmedi (beyan) | HCD |
 | Mayıs–Temmuz 2026 | Replicate API anahtarı | Geçmiş kod (`b3c1f3e`, IDM-VTON) | **İptal edildi** (beyan) | — (koddan kaldırıldı) | Yok — yalnızca geliştirici / test görselleri, gerçek kullanıcı verisi gönderilmedi (beyan) | HCD |
+| 2026-11-07 | `POOF_API_KEY` | Sızma yok — sağlayıcı kaldırıldı (adım 13, `bg-removal-proxy` silindi) | **Silinecek** (veri sorumlusu: Supabase secret + Poof panelinde iptal; yapılınca tarih yazılır) | — | Yok | HCD |
 | sürekli | `EXPO_PUBLIC_OPENWEATHER_API_KEY` | Tasarım gereği istemcide | — | — | Yok (yalnızca kota) | — |
 
 Kesin iptal / yenileme tarihleri sağlayıcı panellerinden alınıp yazılmalı [?].
@@ -120,7 +119,7 @@ Kesin iptal / yenileme tarihleri sağlayıcı panellerinden alınıp yazılmalı
 ## 6a. Diğer tedbirler
 
 - İletim: tüm bağlantılar HTTPS (Supabase, sağlayıcılar).
-- Veri minimizasyonu: Poof / Anthropic'e yalnızca küçültülmüş kıyafet fotoğrafı; konum cihazda ~1 km'ye yuvarlanır (`src/utils/weatherService.ts:12-13`).
+- Veri minimizasyonu: Anthropic / FASHN'a yalnızca küçültülmüş kıyafet fotoğrafı; arka plan kaldırma izin yoksa cihazda; konum cihazda ~1 km'ye yuvarlanır (`src/utils/weatherService.ts:12-13`).
 - Analitik, reklam ve izleme SDK'sı yok (`ne-giysem/package.json`).
 - Log'lar 1 gün (Supabase Free plan); hata mesajlarında kullanıcı kimliği dışında kişisel veri yazılmaz [?] (tam denetim yapılmadı).
 - Yedekler AES-256 (gpg simetrik), fotoğraf içermez; parola ayrı tutulur; `*.gpg` git dışında (`.gitignore`) (`saklama-imha-politikasi.md` bölüm 4).

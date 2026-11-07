@@ -21,7 +21,7 @@
 ## 1. Tespit — kaynaklar
 
 - Supabase log'ları (1 gün saklanıyor — **hemen dışa aktar**) ve `ops_events`.
-- Anormal kullanım: `api_usage`'da ani artış, beklenmeyen 403 / 401 yoğunluğu, FASHN / Anthropic / Poof faturasında beklenmeyen artış.
+- Anormal kullanım: `api_usage`'da ani artış, beklenmeyen 403 / 401 yoğunluğu, FASHN / Anthropic faturasında beklenmeyen artış.
 - Sağlayıcı bildirimi (e-posta) — bölüm 7.
 - Kullanıcı bildirimi: support@sestinaapp.com.
 - Repo / derleme taraması: bir secret'ın commit'e, OTA paketine veya ekran görüntüsüne girmesi.
@@ -30,7 +30,7 @@
 
 | Durum | Hemen |
 |---|---|
-| Sızan sunucu secret'ı (`ANTHROPIC_API_KEY`, `FASHN_API_KEY`, `POOF_API_KEY`, `REVENUECAT_*`, `APPLE_PRIVATE_KEY`) | Sağlayıcı panelinden anahtarı iptal et ve yenile → `supabase secrets set …` → ilgili edge function'ları yeniden deploy et. `guvenlik-tedbirleri.md` bölüm 6'ya yaz |
+| Sızan sunucu secret'ı (`ANTHROPIC_API_KEY`, `FASHN_API_KEY`, `REVENUECAT_*`, `APPLE_PRIVATE_KEY`) | Sağlayıcı panelinden anahtarı iptal et ve yenile → `supabase secrets set …` → ilgili edge function'ları yeniden deploy et. `guvenlik-tedbirleri.md` bölüm 6'ya yaz |
 | Sızan `SUPABASE_SERVICE_ROLE_KEY` | Supabase panelinden JWT secret / API anahtarlarını yenile (tüm oturumlar düşer); edge function'ları yeniden deploy et; istemci anon anahtarı değiştiyse yeni derleme / OTA |
 | Erişim kuralı (RLS / storage policy) hatası | Hatalı policy'yi kaldır veya düzelt; etkilenen bucket'ı geçici olarak tamamen kapat |
 | Supabase hesabının ele geçirilmesi | Parola + 2FA yenile, oturumları kapat, erişim token'larını iptal et |
@@ -100,8 +100,7 @@ Kayıtlar **en az 3 yıl** saklanır.
 |---|---|---|---|
 | Supabase, Inc. | Barındırma | DPA'ya göre [?] | Panel → Support; güvenlik sayfası [?] |
 | Anthropic, PBC | Kıyafet tanıma | Ticari koşullar / DPA [?] | [?] |
-| Dumpling Software UG (Poof) | Arka plan kaldırma | [?] | [?] |
-| FASHN LTD | Sanal deneme | [?] | [?] |
+| FASHN LTD | Sanal deneme, kıyafet görseli (packshot) | [?] | [?] |
 | RevenueCat, Inc. | Abonelik | DPA'ya göre [?] | [?] |
 | 650 Industries, Inc. (Expo) | OTA | [?] | [?] |
 | Google LLC | Drive (yedek), Gmail | Kişisel hesap koşulları [?] | Google hesap güvenlik uyarıları |

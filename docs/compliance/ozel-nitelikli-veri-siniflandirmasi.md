@@ -1,6 +1,6 @@
 # Özel Nitelikli Veri Sınıflandırması
 
-**Tarih:** 22 Ekim 2026 (güncelleme: 7 Kasım 2026 — FASHN aktarımı) · **Kaynak:** `data-inventory.md` (satır numaraları `#n`) · **Dayanak:** KVKK m. 6
+**Tarih:** 22 Ekim 2026 (güncelleme: 7 Kasım 2026 — FASHN aktarımı; Poof kaldırıldı) · **Kaynak:** `data-inventory.md` (satır numaraları `#n`) · **Dayanak:** KVKK m. 6
 
 KVKK m. 6/1'deki özel nitelikli kişisel veriler: ırk, etnik köken, siyasi düşünce, felsefi inanç, din, mezhep veya diğer inançlar, kılık ve kıyafet, dernek / vakıf / sendika üyeliği, sağlık, cinsel hayat, ceza mahkûmiyeti ve güvenlik tedbirleri ile biyometrik ve genetik veriler.
 
@@ -22,7 +22,7 @@ Kod referansları `ne-giysem/` altındaki yollardır; satır numaraları `1ae49a
 | Yapay manken (#14) | Fiziksel profilden üretilen görsel | **Evet — ırk / etnik köken** (ten rengi tarifi yansır), kılık-kıyafet | Manken, kullanıcının ten rengi ve fiziğine benzetilir | Açık rıza (`tryon_physical`) | `privacyActions.ts:97` (manken ve `_m.jpg` silinir) |
 | FASHN'a aktarım (#13) | Fotoğraf / manken bağlantısı, kıyafet görselleri, manken tarifi | Yukarıdakilerle aynı | — | Açık rıza; yurt dışına aktarım [?] (bölüm 3) | 10 dakikalık bağlantı (`storageUrls.ts:14`). Katmanlar arası ara çıktılar da artık bizim depomuzdan (`mannequin-cache/<uid>/tmp_…`, 10 dk imzalı bağlantı) gider; FASHN çıktıyı CDN'e koymaz, en geç 60 dk tutar [beyan]. Proxy yalnızca kullanıcının kendi depo yolunu kabul eder: `fashn-proxy/index.ts:179`, `:227`. Rıza ve sürüm kontrolü `:273`, `:352` (`_shared/consent.ts`). Manken tarifinin FASHN istek kaydında kalıp kalmadığı [?] (`saklama-imha-politikasi.md` bölüm 2) |
 | Kıyafet fotoğrafı (#4) | Yalnız kıyafet | Kural olarak **hayır**; fotoğrafta kişi görünürse kılık-kıyafet | Fotoğraf rehberi düz zeminde, kişisiz çekimi önerir | m. 5/2-c | Özel bucket, imzalı bağlantı. Kişi içeren fotoğraf için ek kontrol **yok** [?] |
-| Yapay zekâ analizi — Poof, Anthropic (#6, #7) | Kıyafet / ürün fotoğrafı | Kural olarak hayır (#4 ile aynı) | — | m. 5/2-c (izin = tercih) | Sunucu izin kontrolü: `bg-removal-proxy/index.ts:34`, `anthropic-proxy/index.ts:80` |
+| Yapay zekâ analizi ve kıyafet görseli — Anthropic, FASHN packshot (#6, #7) | Kıyafet / ürün fotoğrafı | Kural olarak hayır (#4 ile aynı) | — | m. 5/2-c (izin = tercih) | Sunucu izin kontrolü: `anthropic-proxy/index.ts:81`, `garment-image/index.ts:97`. İzin yoksa arka plan cihazda kaldırılır, veri çıkmaz |
 | Stil profili (#3) | Stil adları ve ağırlıkları | Hayır | Felsefi / dini inanç göstergesi değil | m. 5/2-c | — |
 | Konum (#17) | ~1 km'ye yuvarlanmış koordinat | Hayır | — | m. 5/2-c | Cihazda yuvarlama: `src/utils/weatherService.ts:12-13` |
 
@@ -41,7 +41,7 @@ Kod referansları `ne-giysem/` altındaki yollardır; satır numaraları `1ae49a
 ## 3. Açık noktalar
 
 1. **Vücut tipi ve kilo:** sağlık verisi sayılıp sayılmadığına dair hukuki görüş yok.
-2. **Kıyafet fotoğrafında kişi:** kişi görünmesi teknik olarak engellenmiyor; yalnızca rehberde öneri var. Yapay zekâ izni olan kullanıcıda böyle bir fotoğraf Poof ve Anthropic'e de gider.
+2. **Kıyafet fotoğrafında kişi:** kişi görünmesi teknik olarak engellenmiyor; yalnızca rehberde öneri var. Yapay zekâ izni olan kullanıcıda böyle bir fotoğraf Anthropic'e ve (packshot için) FASHN'a da gider.
 3. **Yurt dışına aktarım (KVKK m. 9):** FASHN Birleşik Krallık ve alt işleyenler — özel nitelikli verinin yurt dışına aktarım dayanağı (standart sözleşme / bildirim) bu dokümanın kapsamı dışında; hukuki değerlendirme gerekiyor.
 4. ~~Storage policy'leri repoda yok~~ — çözüldü: `018_storage_policies_snapshot.sql`. Boyut / MIME sınırı ve rol `019_storage_limits.sql` ile kapatıldı.
 5. **Kurul'un 31.01.2018 tarihli ve 2018/10 sayılı kararındaki "yeterli önlemler":** idari önlemler (politika, eğitim, gizlilik taahhüdü) tek kişilik yapıda belgelenmeli; kodda karşılığı yok.
