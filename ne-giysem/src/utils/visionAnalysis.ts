@@ -2,9 +2,13 @@ import type { ClothingCategory, Season } from '../types';
 import { callEdge, edgeError, EdgeError, isAiConsentError, isConsentOutdatedError } from '../lib/edgeFunctions';
 import { getLocale } from '../i18n';
 
-/** Kullanıcıya nedeni gösterilmesi gereken proxy hatası (oturum yok / günlük sınır). */
+/** Kullanıcıya nedeni gösterilmesi gereken proxy hatası — yeniden denenmez.
+ *  401 oturum · 429 günlük sınır · 402 tarama hakkı bitti · 403 subscription-required (022) */
 export function isUserFacingEdgeError(err: unknown): err is EdgeError {
-  return err instanceof EdgeError && (err.status === 401 || err.status === 429);
+  return err instanceof EdgeError && (
+    err.status === 401 || err.status === 429 || err.status === 402
+    || err.code === 'subscription-required'
+  );
 }
 
 export interface VisionResult {
@@ -193,8 +197,15 @@ function parseVisionResponse(text: string): VisionResult {
   };
 }
 
-export async function analyzeClothingImage(base64: string): Promise<VisionResult> {
+/**
+ * purpose 'scan': "Uyar mı?" taraması — hak sunucuda düşer (anthropic-proxy, scan_jobs).
+ * Tanınmayan yanıt sunucuda iade edilir; ikinci deneme yeni bir iş açar.
+ */
+export async function analyzeClothingImage(
+  base64: string, opts: { purpose?: 'scan' } = {},
+): Promise<VisionResult> {
   const requestBody = {
+    ...(opts.purpose ? { purpose: opts.purpose } : {}),
     model: 'claude-sonnet-5',
     // Sonnet 5'te adaptive thinking varsayılan AÇIK ve max_tokens düşünme + yanıtın
     // ORTAK tavanı — 1024 ile JSON yarıda kesilebilir. Tavanı yükseltmek maliyet

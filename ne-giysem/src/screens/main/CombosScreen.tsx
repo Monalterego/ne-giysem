@@ -24,8 +24,7 @@ import { useUserStore } from '../../store/useUserStore';
 import { useComboStore } from '../../store/useComboStore';
 import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { usePlanStore } from '../../store/usePlanStore';
-import { openPaywall } from '../../navigation/navigationRef';
-import { formatIstanbulDay } from '../../lib/premiumGate';
+import { isSubscriptionRequired, onSubscriptionRequired, quotaExhaustedMessage, quotaLabel } from '../../lib/premiumGate';
 import { generateCombos, missingCategories } from '../../utils/comboEngine';
 import type { Occasion } from '../../utils/comboEngine';
 import { OCCASIONS, occasionLabel } from '../../constants/occasions';
@@ -52,9 +51,6 @@ import { upper } from '../../utils/text';
 import { catLabel, subcatLabel } from '../../constants/categories';
 import { requiredShoeLabels, hasRequiredShoes } from '../../utils/occasionRules';
 
-// Yalnızca limit modal'ının yedek metni — sunucu 402'de limit döndürmezse.
-// Asıl limit start_tryon'da (006 SQL: c_free_limit).
-const FREE_RENDER_LIMIT = 3;
 const FEW_COMBOS = 4;
 
 // Anahtar referansları — t() gösterim anında çağrılır (dil değişince donmaz)
@@ -83,7 +79,6 @@ const ComboCard = React.memo(function ComboCard({
   onVirtualModel,
   onItemPress,
   onPlan,
-  planLocked,
   isFavorite,
   onToggleFavorite,
 }: {
@@ -97,8 +92,6 @@ const ComboCard = React.memo(function ComboCard({
   onVirtualModel: (c: Combo) => void;
   onItemPress: (itemId: string, url: string) => void;
   onPlan: (c: Combo) => void;
-  /** Ücretsiz plan: planlama Premium'a özel → kilit ikonu, dokununca paywall */
-  planLocked: boolean;
   isFavorite: boolean;
   onToggleFavorite: (c: Combo) => void;
 }) {
@@ -163,14 +156,9 @@ const ComboCard = React.memo(function ComboCard({
               style={styles.planBtn}
               onPress={() => onPlan(combo)}
               activeOpacity={0.85}
-              accessibilityLabel={planLocked ? t('premium.planLocked') : t('calendar.planTitle')}
+              accessibilityLabel={t('calendar.planTitle')}
             >
-              <Feather name="calendar" size={14} color={planLocked ? colors.textTertiary : colors.text} />
-              {planLocked && (
-                <View style={styles.planLockBadge}>
-                  <Feather name="lock" size={8} color={colors.white} />
-                </View>
-              )}
+              <Feather name="calendar" size={14} color={colors.text} />
             </TouchableOpacity>
 
             {/* Sanal Manken butonu */}
@@ -213,7 +201,6 @@ const ComboCard = React.memo(function ComboCard({
   prev.isSaving      === next.isSaving      &&
   prev.isGenerating  === next.isGenerating  &&
   prev.isFavorite    === next.isFavorite    &&   // eksik olursa kalp dokununca güncellenmez
-  prev.planLocked    === next.planLocked    &&   // satın alma sonrası kilit kalksın
   prev.imgVersion    === next.imgVersion,        // imzalı görsel URL'leri hazır olunca
 );
 
@@ -398,42 +385,6 @@ function ModelModal({
   );
 }
 
-// ─── Premium modalı ───────────────────────────────────────────────────────────
-
-// Yalnızca ÜCRETSİZ plan (ömür boyu hak bitti). Premium'un aylık hakkı bitince
-// paywall gösterilmez — handleVirtualModel Alert ile yenilenme tarihini söyler.
-function PremiumModal({
-  visible,
-  limit,
-  onClose,
-  onUpgrade,
-}: {
-  visible: boolean;
-  /** Sunucudan gelen limit (start 402 yanıtı) */
-  limit: number;
-  onClose: () => void;
-  onUpgrade: () => void;
-}) {
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View style={premiumStyles.overlay}>
-        <View style={premiumStyles.card}>
-          <Text style={premiumStyles.title}>{t('premium.tryonFreeTitle')}</Text>
-          <Text style={premiumStyles.body}>
-            {t('premium.tryonFreeBody', { limit })}
-          </Text>
-          <TouchableOpacity style={premiumStyles.premiumBtn} onPress={onUpgrade} activeOpacity={0.85}>
-            <Text style={premiumStyles.premiumBtnText}>{t('combos.goPremium')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={premiumStyles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-            <Text style={premiumStyles.cancelBtnText}>{t('combos.close')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 // ─── Deneme kaynağı modalı (fotoğraf / yapay manken) ──────────────────────────
 // Her denemede sorulur (son seçim hatırlanmaz). Fotoğraf varsa: "kendi fotoğrafımla" /
 // "yapay mankenle"; yoksa: "fotoğraf ekle" / "yapay mankenle".
@@ -445,6 +396,7 @@ function TryOnSourceModal({
   onUsePhoto,
   onGoToProfile,
   onUseAiModel,
+  quotaText,
 }: {
   visible: boolean;
   hasAvatar: boolean;
@@ -452,6 +404,8 @@ function TryOnSourceModal({
   onUsePhoto: () => void;
   onGoToProfile: () => void;
   onUseAiModel: () => void;
+  /** 15a: kalan sanal deneme hakkı (her denemede bu pencere açılır) */
+  quotaText: string | null;
 }) {
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -463,6 +417,7 @@ function TryOnSourceModal({
           <Text style={noAvatarStyles.body}>
             {hasAvatar ? t('combos.tryOnSourceBody') : t('combos.photoRequiredBody')}
           </Text>
+          {quotaText && <Text style={noAvatarStyles.quota}>{quotaText}</Text>}
           <TouchableOpacity
             style={noAvatarStyles.primaryBtn}
             onPress={hasAvatar ? onUsePhoto : onGoToProfile}
@@ -514,8 +469,8 @@ export default function CombosScreen() {
   const favoriteSigs   = useFavoritesStore((s) => s.favoriteSigs);
   const fetchFavorites = useFavoritesStore((s) => s.fetchFavorites);
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
-  // Plan okunamadıysa (loaded false) kilitleme — sunucu trigger'ı yine engeller
-  const planLocked     = usePlanStore((s) => s.loaded && s.plan !== 'premium');
+  // 15a: kalan sanal deneme hakkı (deneme toplamı / bu ay)
+  const tryOnQuota     = usePlanStore((s) => s.usage?.tryon ?? null);
 
   const PAGE_SIZE = 6;
 
@@ -535,8 +490,6 @@ export default function CombosScreen() {
   const [modelLoading,         setModelLoading]          = useState(false);
   const [modelShareable,       setModelShareable]        = useState(true);
   const [lightboxItemId,       setLightboxItemId]        = useState<string | null>(null);
-  const [premiumModalVisible,  setPremiumModalVisible]   = useState(false);
-  const [renderLimit,          setRenderLimit]           = useState(FREE_RENDER_LIMIT);
   const [noAvatarModalVisible, setNoAvatarModalVisible]  = useState(false);
   const [pendingCombo,         setPendingCombo]          = useState<Combo | null>(null);
   // Try-on öncesi eksik rıza: hangi kombin, hangi kaynak, hangi rıza
@@ -750,20 +703,9 @@ export default function CombosScreen() {
       const start = await startTryOn();
       if (!start.allowed) {
         setModelModalVisible(false);
-        usePlanStore.getState().refresh();
-        if (start.plan === 'premium') {
-          // Premium: bu ayki hak bitti → yenilenme tarihi, paywall YOK
-          const date = formatIstanbulDay(start.resetAt);
-          Alert.alert(
-            t('premium.tryonPremiumTitle'),
-            date
-              ? t('premium.tryonPremiumBody', { limit: start.limit ?? '', date })
-              : t('premium.tryonPremiumBodyNoDate', { limit: start.limit ?? '' }),
-          );
-          return;
-        }
-        setRenderLimit(start.limit ?? FREE_RENDER_LIMIT);
-        setPremiumModalVisible(true);
+        // Hak bitti (deneme toplamı / bu ay) → neden + tarih; paywall yok (Adım 15)
+        const fresh = await usePlanStore.getState().refresh();
+        Alert.alert(t('quota.tryonExhausted'), quotaExhaustedMessage(fresh?.tryon, fresh));
         return;
       }
       const { renderId } = start;
@@ -859,6 +801,8 @@ export default function CombosScreen() {
         ]);
         return;   // finally loading'i kapatır
       }
+      // Erişim bitmiş (022) → plan tazelenir, gate açılır
+      if (isSubscriptionRequired(err)) { onSubscriptionRequired(); return; }
       // 503: üst servis (FASHN) kullanılamıyor — 429 run-budget mesajından (tryOnBusy) ayrı
       const unavailable = err instanceof EdgeError && err.status === 503;
       Alert.alert(t('combos.errorTitle'), unavailable ? t('combos.tryOnUnavailable') : friendlyError(err));
@@ -910,12 +854,8 @@ export default function CombosScreen() {
     }
     setLightboxItemId(itemId);
   }, []);
-  // Kilit kararı çağrı anında store'dan — kart comparator'ı callback değişimini görmez
-  const handlePlanCb = useCallback((c: Combo) => {
-    const { loaded, plan } = usePlanStore.getState();
-    if (loaded && plan !== 'premium') { openPaywall('planning'); return; }
-    setPlanTarget(c);
-  }, []);
+  // Planlama deneme ve premium'da açık; erişimsiz kullanıcı zaten gate'te
+  const handlePlanCb = useCallback((c: Combo) => setPlanTarget(c), []);
 
   // Planlama modalı — bugünden itibaren 14 gün (bugün dahil)
   const planDays = useMemo(
@@ -933,9 +873,8 @@ export default function CombosScreen() {
     setPlanTarget(null);
     if (result === 'ok') Alert.alert(t('calendar.planSaved'));
     else if (result === 'premium') {
-      // Sunucu trigger'ı (planning-premium): premium değil / süresi bitmiş
-      usePlanStore.getState().refresh();
-      setTimeout(() => openPaywall('planning'), 350);   // gün seçme Modal'ı kapanırken sunulamaz (iOS)
+      // Sunucu trigger'ı (planning-premium): erişim bitmiş → plan tazelenir, gate açılır
+      onSubscriptionRequired();
     }
     else Alert.alert(t('combos.errorTitle'), t('calendar.planFailed'));
   }, [planTarget, user?.id, planCombo]);
@@ -1138,7 +1077,6 @@ export default function CombosScreen() {
                 onVirtualModel={handleVirtualCb}
                 onItemPress={handleItemPressCb}
                 onPlan={handlePlanCb}
-                planLocked={planLocked}
                 isFavorite={favoriteSigs.has(comboSignatureForCache(item.items))}
                 onToggleFavorite={handleToggleFavoriteCb}
                 imgVersion={imgVersion}
@@ -1209,19 +1147,10 @@ export default function CombosScreen() {
         shareable={modelShareable}
         onClose={() => { setModelModalVisible(false); setModelLoading(false); setModelImageUrl(null); }}
       />
-      <PremiumModal
-        visible={premiumModalVisible}
-        limit={renderLimit}
-        onClose={() => setPremiumModalVisible(false)}
-        onUpgrade={() => {
-          setPremiumModalVisible(false);
-          // iOS: RN Modal kapanırken tam ekran modal sunulamaz → kapanış animasyonunu bekle
-          setTimeout(() => openPaywall('tryon'), 350);
-        }}
-      />
       <TryOnSourceModal
         visible={noAvatarModalVisible}
         hasAvatar={!!user?.avatarUrl}
+        quotaText={quotaLabel('tryon', tryOnQuota)}
         onClose={() => { setNoAvatarModalVisible(false); setPendingCombo(null); }}
         onUsePhoto={() => {
           setNoAvatarModalVisible(false);
@@ -1526,17 +1455,6 @@ const styles = StyleSheet.create({
   },
 
   // Planla butonu — dar, ikon-only
-  planLockBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 14,
-    height: 14,
-    borderRadius: radius.full,
-    backgroundColor: colors.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   planBtn: {
     width: 34,
     height: 34,
@@ -1885,6 +1803,12 @@ const noAvatarStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
+  quota: {
+    ...typography.bodySmall,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.text,
+    textAlign: 'center',
+  },
   primaryBtn: {
     height: 48,
     borderRadius: radius.sm,
@@ -1909,56 +1833,6 @@ const noAvatarStyles = StyleSheet.create({
     ...typography.body,
     fontFamily: fonts.bodyMedium,
     color: colors.text,
-  },
-  cancelBtn: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  cancelBtnText: {
-    ...typography.body,
-    color: colors.textTertiary,
-  },
-});
-
-// ─── Premium modal stilleri ───────────────────────────────────────────────────
-
-const premiumStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: layout.screenPaddingH,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  body: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  premiumBtn: {
-    height: 48,
-    borderRadius: radius.sm,
-    backgroundColor: colors.black,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  premiumBtnText: {
-    ...typography.body,
-    fontFamily: fonts.bodyBold,
-    color: colors.white,
   },
   cancelBtn: {
     alignItems: 'center',

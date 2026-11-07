@@ -26,6 +26,8 @@ import type { PackshotOutcome } from '../../lib/garmentImage';
 import { startAnalysis, discardAnalysis } from '../../lib/pendingAnalysis';
 import { clearCutoutCache } from '../../../modules/garment-cutout';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
+import { usePlanStore } from '../../store/usePlanStore';
+import { quotaLabel } from '../../lib/premiumGate';
 import type { ImageSource } from '../../types';
 import { t } from '../../i18n';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
@@ -63,6 +65,9 @@ export default function UploadScreen({ navigation, route }: Props) {
   // Her seçim yeni bir çalıştırma; geç dönen eski sonuç yok sayılır
   const runId = useRef(0);
   const aiDeclined = useConsentStore((s) => aiStatus(s.records) === 'declined');
+  // 15a: kalan stüdyo görseli hakkı (deneme toplamı / bu ay / kurulum ayı)
+  const packshotText = usePlanStore((s) => (s.usage ? quotaLabel('packshot', s.usage.packshot) : null));
+  useEffect(() => { usePlanStore.getState().refresh(); }, []);
 
   const reset = () => {
     runId.current += 1;
@@ -198,6 +203,7 @@ export default function UploadScreen({ navigation, route }: Props) {
       : Promise.resolve<PackshotOutcome>({ kind: 'failed', reason: 'no-ai' });
 
     const [cutout, packshot] = await Promise.all([cutoutPromise, packshotPromise]);
+    if (useAi) usePlanStore.getState().refresh();   // kalan stüdyo görseli hakkı (15a)
     // base64'ler alındı — kesim dosyaları cihazda kalmasın
     void clearCutoutCache();
     if (runId.current !== run) return;   // bu arada yeniden seçildi / vazgeçildi
@@ -281,6 +287,7 @@ export default function UploadScreen({ navigation, route }: Props) {
             </View>
           </TouchableOpacity>
 
+          {packshotText && <Text style={styles.photoTip}>{packshotText}</Text>}
           <Text style={styles.photoTip}>{t('upload.photoTip')}</Text>
           <TouchableOpacity onPress={() => setGuideVisible(true)} activeOpacity={0.7}>
             <Text style={styles.guideLink}>{t('upload.photoGuideLink')}</Text>

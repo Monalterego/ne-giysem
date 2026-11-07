@@ -67,14 +67,12 @@ export type MainTabParamList = {
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
-/** Paywall'un hangi giriş noktasından açıldığı — üstteki açıklama metnini seçer */
-export type PaywallReason = 'generic' | 'wardrobe' | 'scan' | 'planning' | 'tryon';
-
 export type RootStackParamList = {
   AgeGate: undefined;
   ConsentGate: undefined;
   Onboarding: undefined;
   Main: undefined;
-  Paywall: { reason?: PaywallReason } | undefined;
+  PlanLoading: undefined;   // plan okunurken (gate kararı öncesi)
+  Paywall: undefined;       // hard paywall (gate) — erişim yoksa tek ekran
   AiConsent: undefined;   // lib/aiConsent openAiConsent() ile açılır
 };

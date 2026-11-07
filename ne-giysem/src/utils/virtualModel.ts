@@ -83,8 +83,8 @@ async function withRetry(call: () => Promise<Response>, retries = 2): Promise<Re
 export type TryOnStart =
   | { allowed: true;  renderId: string; used: number; limit: number | null }
   | { allowed: false; used: number | null; limit: number | null;
-      /** 'premium' → aylık hak bitti (paywall YOK); 'free'/null → ömür boyu hak bitti */
-      plan: 'free' | 'premium' | null; resetAt: string | null };
+      /** 'trial' → deneme toplamı bitti; 'premium' → bu ayki hak bitti (paywall yok, Adım 15) */
+      plan: 'trial' | 'premium' | null; resetAt: string | null };
 
 /**
  * Sunucuda kota kontrolü + render kaydı. Bir try-on'un tüm FASHN çağrıları
@@ -94,7 +94,7 @@ export async function startTryOn(): Promise<TryOnStart> {
   const res = await callEdge('fashn-proxy', { action: 'start' });
   if (res.status === 402) {
     const body = await res.json().catch(() => ({})) as {
-      used?: number; limit?: number; plan?: 'free' | 'premium' | null; reset_at?: string | null;
+      used?: number; limit?: number; plan?: 'trial' | 'premium' | null; reset_at?: string | null;
     };
     return {
       allowed: false, used: body.used ?? null, limit: body.limit ?? null,

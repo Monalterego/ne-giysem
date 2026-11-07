@@ -23,8 +23,6 @@ import StudioUpgradeModal from '../../components/StudioUpgradeModal';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { usePlanStore } from '../../store/usePlanStore';
-import { guardWardrobeAdd, wardrobeCountLabel, wardrobeLimitMessage } from '../../lib/premiumGate';
-import { openPaywall } from '../../navigation/navigationRef';
 import type { ClothingCategory, WardrobeItem } from '../../types';
 import { CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -115,20 +113,10 @@ export default function WardrobeScreen({ navigation }: Props) {
   const locale     = useUserStore((s) => s.locale);
   const usage      = usePlanStore((s) => s.usage);
 
-  // Ücretsiz plan: limit dolu (premium bitmiş ve 50 üstü dahil) → parçalar görünür,
-  // düzenleme/silme serbest, yalnızca ekleme kilitli
-  // Parça eklenip silindikçe sunucu sayısını tazele (ilk açılış dahil)
+  // Dolap sınırsız (Adım 15). Parça eklenip silindikçe packshot hakkını tazele (öneri kartı)
   useEffect(() => { usePlanStore.getState().refresh(); }, [items.length]);
 
-  // Sayı get_usage'tan (ekleme/silme sonrası tazelenir); limit üstünde "103/50" yazılmaz
-  const countLabel    = wardrobeCountLabel(usage);
-  const limitMessage  = wardrobeLimitMessage(usage);   // dolu/üstündeyse dolu
-  const addLocked     = limitMessage !== null;
-
-  // "Ekle": yüklemeye başlamadan sunucudan ön kontrol (limit doluysa paywall)
-  const handleAdd = async () => {
-    if (await guardWardrobeAdd()) navigation.navigate('Upload');
-  };
+  const handleAdd = () => navigation.navigate('Upload');
 
   // Kategori filtreleri — locale'e bağlı (dil değişince etiketler güncellenir)
   const FILTERS = useMemo(
@@ -430,12 +418,7 @@ export default function WardrobeScreen({ navigation }: Props) {
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>{t('wardrobe.title')}</Text>
             <Text style={styles.headerCount}>
-              {/* Ücretsiz planda "Tümü" filtresinde sınır etiketi; filtre seçiliyse filtre sayısı önce */}
-              {countLabel === null
-                ? t('wardrobe.itemsCount', { count: filteredItems.length })
-                : activeFilter === 'all'
-                  ? countLabel
-                  : `${t('wardrobe.itemsCount', { count: filteredItems.length })} · ${countLabel}`}
+              {t('wardrobe.itemsCount', { count: filteredItems.length })}
             </Text>
           </View>
           <View style={styles.viewToggle}>
@@ -461,26 +444,17 @@ export default function WardrobeScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            style={[styles.addBtn, addLocked && styles.addBtnLocked]}
+            style={styles.addBtn}
             onPress={handleAdd}
             activeOpacity={0.82}
           >
-            {addLocked && <Feather name="lock" size={11} color={colors.white} />}
             <Text style={styles.addBtnText}>{t('wardrobe.addNew')}</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Limit dolu: neden eklenemediğini söyle (premium bitmişse parçaların durduğunu da) */}
-      {!selectionMode && limitMessage && (
-        <TouchableOpacity style={styles.limitNote} onPress={() => openPaywall('wardrobe')} activeOpacity={0.8}>
-          <Text style={styles.limitNoteText}>{limitMessage}</Text>
-          <Feather name="chevron-right" size={14} color={colors.textSecondary} />
-        </TouchableOpacity>
-      )}
-
       {/* Stüdyo görseli hakkı var → yükseltme önerisi (yalnızca öneri; seçim kullanıcının) */}
-      {!selectionMode && !limitMessage && !upgradeCardDismissed && upgradeCardCount > 0 && (
+      {!selectionMode && !upgradeCardDismissed && upgradeCardCount > 0 && (
         <View style={styles.limitNote}>
           <Feather name="star" size={14} color={colors.text} />
           <Text style={styles.limitNoteText}>
@@ -665,9 +639,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.sm,
     backgroundColor: colors.black,
-  },
-  addBtnLocked: {
-    opacity: 0.55,
   },
   limitNote: {
     flexDirection: 'row',

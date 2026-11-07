@@ -17,7 +17,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore, toDateStr } from '../../store/useWardrobeStore';
-import { guardWardrobeAdd } from '../../lib/premiumGate';
 import { imageSource, itemImageRefs, itemImageSource, itemThumbSource, useSignedImages } from '../../lib/storageUrls';
 import type { WornEntry, PlannedEntry } from '../../store/useWardrobeStore';
 import { generateCombos } from '../../utils/comboEngine';
@@ -280,10 +279,7 @@ export default function HomeScreen({ navigation }: Props) {
           <TodayComboCard combo={todayCombo} onItemPress={handleItemPress} />
         ) : (
           <EmptyComboCard
-            onPress={async () => {
-              // Dolap limiti ön kontrolü — doluysa paywall, yüklemeye hiç başlama
-              if (await guardWardrobeAdd()) (navigation as any).navigate('Wardrobe', { screen: 'Upload' });
-            }}
+            onPress={() => (navigation as any).navigate('Wardrobe', { screen: 'Upload' })}
           />
         )}
 

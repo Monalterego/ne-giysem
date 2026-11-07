@@ -13,6 +13,8 @@ export function friendlyError(err: unknown): string {
     if (err.code === 'consent-required') return t('errors.tryOnConsentRequired');
     if (err.code === 'consent-version-outdated') return t('errors.consentOutdated');
     if (err.code === 'quota-exceeded') return t('combos.limitReached');
+    if (err.code === 'scan-limit') return t('quota.scanExhausted');
+    if (err.code === 'subscription-required') return t('errors.subscriptionRequired');
     if (err.code === 'run-budget-exceeded') return t('combos.tryOnBusy');
     if (err.code === 'image-too-large') return t('errors.imageTooLarge');
   }

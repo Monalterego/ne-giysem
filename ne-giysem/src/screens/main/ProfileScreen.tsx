@@ -17,17 +17,15 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
 import { imageSource, useSignedImages } from '../../lib/storageUrls';
-import { clearLocalSession } from '../../lib/session';
-import { deleteAccount } from '../../lib/socialAuth';
 import { exportMyData } from '../../lib/privacyActions';
 import { friendlyError } from '../../utils/errorMessage';
 import { useFavoritesStore, resolveFavorites } from '../../store/useFavoritesStore';
 import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
-import { usePlanStore, premiumExpired } from '../../store/usePlanStore';
+import { usePlanStore } from '../../store/usePlanStore';
 import type { Usage } from '../../store/usePlanStore';
-import { formatLocalDay, restoreWithFeedback } from '../../lib/premiumGate';
-import { openPaywall } from '../../navigation/navigationRef';
+import { formatLocalDay, quotaLabel, restoreWithFeedback } from '../../lib/premiumGate';
+import { signOut, confirmDeleteAccount } from '../../lib/accountActions';
 import { manageSubscriptionUrl } from '../../constants/premium';
 import { openLegal } from '../../constants/legal';
 import { generateCombos } from '../../utils/comboEngine';
@@ -50,17 +48,13 @@ function initials(name: string): string {
     .join('');
 }
 
-/** Ücretsiz plan tek satır kullanım özeti: "Dolap 23/50 · Deneme 1/3 · Tarama 0/3 (bu ay)" */
-function usageLine(usage: Usage): string {
-  const fmt = (used: number, limit: number | null) =>
-    limit === null ? `${used}`
-      : used > limit ? t('premium.usageOverLimit', { count: used, limit })   // "103 (sınır 50)" — 103/50 değil
-      : t('premium.usageValue', { used, limit });
-  return t('premium.usageLine', {
-    wardrobe: fmt(usage.wardrobe.used, usage.wardrobe.limit),
-    tryon:    fmt(usage.tryon.used, usage.tryon.limit),
-    scan:     fmt(usage.scan.used, usage.scan.limit),
-  });
+/** 15a: kalan haklar, satır satır (deneme toplamı / bu ay / kurulum ayı). Sınırsızlar yazılmaz */
+function quotaLines(usage: Usage): string[] {
+  return [
+    quotaLabel('packshot', usage.packshot),
+    quotaLabel('tryon', usage.tryon),
+    quotaLabel('scan', usage.scan),
+  ].filter((l): l is string => !!l);
 }
 
 // Tek satırlık ayar satırı (chevron'lu)
@@ -109,17 +103,19 @@ export default function ProfileScreen({ navigation }: Props) {
   // Başlıktaki küçük avatar — private storage, tek imza
   useSignedImages('avatars', [user?.avatarUrl]);
 
-  // ── Abonelik — plan + kullanım sunucudan; Profil her açıldığında tazele
+  // ── Abonelik — plan + kullanım sunucudan; Profil her açıldığında tazele.
+  // Hard paywall: buraya yalnızca deneme ya da premium kullanıcı gelir.
   const plan    = usePlanStore((s) => s.plan);
   const usage   = usePlanStore((s) => s.usage);
-  const expired = premiumExpired(usage);
   useEffect(() => { usePlanStore.getState().refresh(); }, []);
-  const expiresDay  = formatLocalDay(usage?.premium_expires_at);
+  const expiresDay  = formatLocalDay(usage?.access_expires_at);
   // 'infinity' (süresiz) → tarih yok
-  const subDateText = plan !== 'premium' ? null
-    : !expiresDay ? t('premium.lifetime')
+  const subDateText = !expiresDay ? t('premium.lifetime')
+    : plan === 'trial'
+      ? (usage?.will_renew ? t('premium.trialRenewsOn', { date: expiresDay }) : t('premium.trialEndsOn', { date: expiresDay }))
     : usage?.will_renew ? t('premium.renewsOn', { date: expiresDay })
     : t('premium.endsOn', { date: expiresDay });
+  const planLabel = plan === 'trial' ? t('premium.planTrial') : t('premium.planPremium');
 
   // Favori sayısı için — Kombin sekmesi henüz hiç açılmamış olabilir
   useEffect(() => {
@@ -199,50 +195,12 @@ export default function ProfileScreen({ navigation }: Props) {
     ]);
   };
 
-  // Çıkış ve hesap silme ortak yerel temizliği — iki yer de bunu çağırır
-  const handleLogout = () => {
-    supabase.auth.signOut()
-      .catch((err) => console.warn('[ProfileScreen] signOut exception:', err))
-      .finally(clearLocalSession);
-  };
+  // Çıkış ve hesap silme — paywall (gate) ile ortak (lib/accountActions)
+  const handleLogout = signOut;
 
   const [deleting, setDeleting] = useState(false);
-
-  const runDelete = async () => {
-    setDeleting(true);
-    try {
-      const r = await deleteAccount();
-      if (r === 'cancelled') return;   // Apple ekranında vazgeçti — sessizce kapat
-      // Önce Alert, sonra temizlik: logout() ekranı söker; RootNavigator onboarding'e geçer
-      Alert.alert(t('profile.deleteAccountDone'));
-      clearLocalSession();
-    } catch (err) {
-      console.warn('[ProfileScreen] deleteAccount failed:', err);
-      Alert.alert(t('combos.errorTitle'), t('profile.deleteAccountError'));
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleDeleteAccount = () => {
-    // Otomatik yenilenen abonelik hesap silmeyle iptal OLMAZ (mağaza faturalamaya devam eder)
-    if (plan === 'premium' && usage?.will_renew) {
-      Alert.alert(
-        t('profile.deleteAccountTitle'),
-        `${t('profile.deleteAccountBody')}\n\n${t('premium.deleteSubscriptionWarning')}`,
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('premium.manage'), onPress: () => Linking.openURL(manageSubscriptionUrl()) },
-          { text: t('profile.deleteAccountConfirm'), style: 'destructive', onPress: runDelete },
-        ],
-      );
-      return;
-    }
-    Alert.alert(t('profile.deleteAccountTitle'), t('profile.deleteAccountBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('profile.deleteAccountConfirm'), style: 'destructive', onPress: runDelete },
-    ]);
-  };
+  // Otomatik yenilenen abonelik hesap silmeyle iptal OLMAZ → onayda mağaza yönetimi önerilir
+  const handleDeleteAccount = () => confirmDeleteAccount(usage?.will_renew === true, setDeleting);
 
   const [restoring, setRestoring] = useState(false);
   const handleRestore = async () => {
@@ -312,9 +270,9 @@ export default function ProfileScreen({ navigation }: Props) {
               </TouchableOpacity>
             )}
             <View style={styles.badgeRow}>
-              <View style={[styles.planBadge, plan === 'premium' && styles.planBadgePremium]}>
-                <Text style={[styles.planBadgeText, plan === 'premium' && styles.planBadgeTextPremium]}>
-                  {upper(plan === 'premium' ? t('premium.planPremium') : t('premium.badgeFree'))}
+              <View style={[styles.planBadge, styles.planBadgePremium]}>
+                <Text style={[styles.planBadgeText, styles.planBadgeTextPremium]}>
+                  {upper(planLabel)}
                 </Text>
               </View>
               <Text style={styles.email} numberOfLines={1}>{user.email}</Text>
@@ -326,32 +284,21 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* ── ABONELİK (kompakt) ── */}
         <View style={styles.card}>
           <View style={styles.subTop}>
-            <Text style={styles.subPlan}>
-              {plan === 'premium' ? t('premium.planPremium') : t('premium.planFree')}
-            </Text>
+            <Text style={styles.subPlan}>{planLabel}</Text>
             {subDateText && <Text style={styles.subMeta}>{subDateText}</Text>}
           </View>
-          {expired ? (
-            <Text style={styles.subMeta}>
-              {expiresDay
-                ? t('premium.expiredShort', { date: expiresDay })
-                : t('premium.expiredNoteNoDate')}
-            </Text>
-          ) : null}
-          {plan !== 'premium' && usage && (
-            <Text style={styles.subMeta} numberOfLines={2}>{usageLine(usage)}</Text>
-          )}
-          {plan === 'premium' ? (
+          {/* 15a: kalan haklar */}
+          {usage && quotaLines(usage).map((line) => (
+            <Text key={line} style={styles.subMeta}>{line}</Text>
+          ))}
+          {/* Promosyonel / süresiz erişimde mağaza aboneliği yok */}
+          {expiresDay && (
             <TouchableOpacity
               style={styles.subBtnOutline}
               onPress={() => Linking.openURL(manageSubscriptionUrl())}
               activeOpacity={0.8}
             >
               <Text style={styles.subBtnOutlineText}>{t('premium.manage')}</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.subBtn} onPress={() => openPaywall()} activeOpacity={0.85}>
-              <Text style={styles.subBtnText}>{t('premium.goPremium')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -488,15 +435,6 @@ const styles = StyleSheet.create({
   subTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.sm },
   subPlan: { ...typography.h3, color: colors.text },
   subMeta: { ...typography.bodySmall, color: colors.textSecondary },
-  subBtn: {
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-  },
-  subBtnText: { ...typography.body, fontFamily: fonts.bodySemiBold, color: colors.white },
   subBtnOutline: {
     height: 44,
     borderRadius: radius.md,

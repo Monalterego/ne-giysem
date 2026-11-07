@@ -106,6 +106,59 @@ export async function loadPaywallPackages(): Promise<PaywallPackages | null> {
   }
 }
 
+/**
+ * Mağazada aktif entitlement var mı (SDK önbelleği). Yalnızca sunucu senkronu
+ * gecikirken / get_usage okunamazken gate'i açmak için — limitler yine sunucuda.
+ */
+export async function sdkHasEntitlement(): Promise<boolean> {
+  if (!purchasesAvailable()) return false;
+  try {
+    const info: CustomerInfo = await sdk!.getCustomerInfo();
+    return !!info.entitlements.active[ENTITLEMENT_ID];
+  } catch (e) {
+    console.warn('[purchases] getCustomerInfo başarısız:', e);
+    return false;
+  }
+}
+
+/** Ücretsiz deneme süresi (gün) — yalnızca hafta / gün birimleri; başka birim → null */
+function periodDays(unit: unknown, count: unknown): number | null {
+  const n = typeof count === 'number' && count > 0 ? count : null;
+  if (!n) return null;
+  if (unit === 'DAY')  return n;
+  if (unit === 'WEEK') return n * 7;
+  return null;
+}
+
+/**
+ * Paketin ücretsiz denemesi bu kullanıcı için geçerliyse gün sayısı, değilse null.
+ * Kaynak mağaza (kodda süre yok):
+ *   iOS     : product.introPrice (fiyat 0) + checkTrialOrIntroductoryPriceEligibility
+ *   Android : defaultOption.freePhase (Play yalnızca uygun kullanıcıya teklifi verir)
+ * Okunamazsa null → paywall deneme vaat etmez, yalnızca fiyatı gösterir.
+ */
+export async function freeTrialDays(pkg: PurchasesPackage | null): Promise<number | null> {
+  if (!pkg || !purchasesAvailable()) return null;
+  // SDK tipleri platforma göre farklı alanlar taşıyor → yalnızca okunan alanlar
+  const product = pkg.product as any;
+  try {
+    if (Platform.OS === 'android') {
+      const phase = product?.defaultOption?.freePhase;
+      return periodDays(phase?.billingPeriod?.unit, phase?.billingPeriod?.value);
+    }
+    const intro = product?.introPrice;
+    if (!intro || intro.price !== 0) return null;
+    const days = periodDays(intro.periodUnit, intro.periodNumberOfUnits);
+    if (!days) return null;
+    const eligibility = await sdk!.checkTrialOrIntroductoryPriceEligibility([product.identifier]);
+    // INTRO_ELIGIBILITY_STATUS_ELIGIBLE = 2
+    return eligibility?.[product.identifier]?.status === 2 ? days : null;
+  } catch (e) {
+    console.warn('[purchases] deneme bilgisi okunamadı:', e);
+    return null;
+  }
+}
+
 export type PurchaseOutcome = 'success' | 'cancelled' | 'pending' | 'network' | 'error' | 'unavailable';
 
 function classifyError(e: unknown): Exclude<PurchaseOutcome, 'success' | 'unavailable'> {

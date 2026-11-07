@@ -18,8 +18,8 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import type { ScanStackParamList } from '../../navigation/types';
-import { usePlanStore } from '../../store/usePlanStore';
-import { guardScan } from '../../lib/premiumGate';
+import { usePlanStore, remaining } from '../../store/usePlanStore';
+import { quotaLabel, quotaExhaustedMessage } from '../../lib/premiumGate';
 import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
@@ -41,21 +41,29 @@ export default function ScanScreen({ navigation }: Props) {
   const [loadingUri,   setLoadingUri]   = useState<string | null>(null);
   const [loadingStep,  setLoadingStep]  = useState('');
 
-  // Ücretsiz plan: bu ayki kalan "Uyar mı?" hakkı (limit null = sınırsız → gösterilmez)
-  const scanUsage = usePlanStore((s) => s.usage?.scan ?? null);
-  const scanLeft  = scanUsage && scanUsage.limit !== null
-    ? Math.max(0, scanUsage.limit - scanUsage.used)
-    : null;
+  // 15a: kalan "Uyar mı?" hakkı (deneme toplamı / bu ay). Hak sunucuda düşer (022)
+  const usage      = usePlanStore((s) => s.usage);
+  const scanLabel  = quotaLabel('scan', usage?.scan);
   useFocusEffect(useCallback(() => { usePlanStore.getState().refresh(); }, []));
 
   // Tarama yapay zekâ olmadan çalışmaz: ilk taramadan önce izin ekranı; reddedildiyse kapalı
   const aiDeclined = useConsentStore((s) => aiStatus(s.records) === 'declined');
   const ensureAi = async (): Promise<boolean> => (await ensureAiDecision()) === 'granted';
 
+  // Hak bittiyse neden + yenilenme / deneme sonu tarihi (paywall yok; okunamadıysa engellemez)
+  const scanAllowed = async (): Promise<boolean> => {
+    const fresh = await usePlanStore.getState().refresh();
+    if (fresh && remaining(fresh.scan) === 0) {
+      Alert.alert(t('quota.scanExhausted'), quotaExhaustedMessage(fresh.scan, fresh));
+      return false;
+    }
+    return true;
+  };
+
   const handlePick = async (source: 'camera' | 'gallery') => {
     if (!(await ensureAi())) return;
     // Ön kontrol (hak harcamaz) — hak bittiyse kamera/galeri hiç açılmaz
-    if (!(await guardScan())) return;
+    if (!(await scanAllowed())) return;
 
     let result: ImagePicker.ImagePickerResult;
 
@@ -124,7 +132,7 @@ export default function ScanScreen({ navigation }: Props) {
     const url = urlInput.trim();
     if (!url) return;
     if (!(await ensureAi())) return;
-    if (!(await guardScan())) return;
+    if (!(await scanAllowed())) return;
     setLoading(true);
     setLoadingUri(null);
     try {
@@ -177,11 +185,7 @@ export default function ScanScreen({ navigation }: Props) {
             <Text style={styles.subtitle}>
               {t('scan.subtitle')}
             </Text>
-            {scanLeft !== null && scanUsage?.limit != null && (
-              <Text style={styles.scanQuota}>
-                {t('premium.scanRemaining', { left: scanLeft, limit: scanUsage.limit })}
-              </Text>
-            )}
+            {scanLabel && <Text style={styles.scanQuota}>{scanLabel}</Text>}
           </View>
 
           {aiDeclined ? (

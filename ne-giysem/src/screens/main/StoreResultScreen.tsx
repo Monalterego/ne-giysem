@@ -16,10 +16,10 @@ import type { ScanStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { itemImageRefs, itemImageSource, itemThumbSource, useSignedImages } from '../../lib/storageUrls';
 import { useUserStore } from '../../store/useUserStore';
-import { spendScan, guardWardrobeAdd } from '../../lib/premiumGate';
-import { openPaywall } from '../../navigation/navigationRef';
+import { isSubscriptionRequired, onSubscriptionRequired, quotaExhaustedMessage } from '../../lib/premiumGate';
+import { usePlanStore } from '../../store/usePlanStore';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
-import { isAiConsentError } from '../../lib/edgeFunctions';
+import { EdgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { withAiReconsent } from '../../lib/aiConsent';
 import { useConsentStore } from '../../store/useConsentStore';
 import { friendlyError } from '../../utils/errorMessage';
@@ -157,39 +157,46 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   // Analiz başarısız → sonuç yerine hata + "Tekrar dene" (attempt artınca analiz yeniden çalışır)
   const [analysisError, setAnalysisError]     = useState<string | null>(null);
   const [attempt, setAttempt]                 = useState(0);
+  // Hak bitti (402) — "Tekrar dene" anlamsız
+  const [limitHit, setLimitHit]               = useState(false);
 
   // Kullanılmayan detectedCategory/detectedColors state'lerini basit şekilde saklıyoruz
   // — scannedItem artık gereksiz; sadece scannedUri gösterimi yeterli
   const [_detectedCategory, setDetectedCategory] = useState<ClothingCategory>('upper');
 
-  // 1. Vision analizi → hak harcama → sonuç
-  // "Uyar mı?" hakkı vision BAŞARIYLA bittikten SONRA, sonucu
-  // göstermeden hemen önce harcanır: başarısız tarama hak yakmaz. Reddedilirse sonuç
-  // gösterilmez, limit ekranı açılır.
+  // 1. Vision analizi → sonuç. "Uyar mı?" hakkı SUNUCUDA düşer (anthropic-proxy purpose
+  // 'scan', 022): yanıt tanınan bir ürün değilse ya da üst servis hata verirse iade edilir.
+  // Hak bittiyse 402 scan-limit → neden + yenilenme tarihi (tekrar dene gösterilmez).
   useEffect(() => {
     let cancelled = false;
     setAnalyzing(true);
     setAnalysisError(null);
+    setLimitHit(false);
     // İzin metni eskiyse güncel metin sorulur, onaylanırsa analiz yeniden denenir
-    withAiReconsent(() => analyzeClothingImage(imageBase64))
-      .then(async (result) => {
+    withAiReconsent(() => analyzeClothingImage(imageBase64, { purpose: 'scan' }))
+      .then((result) => {
         if (cancelled) return;
-        // Analiz başarısız (failed: varsayılan 'upper') → hak düşmez, sonuç gösterilmez
+        usePlanStore.getState().refresh();   // kalan hak göstergesi
+        // Analiz başarısız (failed: varsayılan 'upper') → hak sunucuda iade, sonuç gösterilmez
         if (result.failed) {
           setAnalysisError(t('storeResult.analysisFailed'));
-          return;
-        }
-        const allowed = await spendScan();
-        if (cancelled) return;
-        if (!allowed) {
-          navigation.goBack();
-          openPaywall('scan');
           return;
         }
         setVisionResult(result);
         setDetectedCategory(result.category);
       })
-      .catch((err) => {
+      .catch(async (err) => {
+        if (cancelled) return;
+        // Erişim bitmiş (022) → plan tazelenir, gate açılır
+        if (isSubscriptionRequired(err)) { onSubscriptionRequired(); return; }
+        // Hak bitti → neden + yenilenme / deneme sonu tarihi
+        if (err instanceof EdgeError && err.code === 'scan-limit') {
+          const fresh = await usePlanStore.getState().refresh();
+          if (cancelled) return;
+          setLimitHit(true);
+          setAnalysisError(`${t('quota.scanExhausted')} ${quotaExhaustedMessage(fresh?.scan, fresh)}`);
+          return;
+        }
         // İzin başka yerde geri çekilmiş (sunucu 403) → tarama kapalı; Tara ekranı nedenini yazar
         if (!cancelled && isAiConsentError(err)) {
           useConsentStore.getState().refresh();
@@ -197,7 +204,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
           navigation.goBack();
           return;
         }
-        // Oturum yok / günlük sınır → nedeni; diğerleri → genel analiz hatası. Hak düşmez
+        // Oturum yok / günlük sınır → nedeni; diğerleri → genel analiz hatası. Hak iade edilir
         if (!cancelled) {
           setAnalysisError(isUserFacingEdgeError(err) ? friendlyError(err) : t('storeResult.analysisFailed'));
         }
@@ -224,9 +231,8 @@ export default function StoreResultScreen({ route, navigation }: Props) {
 
   // "Dolaba ekle" → Dolap sekmesinde yükleme ekranı, seçim adımı atlanır. Taramanın
   // analizi devredilir (ikinci Claude çağrısı yok); packshot ve kesim normal akıştaki gibi.
-  const handleAddToWardrobe = useCallback(async () => {
+  const handleAddToWardrobe = useCallback(() => {
     if (!visionResult) return;
-    if (!(await guardWardrobeAdd())) return;
     navigation.getParent()?.navigate('Wardrobe', {
       screen: 'Upload',
       params: { preset: { uri: imageUri, base64: imageBase64, vision: visionResult } },
@@ -292,9 +298,11 @@ export default function StoreResultScreen({ route, navigation }: Props) {
           <View style={styles.emptyCard}>
             <Feather name="alert-circle" size={36} color={colors.textSecondary} />
             <Text style={styles.emptyDesc}>{analysisError}</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={() => setAttempt((a) => a + 1)} activeOpacity={0.85}>
-              <Text style={styles.retryBtnText}>{t('storeResult.retry')}</Text>
-            </TouchableOpacity>
+            {!limitHit && (
+              <TouchableOpacity style={styles.retryBtn} onPress={() => setAttempt((a) => a + 1)} activeOpacity={0.85}>
+                <Text style={styles.retryBtnText}>{t('storeResult.retry')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : analysisError ? null : !items.length ? (
           <View style={styles.emptyCard}>

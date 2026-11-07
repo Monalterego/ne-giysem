@@ -7,30 +7,32 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  BackHandler,
-  Linking,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { PurchasesPackage } from 'react-native-purchases';
-import type { RootStackParamList } from '../../navigation/types';
-import { usePlanStore } from '../../store/usePlanStore';
-import { loadPaywallPackages, purchase, purchasesAvailable } from '../../lib/purchases';
+import { usePlanStore, hasAccess } from '../../store/usePlanStore';
+import type { Limits } from '../../store/usePlanStore';
+import { freeTrialDays, loadPaywallPackages, purchase, purchasesAvailable } from '../../lib/purchases';
 import type { PaywallPackages } from '../../lib/purchases';
-import { formatIstanbulDay, restoreWithFeedback, wardrobeLimitMessage } from '../../lib/premiumGate';
-import { manageSubscriptionUrl } from '../../constants/premium';
+import { restoreWithFeedback } from '../../lib/premiumGate';
+import { signOut, confirmDeleteAccount } from '../../lib/accountActions';
+import { exportMyData } from '../../lib/privacyActions';
+import { friendlyError } from '../../utils/errorMessage';
 import { openLegal } from '../../constants/legal';
 import { colors, fonts, typography, spacing, radius, layout } from '../../constants/theme';
 import { getLocale, t } from '../../i18n';
 import { upper } from '../../utils/text';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
+// ─── Hard paywall (gate) — Adım 15 ───────────────────────────────────────────
+// Ücretsiz plan yok: erişimi (deneme / abonelik) olmayan kullanıcı onboarding'den sonra
+// yalnızca bu ekranı görür (RootNavigator). Kapatılamaz; satın alma ya da geri yükleme
+// sonrası plan güncellenince RootNavigator ana ekranlara geçer.
+// Fiyat, tasarruf oranı ve deneme süresi mağazadan; limit sayıları app_limits'ten
+// (get_limits) — kodda sayı yok.
 
-// Karşılaştırma tablosu — CLAUDE.md Monetizasyon (fiyat İÇERMEZ; fiyatlar mağazadan)
-const COMPARE_ROWS = ['Wardrobe', 'Tryon', 'Scan', 'Calendar'] as const;
+const FEATURES = ['feature1', 'feature2', 'feature3', 'feature4', 'feature5'] as const;
 
 /** Mağazanın döndürdüğü fiyat + para birimiyle biçimle; Intl yoksa null (gösterme) */
 function formatPrice(amount: number, currency: string): string | null {
@@ -58,30 +60,38 @@ function annualMath(pkgs: PaywallPackages | null) {
   return { perMonth, savePercent };
 }
 
-export default function PaywallScreen({ route, navigation }: Props) {
-  const reason = route.params?.reason ?? 'generic';
-  // fullScreenModal içinde native SafeAreaView iOS'ta 0 inset verebiliyor (X çentiğin
-  // altında kalıyordu) → kök sağlayıcının inset'leri elle uygulanır
+/** Tek satır limit özeti; sayılar app_limits'ten. null (sınırsız) → "sınırsız" */
+function limitsLine(limits: Limits, withTrial: boolean): string {
+  const n = (v: number | null) => (v === null ? t('paywall.unlimited') : String(v));
+  const premium = t('paywall.limitsPremium', {
+    packshot: n(limits.premium.packshot_monthly),
+    tryon:    n(limits.premium.tryon_monthly),
+    scan:     n(limits.premium.scan_monthly),
+  });
+  if (!withTrial) return premium;
+  const trial = t('paywall.limitsTrial', {
+    packshot: n(limits.trial.packshot),
+    tryon:    n(limits.trial.tryon),
+    scan:     n(limits.trial.scan),
+  });
+  return `${trial} · ${premium}`;
+}
+
+export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const usage  = usePlanStore((s) => s.usage);
-
-  // Android geri tuşu paywall'ı kapatsın (satın alma sürerken de — sonuç yine işlenir)
-  useFocusEffect(useCallback(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (navigation.canGoBack()) navigation.goBack();
-      return true;
-    });
-    return () => sub.remove();
-  }, [navigation]));
-  const plan   = usePlanStore((s) => s.plan);
+  const limits = usePlanStore((s) => s.limits);
   const syncAfterPurchase = usePlanStore((s) => s.syncAfterPurchase);
 
   const available = purchasesAvailable();
-  const [pkgs,     setPkgs]     = useState<PaywallPackages | null>(null);
-  const [loading,  setLoading]  = useState(available);
-  const [selected, setSelected] = useState<'annual' | 'monthly'>('annual');   // yıllık varsayılan
-  const [busy,     setBusy]     = useState(false);
+  const [pkgs,      setPkgs]      = useState<PaywallPackages | null>(null);
+  const [trialDays, setTrialDays] = useState<number | null>(null);
+  const [loading,   setLoading]   = useState(available);
+  const [selected,  setSelected]  = useState<'annual' | 'monthly'>('annual');   // yıllık varsayılan
+  const [busy,      setBusy]      = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [deleting,  setDeleting]  = useState(false);
 
   const load = useCallback(async () => {
     if (!available) return;
@@ -90,47 +100,36 @@ export default function PaywallScreen({ route, navigation }: Props) {
     setPkgs(result);
     // Yıllık paket yoksa aylığa düş
     if (result && !result.annual && result.monthly) setSelected('monthly');
+    setTrialDays(await freeTrialDays(result?.annual ?? null));
     setLoading(false);
   }, [available]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { usePlanStore.getState().refresh(); }, []);
+  useEffect(() => { usePlanStore.getState().loadLimits(); }, []);
 
   const { perMonth, savePercent } = useMemo(() => annualMath(pkgs), [pkgs]);
   const selectedPkg: PurchasesPackage | null =
     (selected === 'annual' ? pkgs?.annual : pkgs?.monthly) ?? null;
   const hasPackages = !!(pkgs?.annual || pkgs?.monthly);
+  // Deneme yalnızca yıllıkta; mağaza bu kullanıcıya teklif etmiyorsa vaat edilmez
+  const trialSelected = selected === 'annual' && trialDays !== null;
 
-  // Giriş noktasına göre üstteki açıklama
-  const reasonText = useMemo(() => {
-    switch (reason) {
-      case 'wardrobe':
-        // Dolap banner'ıyla aynı metin (sayılar get_usage'tan); okunamadıysa sayısız genel metin
-        return wardrobeLimitMessage(usage) ?? t('premium.reasonWardrobeGeneric');
-      case 'scan': {
-        const date = formatIstanbulDay(usage?.scan.reset_at);
-        const limit = usage?.scan.limit ?? 3;
-        return date
-          ? t('premium.reasonScan', { limit, date })
-          : t('premium.reasonScanNoDate', { limit });
-      }
-      case 'planning': return t('premium.reasonPlanning');
-      case 'tryon':    return t('premium.reasonTryon', { limit: usage?.tryon.limit ?? 3 });
-      default:         return null;
-    }
-  }, [reason, usage]);
+  // Neyin bittiğine göre başlık
+  const ended = usage?.ended ?? null;
+  const title = ended === 'trial' ? t('paywall.titleTrialEnded')
+    : ended === 'subscription' ? t('paywall.titleExpired')
+    : t('paywall.title');
+  const subtitle = ended ? t('paywall.bodyExpired') : t('paywall.subtitle');
 
   const handleSubscribe = async () => {
     if (!selectedPkg || busy) return;
     setBusy(true);
     const outcome = await purchase(selectedPkg);
     if (outcome === 'success') {
-      // Webhook'u bekleme: sunucu senkronu + get_usage
-      const fresh = await syncAfterPurchase();
+      // Webhook'u bekleme: sunucu senkronu + get_usage. Erişim gelince RootNavigator geçer.
+      await syncAfterPurchase();
       setBusy(false);
-      if (fresh?.plan === 'premium') Alert.alert(t('premium.successTitle'), t('premium.successBody'));
-      else Alert.alert(t('premium.syncDelayed'));
-      navigation.goBack();
+      if (!hasAccess(usePlanStore.getState().plan)) Alert.alert(t('premium.syncDelayed'));
       return;
     }
     setBusy(false);
@@ -147,62 +146,51 @@ export default function PaywallScreen({ route, navigation }: Props) {
     setRestoring(true);
     await restoreWithFeedback();
     setRestoring(false);
-    if (usePlanStore.getState().plan === 'premium') navigation.goBack();
   };
 
-  const autoRenew = Platform.OS === 'android' ? t('premium.autoRenewAndroid') : t('premium.autoRenewIos');
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportMyData();
+    } catch (err) {
+      console.warn('[Paywall] exportMyData:', err);
+      Alert.alert(t('combos.errorTitle'), friendlyError(err));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // CTA altı: deneme koşulları ya da otomatik yenileme
+  const annualPrice = pkgs?.annual?.product.priceString ?? '';
+  const legalText = trialSelected
+    ? t(Platform.OS === 'android' ? 'paywall.trialTermsAndroid' : 'paywall.trialTermsIos',
+        { days: trialDays, price: annualPrice })
+    : t(Platform.OS === 'android' ? 'premium.autoRenewAndroid' : 'premium.autoRenewIos');
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.closeBtn}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel={t('premium.close')}
-        >
-          <Feather name="x" size={22} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.eyebrow}>{upper(t('premium.eyebrow'))}</Text>
-        <Text style={styles.title}>{t('premium.title')}</Text>
-        <Text style={styles.subtitle}>{t('premium.subtitle')}</Text>
+        <Text style={styles.eyebrow}>{upper(t('paywall.eyebrow'))}</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
 
-        {reasonText && (
-          <View style={styles.reasonBox}>
-            <Feather name="info" size={16} color={colors.text} />
-            <Text style={styles.reasonText}>{reasonText}</Text>
-          </View>
-        )}
-
-        {/* Ücretsiz / Premium karşılaştırması */}
-        <View style={styles.table}>
-          <View style={[styles.row, styles.headRow]}>
-            <Text style={[styles.cellFeature, styles.headText]}>{upper(t('premium.compareFeature'))}</Text>
-            <Text style={[styles.cell, styles.headText]}>{upper(t('premium.compareFree'))}</Text>
-            <Text style={[styles.cell, styles.headText, styles.cellStrong]}>{upper(t('premium.comparePremium'))}</Text>
-          </View>
-          {COMPARE_ROWS.map((r, i) => (
-            <View key={r} style={[styles.row, i < COMPARE_ROWS.length - 1 && styles.rowDivider]}>
-              <Text style={styles.cellFeature}>{t(`premium.row${r}`)}</Text>
-              <Text style={styles.cell}>{t(`premium.row${r}Free`)}</Text>
-              <Text style={[styles.cell, styles.cellStrong]}>{t(`premium.row${r}Premium`)}</Text>
+        {/* Özellikler */}
+        <View style={styles.features}>
+          {FEATURES.map((f) => (
+            <View key={f} style={styles.featureRow}>
+              <Feather name="check" size={16} color={colors.text} />
+              <Text style={styles.featureText}>{t(`paywall.${f}`)}</Text>
             </View>
           ))}
         </View>
 
+        {/* Limitler — tek satır, app_limits'ten */}
+        {limits && (
+          <Text style={styles.limits}>{limitsLine(limits, trialDays !== null)}</Text>
+        )}
+
         {/* Paketler */}
-        {plan === 'premium' ? (
-          <View style={styles.noticeBox}>
-            <Text style={styles.noticeTitle}>{t('premium.alreadyPremium')}</Text>
-            <Text style={styles.noticeText}>{t('premium.alreadyPremiumBody')}</Text>
-            <TouchableOpacity onPress={() => Linking.openURL(manageSubscriptionUrl())} activeOpacity={0.7}>
-              <Text style={styles.linkText}>{t('premium.manage')}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : !available ? (
+        {!available ? (
           <View style={styles.noticeBox}>
             <Text style={styles.noticeText}>{t('premium.unavailable')}</Text>
           </View>
@@ -221,20 +209,20 @@ export default function PaywallScreen({ route, navigation }: Props) {
               <PackageCard
                 selected={selected === 'annual'}
                 onPress={() => setSelected('annual')}
-                title={t('premium.annual')}
+                title={t('paywall.annual')}
                 price={`${pkgs.annual.product.priceString} ${t('premium.perYear')}`}
                 note={[
-                  perMonth ? t('premium.annualEquivalent', { price: perMonth }) : null,
-                  savePercent ? t('premium.savePercent', { percent: savePercent }) : null,
+                  trialDays !== null ? t('paywall.trialBadge', { days: trialDays }) : null,
+                  perMonth ? t('paywall.perMonth', { price: perMonth }) : null,
                 ].filter(Boolean).join(' · ') || null}
-                badge={upper(t('premium.bestValue'))}
+                badge={upper(savePercent ? t('paywall.saveBadge', { percent: savePercent }) : t('premium.bestValue'))}
               />
             )}
             {pkgs?.monthly && (
               <PackageCard
                 selected={selected === 'monthly'}
                 onPress={() => setSelected('monthly')}
-                title={t('premium.monthly')}
+                title={t('paywall.monthly')}
                 price={`${pkgs.monthly.product.priceString} ${t('premium.perMonth')}`}
                 note={null}
                 badge={null}
@@ -244,7 +232,7 @@ export default function PaywallScreen({ route, navigation }: Props) {
         )}
 
         {/* Yasal */}
-        <Text style={styles.legal}>{autoRenew}</Text>
+        <Text style={styles.legal}>{legalText}</Text>
         <View style={styles.legalLinks}>
           <TouchableOpacity onPress={() => openLegal('terms')} activeOpacity={0.7}>
             <Text style={styles.legalLink}>{t('premium.terms')}</Text>
@@ -254,31 +242,60 @@ export default function PaywallScreen({ route, navigation }: Props) {
             <Text style={styles.legalLink}>{t('premium.privacy')}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Hesap — gate Profil'i kapattığı için burada (Apple 5.1.1(v), KVKK m. 11) */}
+        <Text style={styles.accountTitle}>{upper(t('paywall.account'))}</Text>
+        <View style={styles.accountLinks}>
+          <TouchableOpacity onPress={handleExport} disabled={exporting} activeOpacity={0.7}>
+            {exporting
+              ? <ActivityIndicator color={colors.textSecondary} size="small" />
+              : <Text style={styles.legalLink}>{t('privacy.exportData')}</Text>}
+          </TouchableOpacity>
+          <Text style={styles.legalDot}>·</Text>
+          <TouchableOpacity onPress={signOut} activeOpacity={0.7}>
+            <Text style={styles.legalLink}>{t('profile.logout')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalDot}>·</Text>
+          <TouchableOpacity
+            onPress={() => confirmDeleteAccount(usage?.will_renew === true, setDeleting)}
+            disabled={deleting}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.legalLink, styles.danger]}>{t('profile.deleteAccount')}</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Alt aksiyonlar */}
-      {plan !== 'premium' && (
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.cta, (!selectedPkg || busy) && styles.ctaDisabled]}
-            onPress={handleSubscribe}
-            disabled={!selectedPkg || busy}
-            activeOpacity={0.85}
-          >
-            {busy
-              ? <ActivityIndicator color={colors.white} />
-              : <Text style={styles.ctaText}>{t('premium.subscribe')}</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleRestore}
-            disabled={restoring}
-            activeOpacity={0.7}
-            style={styles.restoreBtn}
-          >
-            {restoring
-              ? <ActivityIndicator color={colors.textSecondary} size="small" />
-              : <Text style={styles.restoreText}>{t('premium.restore')}</Text>}
-          </TouchableOpacity>
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.cta, (!selectedPkg || busy) && styles.ctaDisabled]}
+          onPress={handleSubscribe}
+          disabled={!selectedPkg || busy}
+          activeOpacity={0.85}
+        >
+          {busy
+            ? <ActivityIndicator color={colors.white} />
+            : <Text style={styles.ctaText}>
+                {trialSelected ? t('paywall.ctaTrial', { days: trialDays }) : t('paywall.cta')}
+              </Text>}
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleRestore}
+          disabled={restoring}
+          activeOpacity={0.7}
+          style={styles.restoreBtn}
+        >
+          {restoring
+            ? <ActivityIndicator color={colors.textSecondary} size="small" />
+            : <Text style={styles.restoreText}>{t('premium.restore')}</Text>}
+        </TouchableOpacity>
+      </View>
+
+      {/* Silme sürerken tüm ekran etkileşimi kilitli */}
+      {deleting && (
+        <View style={styles.blockingOverlay}>
+          <ActivityIndicator color={colors.text} size="large" />
         </View>
       )}
     </View>
@@ -322,57 +339,19 @@ function PackageCard({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: layout.screenPaddingH - spacing.sm,
-    paddingTop: spacing.xs,
-  },
-  // En az 44x44 dokunma alanı (HIG)
-  closeBtn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   scroll: {
     paddingHorizontal: layout.screenPaddingH,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
   },
   eyebrow: { ...typography.label, color: colors.textSecondary, marginTop: spacing.sm },
   title: { ...typography.h1, color: colors.text, marginTop: spacing.xs },
   subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },
 
-  reasonBox: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.lg,
-  },
-  reasonText: { ...typography.body, color: colors.text, flex: 1 },
-
-  table: {
-    marginTop: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.white,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-  },
-  headRow: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  headText: { ...typography.label, color: colors.textSecondary },
-  cellFeature: { ...typography.body, color: colors.text, flex: 1.2 },
-  cell: { ...typography.bodySmall, color: colors.textSecondary, flex: 1, textAlign: 'center' },
-  cellStrong: { color: colors.text, fontFamily: fonts.bodySemiBold },
+  features: { marginTop: spacing.lg, gap: spacing.sm },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  featureText: { ...typography.body, color: colors.text, flex: 1 },
+  limits: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.md, lineHeight: 18 },
 
   packages: { marginTop: spacing.lg, gap: spacing.sm },
   pkg: {
@@ -419,7 +398,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  noticeTitle: { ...typography.h3, color: colors.text },
   noticeText: { ...typography.body, color: colors.textSecondary },
   linkText: { ...typography.body, color: colors.text, fontFamily: fonts.bodySemiBold, textDecorationLine: 'underline' },
   loader: { marginTop: spacing.xl },
@@ -428,6 +406,10 @@ const styles = StyleSheet.create({
   legalLinks: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
   legalLink: { ...typography.caption, color: colors.text, textDecorationLine: 'underline' },
   legalDot: { ...typography.caption, color: colors.textTertiary },
+  danger: { color: colors.error },
+
+  accountTitle: { ...typography.label, color: colors.textSecondary, marginTop: spacing.xl },
+  accountLinks: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
 
   footer: {
     paddingHorizontal: layout.screenPaddingH,
@@ -448,4 +430,12 @@ const styles = StyleSheet.create({
   ctaText: { ...typography.body, fontFamily: fonts.bodySemiBold, color: colors.white },
   restoreBtn: { alignItems: 'center', paddingVertical: spacing.sm + 2, minHeight: 40, justifyContent: 'center' },
   restoreText: { ...typography.bodySmall, color: colors.textSecondary, textDecorationLine: 'underline' },
+
+  blockingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.background,
+    opacity: 0.9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

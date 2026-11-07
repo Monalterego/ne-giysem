@@ -1,76 +1,54 @@
 import { Alert } from 'react-native';
-import { supabase } from './supabase';
 import { restore } from './purchases';
-import { usePlanStore, premiumExpired } from '../store/usePlanStore';
-import type { Usage } from '../store/usePlanStore';
-import { openPaywall } from '../navigation/navigationRef';
+import { usePlanStore, hasAccess, remaining } from '../store/usePlanStore';
+import type { Quota, Usage } from '../store/usePlanStore';
+import { EdgeError } from './edgeFunctions';
 import { t } from '../i18n';
 
-// ─── İstemci ön kontrolleri (hak HARCAMAZ) ───────────────────────────────────
-// Kaynak get_usage. Okunamazsa (ağ / 013 yok) engellemez — sınırı sunucu uygular
-// (wardrobe trigger'ı, fashn-proxy). Engellenirse paywall açılır ve false döner.
+// ─── Hard paywall (Adım 15) ──────────────────────────────────────────────────
+// Ücretsiz plan yok. Erişim (deneme / abonelik) yoksa RootNavigator yalnızca paywall'u
+// gösterir. Uygulama açıkken erişim biterse sunucu 403 'subscription-required'
+// (edge) ya da P0001 'subscription-required' (dolap trigger'ı) döner → plan tazelenir,
+// gate kendiliğinden açılır. Hak sınırları sunucuda; istemci yalnızca gösterir.
 
-/** "Ekle" → yüklemeye başlamadan önce: dolap limiti dolu mu? */
-export async function guardWardrobeAdd(): Promise<boolean> {
-  const usage = await usePlanStore.getState().refresh();
-  const w = usage?.wardrobe;
-  if (w && w.limit !== null && w.used >= w.limit) {
-    openPaywall('wardrobe');
-    return false;
+/** Sunucu "abonelik gerekli" dedi mi (edge 403 ya da DB trigger mesajı) */
+export function isSubscriptionRequired(err: unknown): boolean {
+  if (err instanceof EdgeError) return err.code === 'subscription-required';
+  const m = (err as { message?: string } | null)?.message ?? '';
+  return m.includes('subscription-required');
+}
+
+/** Erişim bitmiş → plan tazelenir, RootNavigator gate'e geçer */
+export function onSubscriptionRequired(): void {
+  usePlanStore.getState().refresh();
+}
+
+// ─── 15a: kalan hak göstergesi ────────────────────────────────────────────────
+// Sayılar get_usage'tan (açık rezervasyonlar kullanılmış sayılır → red ile tutarlı).
+
+export type QuotaKind = 'tryon' | 'scan' | 'packshot';
+
+/** "Bu ay 3 / 5 sanal deneme hakkın kaldı" vb. Sınırsız / bilinmiyor / erişim yok → null */
+export function quotaLabel(kind: QuotaKind, q: Quota | undefined | null): string | null {
+  const left = remaining(q);
+  if (!q || left === null || left === Infinity || q.window === 'none') return null;
+  const params = { left, limit: q.limit };
+  if (q.window === 'trial') return t(`quota.${kind}Trial`, params);
+  if (q.window === 'setup') return t('quota.packshotSetup', params);
+  return t(`quota.${kind}Monthly`, params);
+}
+
+/** Hak bittiğinde açıklama: premium → yenilenme tarihi; deneme → deneme sonu / abonelik başı */
+export function quotaExhaustedMessage(q: Quota | undefined | null, usage: Usage | null): string {
+  if (q?.window === 'trial') {
+    const date = formatLocalDay(usage?.trial?.ends_at ?? usage?.access_expires_at);
+    if (!date) return t('quota.trialExhaustedNoDate');
+    return usage?.will_renew === false
+      ? t('quota.trialExhaustedCancelled', { date })
+      : t('quota.trialExhausted', { date });
   }
-  return true;
-}
-
-/** "Uyar mı?" taraması başlamadan önce: bu ayki hak kaldı mı? */
-export async function guardScan(): Promise<boolean> {
-  const usage = await usePlanStore.getState().refresh();
-  const s = usage?.scan;
-  if (s && s.limit !== null && s.used >= s.limit) {
-    openPaywall('scan');
-    return false;
-  }
-  return true;
-}
-
-/**
- * Tarama hakkını HARCA — vision başarıyla bittikten sonra, sonucu göstermeden
- * hemen önce. false → sonucu gösterme; çağıran ekranı kapatıp openPaywall('scan') açar.
- * RPC hatasında (ağ / 013 yok) sonucu engellemez: tarama zaten yapıldı, kullanıcı
- * suçsuz; değiştirilmiş istemci riski kabul edildi (günlük tavanlar var).
- */
-export async function spendScan(): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.rpc('start_scan');
-    if (error) {
-      console.warn('[scan] start_scan:', error.message);
-      return true;
-    }
-    usePlanStore.getState().refresh();
-    return !(data && (data as { allowed?: boolean }).allowed === false);
-  } catch (e) {
-    console.warn('[scan] start_scan exception:', e);
-    return true;
-  }
-}
-
-// ─── Dolap limiti metinleri (başlık, banner, paywall gerekçesi) ──────────────
-// Sayı ve sınır get_usage'tan; limit üstündeki kullanıcıya "103/50" gösterilmez.
-
-/** Başlık: limit altında/eşit "23/50", üstünde "103 parça · ücretsiz sınır 50". Premium/okunamadı → null */
-export function wardrobeCountLabel(usage: Usage | null): string | null {
-  const w = usage?.wardrobe;
-  if (!w || w.limit === null) return null;
-  return w.used > w.limit
-    ? t('premium.wardrobeOverCount', { count: w.used, limit: w.limit })
-    : t('premium.wardrobeCount', { used: w.used, limit: w.limit });
-}
-
-/** Ekleme kilitliyken açıklama (banner + paywall). Limit dolu değilse / okunamadıysa null */
-export function wardrobeLimitMessage(usage: Usage | null): string | null {
-  const w = usage?.wardrobe;
-  if (!w || w.limit === null || w.used < w.limit) return null;
-  const body = t('premium.wardrobeLimitBody', { count: w.used, limit: w.limit });
-  return premiumExpired(usage) ? `${t('premium.wardrobeExpiredPrefix')} ${body}` : body;
+  const date = formatIstanbulDay(q?.reset_at);
+  return date ? t('quota.renewsOn', { date }) : t('quota.exhaustedNoDate');
 }
 
 // ─── Geri yükleme (Paywall + Profil) ─────────────────────────────────────────
@@ -83,7 +61,7 @@ export async function restoreWithFeedback(): Promise<void> {
   if (outcome === 'error')       { Alert.alert(t('combos.errorTitle'), t('premium.restoreFailed')); return; }
 
   const usage = await usePlanStore.getState().syncAfterPurchase();
-  if (usage?.plan === 'premium')  Alert.alert(t('premium.restoredTitle'), t('premium.restored'));
+  if (usage && hasAccess(usage.plan)) Alert.alert(t('premium.restoredTitle'), t('premium.restored'));
   else if (outcome === 'restored') Alert.alert(t('premium.syncDelayed'));   // mağazada var, sunucu henüz yazmadı
   else Alert.alert(t('premium.nothingToRestore'));
 }
