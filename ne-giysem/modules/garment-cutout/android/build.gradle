@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.garmentcutout'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.garmentcutout"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // ML Kit Subject Segmentation (beta). Model APK'ya gömülmez, Play hizmetlerinden iner
+  // (https://developers.google.com/ml-kit/vision/subject-segmentation/android)
+  implementation 'com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1'
+  // GoogleApiAvailability (Play hizmetleri kontrolü)
+  implementation 'com.google.android.gms:play-services-base:18.5.0'
+}

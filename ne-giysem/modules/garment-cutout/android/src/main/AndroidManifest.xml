@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- ML Kit kesim modelini uygulama kurulurken indir (yoksa ilk kullanımda iner ve o istek sonuç vermez).
+         Uygulama manifest'ine birleşir; başka bir ML Kit API'si eklenirse değerler virgülle birleştirilmeli. -->
+    <meta-data
+      android:name="com.google.mlkit.vision.DEPENDENCIES"
+      android:value="subject_segment" />
+  </application>
+</manifest>

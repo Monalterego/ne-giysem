@@ -1,0 +1,7 @@
+{
+  "name": "garment-cutout",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cihaz üstü kıyafet kesimi: iOS 17+ Vision, Android ML Kit Subject Segmentation",
+  "license": "UNLICENSED"
+}
