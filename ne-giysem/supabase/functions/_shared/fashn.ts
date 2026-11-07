@@ -17,6 +17,8 @@ export interface FashnResponse {
   ok: boolean;
   status: number;
   text: string;
+  /** x-fashn-credits-used başlığı (api-fundamentals); yoksa null */
+  creditsUsed: string | null;
 }
 
 /** /status gövdesinin kullandığımız alanları */
@@ -41,7 +43,10 @@ export async function fashnRun(
     headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model_name: modelName, inputs }),
   });
-  return { ok: res.ok, status: res.status, text: await res.text() };
+  return {
+    ok: res.ok, status: res.status, text: await res.text(),
+    creditsUsed: res.headers.get("x-fashn-credits-used"),
+  };
 }
 
 /** GET /status/:id — id PREDICTION_ID_RE ile önceden doğrulanmış olmalı */
@@ -50,7 +55,10 @@ export async function fashnStatus(key: string, id: string): Promise<FashnRespons
     method: "GET",
     headers: { "Authorization": `Bearer ${key}` },
   });
-  return { ok: res.ok, status: res.status, text: await res.text() };
+  return {
+    ok: res.ok, status: res.status, text: await res.text(),
+    creditsUsed: res.headers.get("x-fashn-credits-used"),
+  };
 }
 
 /** FASHN kredi hatası mı? Ölçülmüş biçim: 429 {"error":"OutOfCredits"} */
@@ -78,8 +86,8 @@ export function httpsOutputs(s: FashnStatusBody): string[] {
 
 /** return_base64 çıktısı (data:image/<jpeg|png>;base64,...) — tür, uzantı ve base64 gövdesi */
 export interface DataUriImage {
-  mime: "image/jpeg" | "image/png";
-  ext: "jpg" | "png";
+  mime: "image/jpeg" | "image/png" | "image/webp";
+  ext: "jpg" | "png" | "webp";
   base64: string;
 }
 
@@ -94,7 +102,41 @@ export function parseImageDataUri(raw: unknown): DataUriImage | null {
   const header = raw.slice(5, comma).toLowerCase();
   if (header === "image/jpeg;base64") return { mime: "image/jpeg", ext: "jpg", base64: raw.slice(comma + 1) };
   if (header === "image/png;base64")  return { mime: "image/png",  ext: "png", base64: raw.slice(comma + 1) };
+  if (header === "image/webp;base64") return { mime: "image/webp", ext: "webp", base64: raw.slice(comma + 1) };
   return null;
+}
+
+/** bayt dizisi → base64 (parçalı; büyük görselde yığın taşmasın) */
+export function encodeBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/**
+ * Belgelenmemiş modeller (packshot) için savunmacı çıktı bulucu: completed gövdesinde
+ * ilk görsel adayı — output dizi / tek string / { url | image | data } nesnesi olabilir.
+ * Döner: string (data URI ya da https URL) ve bulunduğu biçimin adı (loglamak için).
+ */
+export function firstOutputCandidate(s: FashnStatusBody): { value: string | null; shape: string } {
+  const out = s.output as unknown;
+  const pick = (v: unknown): string | null => {
+    if (typeof v === "string") return v;
+    if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      for (const k of ["url", "image", "data", "output"]) {
+        if (typeof o[k] === "string") return o[k] as string;
+      }
+    }
+    return null;
+  };
+  if (Array.isArray(out)) return { value: out.length ? pick(out[0]) : null, shape: `array(${out.length})` };
+  if (typeof out === "string") return { value: out, shape: "string" };
+  if (out && typeof out === "object") return { value: pick(out), shape: `object(${Object.keys(out).join(",")})` };
+  return { value: null, shape: out === undefined ? "missing" : typeof out };
 }
 
 /** base64 → bayt dizisi (geçersiz karakterde atob fırlatır) */

@@ -72,8 +72,9 @@ const TMP_PREFIX        = "tmp_";
 const MAX_OUTPUT_BYTES  = 10 * 1024 * 1024;              // bucket sınırı (019_storage_limits)
 const OUTPUT_LINK_TTL_S = 10 * 60;                       // FASHN'a giden bağlantılarla aynı (storageUrls.ts)
 const TMP_MAX_AGE_MS    = 60 * 60 * 1000;                // start'ta bundan eski ara dosyalar silinir
-// tmp_<render uuid>_<prediction id>.<jpg|png> — prediction id PREDICTION_ID_RE karakterleri
-const TMP_NAME_RE   = /^tmp_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[A-Za-z0-9_-]{1,128}\.(jpg|png)$/i;
+// tmp_<render uuid>_<prediction id>.<jpg|png|webp> — prediction id PREDICTION_ID_RE karakterleri
+// (webp: parseImageDataUri kabul ediyor; try-on çıktısı bugün jpeg/png)
+const TMP_NAME_RE   = /^tmp_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_[A-Za-z0-9_-]{1,128}\.(jpg|png|webp)$/i;
 // Try-on cache adı: v2_<sıralı parça id'leri>_<manken sürümü>.jpg (virtualModel tryOnCacheSignature)
 const CACHE_NAME_RE = /^v2_[A-Za-z0-9_-]{1,900}\.jpg$/;
 
