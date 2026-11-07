@@ -959,7 +959,8 @@
   "paywall": {
     "eyebrow": "Sestina Premium",
     "title": "Your wardrobe is ready. Let's get to the outfits.",
-    "subtitle": "Subscribe to use Sestina. You can try the yearly plan for free.",
+    "subtitle": "Subscribe to use Sestina.",
+    "subtitleTrial": "You can try the yearly plan free for %{days} days.",
     "titleExpired": "Your subscription has ended",
     "titleTrialEnded": "Your free trial has ended",
     "bodyExpired": "Your wardrobe and outfits are still here. Subscribe to continue.",

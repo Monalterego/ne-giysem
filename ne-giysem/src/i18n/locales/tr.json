@@ -959,7 +959,8 @@
   "paywall": {
     "eyebrow": "Sestina Premium",
     "title": "Dolabın hazır. Şimdi kombinlere geçelim.",
-    "subtitle": "Sestina'yı kullanmak için abone ol. Yıllık planı ücretsiz deneyebilirsin.",
+    "subtitle": "Sestina'yı kullanmak için abone ol.",
+    "subtitleTrial": "Yıllık planı %{days} gün ücretsiz deneyebilirsin.",
     "titleExpired": "Aboneliğin sona erdi",
     "titleTrialEnded": "Ücretsiz deneme süren bitti",
     "bodyExpired": "Dolabın ve kombinlerin duruyor. Devam etmek için abone ol.",

@@ -16,6 +16,8 @@ type PurchasesSdk = PurchasesModule['default'];
 
 let sdk: PurchasesSdk | null = null;
 let errorCodes: PurchasesModule['PURCHASES_ERROR_CODE'] | null = null;
+// iOS deneme uygunluğu "uygun" değeri (INTRO_ELIGIBILITY_STATUS); yüklenemezse null → deneme yok
+let eligibleStatus: number | null = null;
 let configured = false;
 
 /** Public SDK anahtarı (EAS env → bundle'a gömülür). Statik erişim şart: Expo inline eder. */
@@ -37,6 +39,7 @@ function loadSdk(): PurchasesSdk | null {
     const mod = require('react-native-purchases') as PurchasesModule;
     sdk = mod.default;
     errorCodes = mod.PURCHASES_ERROR_CODE ?? null;
+    eligibleStatus = mod.INTRO_ELIGIBILITY_STATUS?.INTRO_ELIGIBILITY_STATUS_ELIGIBLE ?? null;
     return sdk;
   } catch (e) {
     console.warn('[purchases] SDK yüklenemedi:', e);
@@ -131,11 +134,14 @@ function periodDays(unit: unknown, count: unknown): number | null {
 }
 
 /**
- * Paketin ücretsiz denemesi bu kullanıcı için geçerliyse gün sayısı, değilse null.
+ * Paketin ücretsiz denemesi BU KULLANICI için geçerliyse gün sayısı, değilse null.
  * Kaynak mağaza (kodda süre yok):
- *   iOS     : product.introPrice (fiyat 0) + checkTrialOrIntroductoryPriceEligibility
- *   Android : defaultOption.freePhase (Play yalnızca uygun kullanıcıya teklifi verir)
- * Okunamazsa null → paywall deneme vaat etmez, yalnızca fiyatı gösterir.
+ *   iOS     : product.introPrice (fiyat 0) + checkTrialOrIntroductoryPriceEligibility.
+ *             Yalnızca durum ELIGIBLE ise deneme var; INELIGIBLE (daha önce kullanmış),
+ *             UNKNOWN (belirlenemedi) ve NO_INTRO_OFFER_EXISTS → null.
+ *   Android : defaultOption'ın ücretsiz fazı (fiyatı 0). Play, kullanıcının uygun
+ *             olmadığı teklifleri paketle döndürmez → teklif yoksa deneme yok.
+ * Uygunluk bilinemiyorsa (hata, enum yok) null → paywall deneme vaat etmez.
  */
 export async function freeTrialDays(pkg: PurchasesPackage | null): Promise<number | null> {
   if (!pkg || !purchasesAvailable()) return null;
@@ -144,15 +150,16 @@ export async function freeTrialDays(pkg: PurchasesPackage | null): Promise<numbe
   try {
     if (Platform.OS === 'android') {
       const phase = product?.defaultOption?.freePhase;
-      return periodDays(phase?.billingPeriod?.unit, phase?.billingPeriod?.value);
+      if (!phase || phase.price?.amountMicros !== 0) return null;
+      return periodDays(phase.billingPeriod?.unit, phase.billingPeriod?.value);
     }
     const intro = product?.introPrice;
     if (!intro || intro.price !== 0) return null;
     const days = periodDays(intro.periodUnit, intro.periodNumberOfUnits);
     if (!days) return null;
+    if (eligibleStatus === null) return null;
     const eligibility = await sdk!.checkTrialOrIntroductoryPriceEligibility([product.identifier]);
-    // INTRO_ELIGIBILITY_STATUS_ELIGIBLE = 2
-    return eligibility?.[product.identifier]?.status === 2 ? days : null;
+    return eligibility?.[product.identifier]?.status === eligibleStatus ? days : null;
   } catch (e) {
     console.warn('[purchases] deneme bilgisi okunamadı:', e);
     return null;

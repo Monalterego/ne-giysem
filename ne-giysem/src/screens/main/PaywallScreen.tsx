@@ -96,10 +96,13 @@ export default function PaywallScreen() {
   const load = useCallback(async () => {
     if (!available) return;
     setLoading(true);
+    setTrialDays(null);   // yeniden yüklemede eski uygunluk kalmasın
     const result = await loadPaywallPackages();
     setPkgs(result);
     // Yıllık paket yoksa aylığa düş
     if (result && !result.annual && result.monthly) setSelected('monthly');
+    // Deneme yalnızca mağaza bu kullanıcıyı uygun bulursa (iOS uygunluk kontrolü / Play teklifi);
+    // uygun değilse ya da bilinemiyorsa null → deneme satırı, rozet ve "ücretsiz dene" yok
     setTrialDays(await freeTrialDays(result?.annual ?? null));
     setLoading(false);
   }, [available]);
@@ -119,7 +122,10 @@ export default function PaywallScreen() {
   const title = ended === 'trial' ? t('paywall.titleTrialEnded')
     : ended === 'subscription' ? t('paywall.titleExpired')
     : t('paywall.title');
-  const subtitle = ended ? t('paywall.bodyExpired') : t('paywall.subtitle');
+  // Deneme cümlesi yalnızca uygunsa (sabit metin her kullanıcıya deneme vaat ediyordu)
+  const subtitle = ended ? t('paywall.bodyExpired')
+    : trialDays !== null ? `${t('paywall.subtitle')} ${t('paywall.subtitleTrial', { days: trialDays })}`
+    : t('paywall.subtitle');
 
   const handleSubscribe = async () => {
     if (!selectedPkg || busy) return;
