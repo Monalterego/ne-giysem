@@ -3,7 +3,8 @@
 // FASHN proxy'si — kimlik + kota + izin listesi sunucuda.
 //
 // action 'start'  → start_tryon: kota kontrolü + render_id (limit doluysa 402)
-//                   ücretsiz 3 ömür boyu · premium 8 / takvim ayı (013)
+//                   deneme: toplam trial.tryon_total · premium: premium.tryon_monthly / takvim
+//                   ayı (022, app_limits); abonelik / deneme yoksa 403 subscription-required
 // action 'run'    → render_id zorunlu; model + girdi anahtarları izin listesinde,
 //                   görsel URL'leri kullanıcının kendi storage'ı veya kendi FASHN çıktısı
 // action 'status' → prediction id kullanıcının bir render'ına ait olmalı (403);
@@ -30,6 +31,7 @@ import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
 import { reportOpsEvent, serviceUnavailable } from "../_shared/ops.ts";
 import { consentState, consentRequired } from "../_shared/consent.ts";
 import type { ConsentKind } from "../_shared/consent.ts";
+import { accessGate } from "../_shared/access.ts";
 import {
   fashnKey, fashnRun, fashnStatus, isOutOfCredits, parsePredictionId, parseStatus,
   httpsOutputs, parseImageDataUri, decodeBase64, PREDICTION_ID_RE,
@@ -268,6 +270,11 @@ Deno.serve(async (req) => {
 
     // ── start ──────────────────────────────────────────────────────────────
     if (body.action === "start") {
+      // Hard paywall (022): abonelik / deneme yoksa render açılmaz. Yalnızca start'ta:
+      // açılmış bir denemenin run / status / finish adımları yarıda kesilmesin.
+      const access = await accessGate(admin, user.id);
+      if (access) return access;
+
       // Sanal deneme rızalarından en az biri geçerli değilse render açılmaz (kota düşmez).
       // Hiçbiri geçerli değil ama biri eski sürümle verilmişse → consent-version-outdated
       const [photo, physical] = await Promise.all([
@@ -290,12 +297,14 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.rpc("start_tryon", { p_user: user.id });
       if (error) throw new Error(`start_tryon: ${error.message}`);
       if (!data?.allowed) {
+        if (data?.error === "subscription-required") return json({ error: "subscription-required" }, 403);
         return json({
           error: "quota-exceeded",
           used: data?.used ?? null,
           limit: data?.limit ?? null,
           plan: data?.plan ?? null,
-          reset_at: data?.reset_at ?? null,   // premium: sonraki ayın 1'i (Istanbul); free: null
+          window: data?.window ?? null,
+          reset_at: data?.reset_at ?? null,   // premium: sonraki ayın 1'i (Istanbul); deneme: null
         }, 402);
       }
       return json(data);

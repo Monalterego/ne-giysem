@@ -27,6 +27,7 @@
 import { adminClient, requireUser, json, CORS } from "../_shared/auth.ts";
 import { reportOpsEvent, serviceUnavailable } from "../_shared/ops.ts";
 import { aiConsentGate } from "../_shared/consent.ts";
+import { accessGate } from "../_shared/access.ts";
 import {
   fashnKey, fashnRun, fashnStatus, isOutOfCredits, parsePredictionId, parseStatus,
   firstOutputCandidate, parseImageDataUri, decodeBase64, encodeBase64,
@@ -97,6 +98,10 @@ Deno.serve(async (req) => {
     const gate = await aiConsentGate(admin, user.id);
     if (gate) return gate;
 
+    // Hard paywall (022): abonelik / deneme yoksa FASHN'a istek gitmez, iş açılmaz
+    const access = await accessGate(admin, user.id);
+    if (access) return access;
+
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return json({ error: "invalid-body" }, 400);
 
@@ -147,6 +152,7 @@ Deno.serve(async (req) => {
       if (!start?.allowed) {
         if (start?.error === "daily-limit")    return json({ error: "daily-limit" }, 429);
         if (start?.error === "item-not-found") return json({ error: "item-not-found" }, 404);
+        if (start?.error === "subscription-required") return json({ error: "subscription-required" }, 403);
         if (start?.error)                      return json({ error: start.error }, 409);
         return json({
           error: "quota-exceeded",

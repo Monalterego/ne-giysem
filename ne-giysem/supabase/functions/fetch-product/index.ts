@@ -11,6 +11,7 @@
 // adres değişebilir (fetch'e IP veremeyiz; TLS SNI bozulur).
 
 import { adminClient, requireUser, bumpUsage, json, CORS } from "../_shared/auth.ts";
+import { accessGate } from "../_shared/access.ts";
 
 // ─── Sınırlar (tek yer) ──────────────────────────────────────────────────────
 const DAILY_CAP     = 60;
@@ -233,6 +234,10 @@ Deno.serve(async (req) => {
     const admin = adminClient();
     const user  = await requireUser(req, admin);
     if (!user) return json({ error: "unauthorized" }, 401);
+
+    // Hard paywall (022): abonelik / deneme yoksa ürün sayfası çekilmez
+    const access = await accessGate(admin, user.id);
+    if (access) return access;
 
     const body = await req.json().catch(() => null);
     const raw  = body?.url;
