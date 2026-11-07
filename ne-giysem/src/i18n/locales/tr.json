@@ -762,7 +762,9 @@
     "comboSuggestions": "Kombin Önerileri",
     "emptyDesc": "Dolabına parça ekledikçe uyum analizi burada gösterilecek.",
     "analysisFailed": "Bu ürünü tanıyamadık. Bu tarama hakkından düşmedi, tekrar deneyebilirsin.",
-    "retry": "Tekrar dene"
+    "retry": "Tekrar dene",
+    "addToWardrobe": "Dolaba ekle",
+    "addToWardrobeHint": "Aldıysan dolabına ekle. Görsel, normal eklemedeki gibi hazırlanır."
   },
   "weather": {
     "veryCold": "Kalın kıyafetler",

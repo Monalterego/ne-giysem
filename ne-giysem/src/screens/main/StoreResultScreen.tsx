@@ -16,7 +16,7 @@ import type { ScanStackParamList } from '../../navigation/types';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { itemImageRefs, itemImageSource, itemThumbSource, useSignedImages } from '../../lib/storageUrls';
 import { useUserStore } from '../../store/useUserStore';
-import { spendScan } from '../../lib/premiumGate';
+import { spendScan, guardWardrobeAdd } from '../../lib/premiumGate';
 import { openPaywall } from '../../navigation/navigationRef';
 import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionAnalysis';
 import { isAiConsentError } from '../../lib/edgeFunctions';
@@ -35,8 +35,8 @@ import { catLabel } from '../../constants/categories';
 type Props = NativeStackScreenProps<ScanStackParamList, 'StoreResult'>;
 
 // VisionResult'ı lokal motor için WardrobeItem şekline dönüştürür
-function visionToWardrobeItem(v: VisionResult, processedBase64: string): WardrobeItem {
-  const uri = `data:image/jpeg;base64,${processedBase64}`;
+function visionToWardrobeItem(v: VisionResult, imageBase64: string): WardrobeItem {
+  const uri = `data:image/jpeg;base64,${imageBase64}`;
   return {
     id: 'scanned',
     userId: '',
@@ -143,7 +143,7 @@ function WardrobeComboCard({ items, onItemPress }: { items: WardrobeItem[]; onIt
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
 
 export default function StoreResultScreen({ route, navigation }: Props) {
-  const { processedBase64, originalUri } = route.params;
+  const { imageBase64, imageUri } = route.params;
   const items   = useWardrobeStore((s) => s.items);
   // Görseller private storage'da — ekrandaki tüm parçalar tek createSignedUrls çağrısında
   useSignedImages('wardrobe-items', itemImageRefs(items));
@@ -163,7 +163,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
   const [_detectedCategory, setDetectedCategory] = useState<ClothingCategory>('upper');
 
   // 1. Vision analizi → hak harcama → sonuç
-  // "Uyar mı?" hakkı Poof (ScanScreen) + vision BAŞARIYLA bittikten SONRA, sonucu
+  // "Uyar mı?" hakkı vision BAŞARIYLA bittikten SONRA, sonucu
   // göstermeden hemen önce harcanır: başarısız tarama hak yakmaz. Reddedilirse sonuç
   // gösterilmez, limit ekranı açılır.
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function StoreResultScreen({ route, navigation }: Props) {
     setAnalyzing(true);
     setAnalysisError(null);
     // İzin metni eskiyse güncel metin sorulur, onaylanırsa analiz yeniden denenir
-    withAiReconsent(() => analyzeClothingImage(processedBase64))
+    withAiReconsent(() => analyzeClothingImage(imageBase64))
       .then(async (result) => {
         if (cancelled) return;
         // Analiz başarısız (failed: varsayılan 'upper') → hak düşmez, sonuç gösterilmez
@@ -204,13 +204,13 @@ export default function StoreResultScreen({ route, navigation }: Props) {
       })
       .finally(() => { if (!cancelled) setAnalyzing(false); });
     return () => { cancelled = true; };
-  }, [processedBase64, attempt]);
+  }, [imageBase64, attempt]);
 
   // 2. Dolap uyum analizi — senkron lokal motor, sıfır network
   useEffect(() => {
     if (!visionResult || !items.length) return;
     setSmartAnalyzing(true);
-    const scannedItem = visionToWardrobeItem(visionResult, processedBase64);
+    const scannedItem = visionToWardrobeItem(visionResult, imageBase64);
     const result = analyzeStoreItem(
       scannedItem, items,
       weather ?? undefined,
@@ -220,7 +220,19 @@ export default function StoreResultScreen({ route, navigation }: Props) {
     setSmartAnalyzing(false);
   }, [visionResult, items, weather]);
 
-  const scannedUri = `data:image/jpeg;base64,${processedBase64}`;
+  const scannedUri = `data:image/jpeg;base64,${imageBase64}`;
+
+  // "Dolaba ekle" → Dolap sekmesinde yükleme ekranı, seçim adımı atlanır. Taramanın
+  // analizi devredilir (ikinci Claude çağrısı yok); packshot ve kesim normal akıştaki gibi.
+  const handleAddToWardrobe = useCallback(async () => {
+    if (!visionResult) return;
+    if (!(await guardWardrobeAdd())) return;
+    navigation.getParent()?.navigate('Wardrobe', {
+      screen: 'Upload',
+      params: { preset: { uri: imageUri, base64: imageBase64, vision: visionResult } },
+      initial: false,
+    });
+  }, [visionResult, imageUri, imageBase64, navigation]);
 
   // Parça fotoğrafı büyütme (lightbox) — Combos ekranıyla aynı desen
   const [lightboxItemId, setLightboxItemId] = useState<string | null>(null);
@@ -326,6 +338,17 @@ export default function StoreResultScreen({ route, navigation }: Props) {
               </>
             )}
           </>
+        )}
+
+        {/* Dolaba ekle: normal yükleme akışı (packshot / cihaz kesimi, yan yana onay, kota) */}
+        {visionResult && !analyzing && (
+          <View style={styles.addWrap}>
+            <Text style={styles.addHint}>{t('storeResult.addToWardrobeHint')}</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={handleAddToWardrobe} activeOpacity={0.85}>
+              <Feather name="plus" size={18} color={colors.text} />
+              <Text style={styles.addBtnText}>{t('storeResult.addToWardrobe')}</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View style={styles.bottomPad} />
@@ -653,6 +676,34 @@ const styles = StyleSheet.create({
   missingText: {
     flex: 1,
     ...typography.body,
+    color: colors.text,
+  },
+
+  // ── Dolaba ekle ──
+  addWrap: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  addHint: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  addBtn: {
+    height: 48,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  addBtnText: {
+    ...typography.body,
+    fontFamily: fonts.bodyBold,
     color: colors.text,
   },
 

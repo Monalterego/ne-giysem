@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { colors, fonts, typography, spacing, radius, shadows, layout } from '../
 import { friendlyError } from '../../utils/errorMessage';
 import { toUploadJpeg, alertAfterPicker } from '../../utils/imageNormalize';
 import { analyzeClothingImage } from '../../utils/visionAnalysis';
+import type { VisionResult } from '../../utils/visionAnalysis';
 import { uuidv4 } from '../../utils/uuid';
 import { ensureAiDecision, openAiConsent, withAiReconsent } from '../../lib/aiConsent';
 import { requestPackshot, cutoutToJpegBase64 } from '../../lib/garmentImage';
@@ -45,7 +46,7 @@ type ResultNote = 'quota' | 'failed' | null;
 // Kaydedilecek görsel + kaynağı
 type Chosen = { base64: string; source: ImageSource };
 
-export default function UploadScreen({ navigation }: Props) {
+export default function UploadScreen({ navigation, route }: Props) {
   const [originalUri, setOriginalUri] = useState<string | null>(null);
   const [originalBase64, setOriginalBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -85,7 +86,7 @@ export default function UploadScreen({ navigation }: Props) {
     let result: ImagePicker.ImagePickerResult;
 
     // Picker base64 İSTENMEZ: galeride tam çözünürlüklü (HEIC/12–48 MP) olabilir ve
-    // eskiden manipulate başarısız olunca bu ham base64 doğrudan Poof'a gidiyordu.
+    // eskiden manipulate başarısız olunca bu ham base64 doğrudan arka plan servisine gidiyordu.
     // Tek kaynak toUploadJpeg (JPEG, uzun kenar ≤ 1400, boyut tavanı).
     const pickerOptions: ImagePicker.ImagePickerOptions = {
       mediaTypes: ['images'],
@@ -152,6 +153,31 @@ export default function UploadScreen({ navigation }: Props) {
       alertAfterPicker(t('combos.errorTitle'), friendlyError(err));
       return;
     }
+    await prepare(run, source, uri, base64Input, useAi);
+  };
+
+  // "Uyar mı?" sonucundan "Dolaba ekle": görsel taramada normalize edildi, seçim adımı
+  // atlanır; taramanın analizi devredilir (ikinci Claude çağrısı yok)
+  const preset = route.params?.preset;
+  useEffect(() => {
+    if (!preset) return;
+    navigation.setParams({ preset: undefined });   // geri / yeniden seçimde tekrar çalışmasın
+    void (async () => {
+      const decision = await ensureAiDecision();
+      if (decision === 'dismissed') return;
+      reset();
+      const run = runId.current;
+      setManual(decision !== 'granted');
+      setLoading(true);
+      await prepare(run, 'scan', preset.uri, preset.base64, decision === 'granted', preset.vision);
+    })();
+  }, [preset]);
+
+  // Normalize edilmiş görsel → analiz + cihaz kesimi + packshot → yan yana / sonuç
+  const prepare = async (
+    run: number, source: string, uri: string, base64Input: string, useAi: boolean,
+    presetVision?: VisionResult,
+  ) => {
     setOriginalUri(uri);
     setOriginalBase64(base64Input);
 
@@ -162,7 +188,9 @@ export default function UploadScreen({ navigation }: Props) {
     analysisKey.current = useAi ? key : null;
     if (useAi) {
       // İzin metni eskiyse güncel metin sorulur, onaylanırsa yeniden denenir
-      startAnalysis(key, () => withAiReconsent(() => analyzeClothingImage(base64Input)));
+      startAnalysis(key, presetVision
+        ? () => Promise.resolve(presetVision)
+        : () => withAiReconsent(() => analyzeClothingImage(base64Input)));
     }
     const cutoutPromise = Platform.OS === 'web' ? Promise.resolve(null) : cutoutToJpegBase64(uri);
     const packshotPromise: Promise<PackshotOutcome> = useAi

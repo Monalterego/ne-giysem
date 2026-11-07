@@ -20,32 +20,20 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { ScanStackParamList } from '../../navigation/types';
 import { usePlanStore } from '../../store/usePlanStore';
 import { guardScan } from '../../lib/premiumGate';
-import { ensureAiDecision, openAiConsent, withAiReconsent } from '../../lib/aiConsent';
+import { ensureAiDecision, openAiConsent } from '../../lib/aiConsent';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
 import { scrapeProductImage } from '../../utils/urlScraper';
 import { toUploadJpeg, alertAfterPicker } from '../../utils/imageNormalize';
-import { callEdge, edgeError, EdgeError, isAiConsentError } from '../../lib/edgeFunctions';
+import { EdgeError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { t } from '../../i18n';
 import { upper } from '../../utils/text';
 
 type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
 
-async function removeBackground(imageBase64: string): Promise<string> {
-  const res = await callEdge('bg-removal-proxy', { image_b64: imageBase64 });
-  if (!res.ok) throw await edgeError(res);
-  const json = await res.json();
-  const out = (json as any)?.result_b64;
-  // Boş sonuç sessizce "başarı" sayılmasın
-  if (typeof out !== 'string' || !out) throw new Error('bg-removal: result_b64 yok');
-  return out;
-}
-
-async function processBase64(base64: string): Promise<string> {
-  if (Platform.OS === 'web') return base64;
-  return removeBackground(base64);
-}
+// Tarama arka plan kaldırmaz (Karar 1, 05.11.2026): normalize edilmiş orijinal
+// doğrudan StoreResult'a ve oradan Claude'a gider; tarama fotoğrafı saklanmaz.
 
 export default function ScanScreen({ navigation }: Props) {
   const [urlInput,     setUrlInput]     = useState('');
@@ -114,20 +102,16 @@ export default function ScanScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
-      let base64Input: string;
       if (Platform.OS === 'web') {
         if (!asset.base64) throw new Error('web: picker base64 dönmedi');
-        base64Input = asset.base64;
+        navigation.navigate('StoreResult', { imageBase64: asset.base64, imageUri: uri });
       } else {
-        base64Input = (await toUploadJpeg(uri, asset.width, asset.height)).base64;
-        setLoadingStep(t('scan.removingBg'));
+        // imageUri: normalize edilmiş JPEG (cache) — "Dolaba ekle"de yükleme akışının girdisi
+        const normalized = await toUploadJpeg(uri, asset.width, asset.height);
+        navigation.navigate('StoreResult', { imageBase64: normalized.base64, imageUri: normalized.uri });
       }
-      const processedBase64 = await withAiReconsent(() => processBase64(base64Input));
-      navigation.navigate('StoreResult', { processedBase64, originalUri: uri });
     } catch (err) {
-      console.warn(`[Scan] ${source} hazırlama/arka plan başarısız:`, err);
-      // 403: izin başka yerde geri çekilmiş → durumu tazele, ekran "kapalı"ya döner
-      if (isAiConsentError(err)) useConsentStore.getState().refresh();
+      console.warn(`[Scan] ${source} görsel hazırlanamadı:`, err);
       alertAfterPicker(t('combos.errorTitle'), friendlyError(err));
     } finally {
       setLoading(false);
@@ -147,12 +131,13 @@ export default function ScanScreen({ navigation }: Props) {
       setLoadingStep(t('scan.readingProduct'));
       const scraped = await scrapeProductImage(url);
       // Ürün görselleri boyut/format açısından kontrolsüz → aynı normalizasyon
-      const imageBase64 = Platform.OS === 'web'
-        ? scraped
-        : (await toUploadJpeg(`data:image/jpeg;base64,${scraped}`)).base64;
-      setLoadingStep(Platform.OS === 'web' ? t('scan.preparingImage') : t('scan.removingBg'));
-      const processedBase64 = await withAiReconsent(() => processBase64(imageBase64));
-      navigation.navigate('StoreResult', { processedBase64, originalUri: url });
+      if (Platform.OS === 'web') {
+        navigation.navigate('StoreResult', { imageBase64: scraped, imageUri: `data:image/jpeg;base64,${scraped}` });
+      } else {
+        setLoadingStep(t('scan.preparingImage'));
+        const normalized = await toUploadJpeg(`data:image/jpeg;base64,${scraped}`);
+        navigation.navigate('StoreResult', { imageBase64: normalized.base64, imageUri: normalized.uri });
+      }
     } catch (err) {
       console.warn('[Scan] url akışı başarısız:', err);
       // fetch-product kodları → anlamlı mesaj; diğerleri (oturum, sınır, boyut,

@@ -16,6 +16,7 @@ export type OnboardingStackParamList = {
 };
 
 import type { ImageSource, WardrobeItem } from '../types';
+import type { VisionResult } from '../utils/visionAnalysis';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -24,7 +25,9 @@ export type HomeStackParamList = {
 
 export type WardrobeStackParamList = {
   WardrobeList: undefined;
-  Upload: undefined;
+  // preset: "Uyar mı?" sonucundan "Dolaba ekle" — seçim adımı atlanır, aynı akış
+  // (packshot / cihaz kesimi, yan yana onay, packshot kotası). vision: taramanın analizi
+  Upload: { preset?: { uri: string; base64: string; vision?: VisionResult } } | undefined;
   UploadDetail:
     // manual: yapay zekâ izni yok — otomatik tanıma yapılmaz (görsel yine cihazda kesilebilir)
     // imageSource: kaydedilecek görselin kaynağı (wardrobe_items.image_source)
@@ -42,8 +45,9 @@ export type WardrobeStackParamList = {
 export type ScanStackParamList = {
   ScanHome: undefined;
   StoreResult: {
-    processedBase64: string;
-    originalUri: string;
+    // Arka planı kaldırılmamış, normalize edilmiş orijinal (≤1400 px JPEG)
+    imageBase64: string;
+    imageUri: string;
   };
 };
 
@@ -57,7 +61,7 @@ export type ProfileStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Wardrobe: undefined;
+  Wardrobe: NavigatorScreenParams<WardrobeStackParamList> | undefined;
   Combos: { focusComboKey?: string; occasion?: string } | undefined;
   Scan: undefined;
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
