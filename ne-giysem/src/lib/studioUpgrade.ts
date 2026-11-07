@@ -9,9 +9,11 @@ import type { Usage } from '../store/usePlanStore';
 // Cihaz kesimiyle ya da olduğu gibi kaydedilmiş parçayı kullanıcı seçip packshot'a
 // yükseltir. Otomatik yükseltme yok. Kota sunucuda (garment-image, item_id ile).
 
-/** Yükseltilebilir mi? Packshot'lı ve eski (Poof dönemi, image_source yok) parçalar hariç */
+/** Yükseltilebilir mi? Packshot'lı parçalar hariç; image_source'u olmayan (021 öncesi) parçalar dahil */
 export function isUpgradeEligible(item: WardrobeItem): boolean {
-  return item.imageSource === 'device_cutout' || item.imageSource === 'original';
+  return item.imageSource == null
+    || item.imageSource === 'device_cutout'
+    || item.imageSource === 'original';
 }
 
 /** Kalan packshot hakkı; bilinmiyorsa null, sınırsızsa Infinity */

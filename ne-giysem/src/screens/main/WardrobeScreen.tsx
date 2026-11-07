@@ -268,7 +268,7 @@ export default function WardrobeScreen({ navigation }: Props) {
         text: t('common.edit'),
         onPress: () => navigation.navigate('UploadDetail', { existingItem: item }),
       },
-      // Cihaz kesimi / olduğu gibi kaydedilmiş parça → packshot (kota sunucuda)
+      // Cihaz kesimi / olduğu gibi / 021 öncesi kaydedilmiş parça → packshot (kota sunucuda)
       ...(isUpgradeEligible(item)
         ? [{ text: t('wardrobe.upgradeAction'), onPress: () => setUpgradeItem(item) }]
         : []),

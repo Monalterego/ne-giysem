@@ -33,7 +33,7 @@ export type Fabric =
  *   'bg_removed'    ayrılmış, kullanılmıyor (FASHN background-remove yok)
  *   'device_cutout' cihaz üstü kesim (modules/garment-cutout)
  *   'original'      olduğu gibi (kesim desteklenmiyor / başarısız)
- * Eski (Poof dönemi) kayıtlarda yok.
+ * 021 öncesi kayıtlarda yok (stüdyo kalitesine yükseltilebilir sayılır).
  */
 export type ImageSource = 'packshot' | 'bg_removed' | 'device_cutout' | 'original';
 
