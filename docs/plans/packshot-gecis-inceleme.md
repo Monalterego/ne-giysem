@@ -918,6 +918,66 @@ Krediyle ilgili testler en sonda.
 4. **"Orijinali kullan" kaynağı:** bg-remove (kararlar) ya da cihaz kesimi varsa o (0 kredi).
 5. **Değerler:** premium aylık packshot varsayılanı (15. adıma kadar) ve günlük `garment` tavanı.
 
+### 8-10.7 Uygulama durumu (07.11.2026)
+
+**Onay ve sonrasında gelen kararlar:**
+1. Packshot API'de var: `/run {"model_name":"packshot"}` → 400 `product_image is required`. Bayrak yok, dal açık.
+2. Yerel Expo modülü.
+3. İzin yokken de cihaz kesimi. Metin 13. adımdaki 2.1'de değişecek; **şu an `aiConsent.declineBody` "arka planı kaldırılmadan kaydedilir" diyor ve bu artık doğru değil**.
+4. "Orijinali kullan" = cihaz kesimi; FASHN background-remove hiçbir dalda yok.
+5. Premium 40/ay. Yıllık abonenin **ilk 30 günü 150** (sonra 40). Günlük tavan 60.
+
+**Commit'ler:**
+
+| Grup | Commit | Ne |
+|---|---|---|
+| G1 | `897d6c1` | `021_garment_jobs.sql`: `image_source`, `garment_jobs`, kota fonksiyonları, yıllık kurulum ayı, `limit_for` anahtarları, `get_usage.packshot` |
+| G2 | `757b8af` (+ G4'te ek) | `modules/garment-cutout`: Swift (Vision), Kotlin (ML Kit), `flattenOnWhite`, `clearCache` |
+| G3 | `9dffca3` | `garment-image` edge function (packshot) |
+| G4 | `8ce15ff` | Yeni yükleme akışı (Poof çağrısı kalktı) |
+| G6 | `2d06f2e` | "Stüdyo kalitesine yükselt" |
+| G5 | — | Ayrı grup gerekmedi: packshot dalı G3 + G4'e girdi, background-remove dalı yok |
+| G7 | — | Yayın: production build, sonra 12. ve 13. adım |
+
+**Tasarımdan sapmalar:**
+- **Yıllık plan tanıma:** `annual_products(product_id)` tablosu elle doldurulur. Kurulum ayı başlangıcı (`packshot_setup.started_at`), `entitlements`'a yıllık ve geçerli bir ürün ilk kez yazıldığında tetikleyiciyle bir kez kaydedilir.
+  - RevenueCat'in `subscriptions[].original_purchase_date` alanı yalnızca örnek JSON'da geçiyor, anlamı tanımlanmamış ([kaynak](https://www.revenuecat.com/docs/api-v1/customer-info-model)). Bu yüzden kullanılmadı.
+- **`app.json` `version` yükseltilmedi** (tasarımda G2'deydi). G7'de, production build'den hemen önce **1.1.0** yapılmalı. Gerekçe:
+  - Yükseltilseydi `main`'den yapılan her `eas update` yalnızca 1.1.0'a gider. Henüz yayınlanmamış OTA'lar (izin 2.0 dahil) 1.0.1 cihazlarına ulaşmazdı.
+  - JS native modülü `requireOptionalNativeModule` ile çağırıyor. Modülsüz 1.0.1 binary'sinde kesim "desteklenmiyor" sayılır, akış packshot ya da "olduğu gibi"ye düşer. Çökme olmaz.
+  - Dev build'ler `development` kanalında; production OTA'ları onlara gitmez.
+- **Orijinal hiçbir yolda storage'a yazılmıyor.** Packshot girdisi data URI; yükseltmede kayıtlı görselin 10 dk imzalı URL'i.
+- **Claude analizi** orijinal üzerinde ve packshot ile paralel başlıyor (`src/lib/pendingAnalysis.ts`).
+- **Yükseltmede "Vazgeç"** (üretim sürerken): iş sunucuda tamamlanabilir ve kredi harcanır. İstemci yoklamayı bıraktığı için iş `succeeded_at` almaz, 10 dk sonra kotadan düşer.
+- **Try-on'da `garment_photo_type`** packshot parçalar için değiştirilmedi (`'auto'`). Packshot çıktısının biçimi (flat lay mi, ghost mannequin mi) ölçülmeden `'flat-lay'` riskli.
+
+**Yayın sırası:**
+1. Migration 021 (SQL Editor).
+2. `npx supabase functions deploy garment-image --project-ref bdvrgbylirftuxmrpbea`. Ortak katman değiştiği için `fashn-proxy` da yeniden deploy edilmeli; davranışı değişmedi.
+3. Packshot ölçümü (aşağıda).
+4. Dev build (native modül).
+5. OTA.
+- **Uyarı:** 021 uygulanmadan OTA giderse kıyafet kaydı `image_source` kolonu yüzünden hata verir.
+
+**Packshot ölçümü (tek kredili istek):**
+- Dev build ya da OTA'lı bir test hesabıyla izin açıkken bir kıyafet ekle. fashn-proxy logunda iki satır olmalı:
+  - `[garment-image] packshot run … credits_used=<x-fashn-credits-used>`
+  - `[garment-image] packshot completed {shape, output_kind, mime, bytes, response_keys, credits_used}`
+- FASHN panelinde kredi satırı kontrol edilir.
+- `output_kind = "url"` çıkarsa `return_base64` yok sayılmış demektir. Bu durumda çıktı FASHN CDN'inde 3 gün kalır ve gizlilik metnindeki "en geç 60 dakika" packshot için geçersizleşir. Metin ya da tasarım güncellenmeli.
+- **İsteğe bağlı parametreler:** FASHN 400 doğrulama yanıtı kredi harcamıyor (*"Failed predictions do not consume credits"*; 400 zaten iş başlatmıyor). Bilinmeyen bir anahtarla yapılan `/run` isteğinin 400 mesajı izinli alanları listeleyebilir **[doğrulanmadı]**. Kesin liste için FASHN'a sorulmalı. Şu an yalnızca `product_image` ve `return_base64` gönderiliyor.
+
+**Test (kredisiz olanlar önce):**
+1. **SQL:** `021` sonundaki kota testi (3 rezervasyon, 4.'sü red, iade, başarılı iş iade edilmez). Yıllık için `annual_products`'a test ürünü ekle, test hesabının `entitlements` satırını güncelle → `packshot_quota` `window = setup`, limit 150.
+2. **Dev build (kredisiz):**
+   - İzni kapalı hesapla kıyafet ekle. iOS 17+ ve Android'de kesim, iOS 16'da "olduğu gibi" + ipucu. Hiç FASHN isteği olmamalı.
+   - Kotası dolu hesapla (SQL ile 3 başarılı iş) → "Stüdyo görseli hakkın doldu" + kesim.
+3. **Kredili:**
+   - Packshot ile yan yana ekran. "Bu benim kıyafetim" → `image_source = 'packshot'`. "Orijinali kullan" → `device_cutout`.
+   - Mayo ya da iç giyim → moderasyon → kesim, `garment_jobs.failed_at` dolu.
+   - Yükseltme: menü → onay → yeni `_s.jpg`, eski dosyalar ve o parçanın try-on cache dosyaları silinmiş olmalı.
+4. **Storage:** hiçbir akışta `wardrobe-items`'a `<uuid>.jpg` / `_thumb.jpg` (yükseltmede `_s.jpg` / `_s_thumb.jpg`) dışında dosya oluşmamalı.
+
 ## e. Riskler ve açık sorular
 
 **Açık sorular:**
