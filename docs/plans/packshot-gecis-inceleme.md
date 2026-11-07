@@ -498,6 +498,8 @@ Sonrasında limit değişikliği yalnızca `update app_limits …` olur; build g
 
 ### c.4 Adım 5'in (return_base64 + ara çıktılar) metinlere etkisi — 7. adımda yapılacak (yalnızca liste)
 
+> **Uygulandı (07.11.2026)** — adım 6 + 7 ile birlikte; bkz. d, "Adım 6 + 7" bölümü. Aşağıdaki liste tarihsel kayıt olarak bırakıldı.
+
 Bu adımda metin değiştirilmedi. Satır numaraları 06.11.2026 haliyle:
 
 - **`docs/compliance/saklama-imha-politikasi.md`**
@@ -542,8 +544,8 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 4 | Try-on: dış giyim elenir (`isOuter`: kategori `outer` + hırka/yelek), sonuçta "dış giyim gösterilmiyor" notu, try-on cache'i ayrı ve sürümlü imzaya geçer (`v2_`; favori imzası değişmez). Fotoğraf varken de kaynak sorulur (kendi fotoğrafım / yapay manken). Fotoğrafta PoseError → "Yapay mankenle dene" | OTA | Ceketli kombin: FASHN panelinde ceket satırı olmamalı, `runs_used` bir azalmalı, eski cache isabet vermemeli; fotoğraflı hesapta seçim penceresi; yüz odaklı fotoğrafla PoseError → yapay manken önerisi |
 | 4b | Profil fotoğrafı ön kontrolü, ucuz sürüm (b.3a): yüklemede en-boy oranı uyarısı + "yine de kullan" | OTA | Kare/yatay selfie → uyarı; dikey tam boy → uyarı yok; maliyet 0 |
 | 5 | ✅ (06.11.2026, `39e7351` + `805bc7f`) fashn-proxy'de `return_base64` + ara çıktılar `mannequin-cache/<uid>/tmp_<render>_<prediction>.<ext>` (alt klasör değil — hesap silme yalnızca kökü listeliyor); `finish` eylemi; tryon-max `output_format: 'jpeg'`. Ayrıntı b.3b, metin listesi c.4 (adım 7'de) | sunucu + OTA | 3 katman + ayakkabı: FASHN URL'i istemciye hiç gelmemeli; geçici dosyalar silinmeli; `output saved` logunda boyut ve CPU |
-| 6 | **Sunucuda izin sürümü kontrolü** (Karar 5): `consent_granted` ya da `_shared/consent.ts` en son kaydın `text_version` ana sürümünü sunucu tarafı tablo/sabitle (`ai_processing` → 2, `tryon_*` → 1) karşılaştırır. Eski sürüm 403 döner. `anthropic-proxy`, `fashn-proxy` ve (adım 8'deki) `garment-image` kullanır. `bg-removal-proxy` da (silinene kadar) aynı kontrolü alır | sunucu | 1.1 onaylı test hesabı: proxy'ler 403 `ai-consent-required` döndürmeli; 2.0 onayından sonra 200; try-on 1.0 rızalarıyla çalışmaya devam etmeli |
-| 7 | İzin metni ve sürüm (Karar 5): tr/en `aiConsent` (Poof çıkar, FASHN eklenir), `privacy.aiBody`, `CONSENT_VERSIONS.ai_processing = '2.0'`; web sayfaları ve compliance dokümanları (c bölümü, adım 5'in etkisi c.4) | OTA + web + docs (adım 6 ile **aynı gün**) | 1.1 onaylı hesap: ilk eklemede izin ekranı yeniden açılmalı; `consent_events`'te 2.0 satırı; web sayfalarında Poof geçmemeli |
+| 6 | ✅ (07.11.2026, `e58de94`; ayrıntı "Adım 6 + 7" bölümü) **Sunucuda izin sürümü kontrolü** (Karar 5): `consent_granted` ya da `_shared/consent.ts` en son kaydın `text_version` ana sürümünü sunucu tarafı tablo/sabitle (`ai_processing` → 2, `tryon_*` → 1) karşılaştırır. Eski sürüm 403 döner. `anthropic-proxy`, `fashn-proxy` ve (adım 8'deki) `garment-image` kullanır. `bg-removal-proxy` da (silinene kadar) aynı kontrolü alır | sunucu | 1.1 onaylı test hesabı: proxy'ler 403 `ai-consent-required` döndürmeli; 2.0 onayından sonra 200; try-on 1.0 rızalarıyla çalışmaya devam etmeli |
+| 7 | ✅ (07.11.2026, `faf897f` + web `draft` `3a98c9f`; Poof geçiş süresince listede kaldı, 13. adımda çıkar → 2.1) İzin metni ve sürüm (Karar 5): tr/en `aiConsent` (Poof çıkar, FASHN eklenir), `privacy.aiBody`, `CONSENT_VERSIONS.ai_processing = '2.0'`; web sayfaları ve compliance dokümanları (c bölümü, adım 5'in etkisi c.4) | OTA + web + docs (adım 6 ile **aynı gün**) | 1.1 onaylı hesap: ilk eklemede izin ekranı yeniden açılmalı; `consent_events`'te 2.0 satırı; web sayfalarında Poof geçmemeli |
 | 8 | `garment-image` fonksiyonu (packshot + background-remove, `garment_jobs`, packshot sayacı, adım 6'daki sürüm kontrolü); istemci henüz çağırmıyor | sunucu | Test kullanıcısıyla curl: başarılı, moderasyon (mayo), OutOfCredits (sahte anahtar), sahiplik (başkasının id'si → 403), 1.1 izinle 403 |
 | 9 | `wardrobe_items.image_source` migration (`'packshot' \| 'fashn_bg' \| 'original'`; `'device'` lansman sonrası) | sunucu | Sütun null'able; mevcut uygulama etkilenmez |
 | 10 | Yeni yükleme akışı (Karar 2, 4, 6): geçici `_orig.jpg` yükle → Claude(orijinal) ∥ packshot → yan yana seçim → onay: packshot / ret: FASHN background-remove → karar verilince `_orig.jpg` silinir. Ücretsiz plan 4.+ parça: packshot yok, orijinal olduğu gibi + "düz zemine ser, iyi ışıkta çek" ipucu. Hata durumunda: orijinal olduğu gibi | OTA | Ücretsiz: 3 parça packshot, 4. parça olduğu gibi + ipucu; premium: tüm parçalar packshot; onay/ret/zaman aşımı/moderasyon/OutOfCredits; kayıttan sonra storage'da `_orig.jpg` kalmamalı; vazgeçince de silinmeli |
@@ -553,6 +555,92 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 14 | Ucuz model testi (b.4): önce prompt'un saf modüle taşınması, betik yerelde. Karar 2'ye göre test görselleri **orijinal + packshot** | OTA + yerel | Rapor; geçerse önce `ALLOWED_MODELS` (sunucu), ardından `visionAnalysis.ts:198` (OTA) |
 | 15 | Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
 | 15a | **Kalan hak göstergesi** (15'in alt maddesi): try-on ve "Uyar mı?" için kalan/toplam hak `get_usage`'dan okunup gösterilecek. Yerler: deneme butonu yanında ve "Uyar mı?" ekranında. Metinler (TR + EN): premium "Bu ay X / Y deneme hakkın kaldı", ücretsiz "X ücretsiz deneme hakkın var" (toplam hak), hak bitince "Z tarihinde yenilenir" (premium) ya da paywall'a yönlendirme (ücretsiz). Açık rezervasyonlar (son 30 dk) kullanılmış sayıldığı için göstergeyle tutarlı olmalı | OTA | Premium ve ücretsiz test hesabında gösterge `get_usage` ile aynı sayıyı vermeli; deneme başlayınca (açık rezervasyon) ve iade sonrası güncellenmeli; hak bitince premium'da yenilenme tarihi, ücretsizde paywall; TR ve EN metinler |
+
+### Adım 6 + 7 (07.11.2026): sunucuda izin sürümü kontrolü + izin metni 2.0
+
+**Commit'ler:**
+- `e58de94` sunucu
+- `faf897f` OTA
+- web: `sestina-web` `draft` dalında `3a98c9f`; `main`'e birleştirilince yayına çıkar
+- uyum dokümanları + bu rapor: ayrı docs commit'i
+
+**Kararlar (07.11.2026):**
+1. **Poof geçiş süresince listede kalır.** Kıyafet ekleme ve tarama hâlâ Poof kullanıyor. 13. adımda Poof çıkar ve sürüm **2.1** olur: alıcı çıkarılıyor, yeniden onay istenmez.
+2. **Saklama cümlesi istenen hâliyle iç dokümana girdi.** Altına bir açık nokta eklendi: manken tarifi (metin) FASHN istek kaydında kalıyor mu **[doğrulanmadı]**; ayrıca imzalı bağlantının yolunda uid var. FASHN'dan yazılı teyit alınacak. Web metinleri "talep gönderilmez" demiyor.
+3. **fashn-proxy plandaki gibi.** `tryon_*` için en düşük sürüm 1, yani try-on davranışı bugün değişmez. 2.0 şartı yalnızca `ai_processing`'de.
+
+**Değişen dosyalar:**
+
+| Katman | Dosya:satır | Ne |
+|---|---|---|
+| sunucu | `supabase/functions/_shared/consent.ts:20` | `MIN_CONSENT_MAJOR` (tek yer: `ai_processing` 2, `tryon_*` 1) |
+| sunucu | `_shared/consent.ts:36` | `consentState` (son kayıt → `granted` / `outdated` / `missing`) |
+| sunucu | `_shared/consent.ts:68` | `aiConsentGate` |
+| sunucu | `anthropic-proxy/index.ts:81`, `bg-removal-proxy/index.ts:35` | `aiConsentGate` → 403 `ai-consent-required` / `consent-version-outdated` |
+| sunucu | `fashn-proxy/index.ts:271-281` (start), `:350-363` (run) | Aynı durumlar, try-on rızaları için |
+| OTA | `src/constants/consent.ts:18` | `ai_processing: '2.0'` |
+| OTA | `src/lib/aiConsent.ts:54` | `withAiReconsent`: 403 outdated → izin ekranı → onaylanırsa çağrı bir kez yeniden |
+| OTA | `src/lib/aiConsent.ts:74` | `promptAiReconsentOnLaunch`; çağrıldığı yer `src/navigation/MainTabNavigator.tsx:28` (açılışta bir kez) |
+| OTA | `src/store/useConsentStore.ts:98` | `needsAiReconsent` |
+| OTA | `src/lib/edgeFunctions.ts:28` | `isConsentOutdatedError` |
+| OTA | `UploadScreen.tsx:149`, `ScanScreen.tsx:125`, `:154`, `UploadDetailScreen.tsx:128`, `StoreResultScreen.tsx:174` | Yapay zekâ çağrıları `withAiReconsent` ile sarıldı |
+| OTA | `src/utils/visionAnalysis.ts:256` | Outdated hatası yeniden denenmez, yukarı fırlatılır |
+| OTA | `src/utils/errorMessage.ts:14`, `CombosScreen.tsx:844` | Mesaj; try-on'da rıza durumu tazelenir |
+| OTA | `AiConsentScreen.tsx:72` | FASHN satırı |
+| OTA | `tr.json` / `en.json` `:851`, `:858`, `:870`, `:607` | `whatBody`, `fashnPurpose`, `privacy.aiBody`, `errors.consentOutdated` |
+| docs | `docs/compliance/saklama-imha-politikasi.md` | Sürüm 1.3. Ara çıktılar satırı, FASHN notu (istenen cümle + açık nokta), bölüm 3 temizlik |
+| docs | `data-inventory.md` | #6, #7, #13, #14, #15; izin tablosu (2.0, sunucu kontrolü); alıcılar; madde 9 (DPA) |
+| docs | `ozel-nitelikli-veri-siniflandirmasi.md:23` | FASHN aktarımı |
+| docs | `guvenlik-tedbirleri.md` | Sürüm 1.2. Bölüm 3 (sahiplik, `return_base64`), bölüm 4 (403'ler, `MIN_CONSENT_MAJOR`, `DEFAULT_VALUES`) |
+| web | `acik-riza.html` / `consent.html` | 2.0 metni, sürüm tablosu ve notu |
+| web | `gizlilik.html` / `privacy.html` | Kota kaydı, not (paylaşım, ara görseller), amaç tablosu (FASHN satırı, Poof geçiş), izin paragrafı (FASHN + eski sürüm), FASHN sağlayıcı satırı (60 dk, DPA), Poof satırı |
+| web | `hesap-silme.html` / `delete-account.html` | FASHN saklama cümlesi |
+| web | `aydinlatma.html` / `notice.html` | FASHN amaçları, Poof geçiş |
+
+Tüm web sayfalarında yürürlük tarihi **7 Kasım 2026** olarak ayarlandı; yayın günü farklıysa güncellenmeli.
+
+**Yayın sırası: OTA → web → sunucu**
+1. **OTA** (`eas update`).
+   - Yeni metin ve 2.0 kaydı gelir.
+   - 1.x onaylı kullanıcıya açılışta ya da ilk yapay zekâ işleminde yeniden sorulur.
+   - Eski sunucu her geçerli onayı kabul ettiği için bu aşamada kırılma olmaz.
+2. **Web:** `sestina-web` `draft` → `main`.
+   - Uygulama içindeki bağlantılar yeni metni göstersin; OTA ile aynı gün.
+3. **Sunucu:** `npx supabase functions deploy anthropic-proxy bg-removal-proxy fashn-proxy --project-ref bdvrgbylirftuxmrpbea`.
+   - **Neden en son:** OTA'yı almamış bir bundle 403 `consent-version-outdated`'i tanımaz.
+     - Kıyafet eklemede bunu sağlayıcı hatası sayar: parça arka planıyla kaydedilir, analiz düşer.
+     - Taramada genel hata gösterir.
+     - Yeniden onay verse bile `1.1` yazar.
+   - Deploy'dan önce test hesaplarının OTA'yı aldığı (yeni metni gördüğü) doğrulanmalı.
+
+**Test (3 madde):**
+1. **Açılışta yeniden onay (OTA sonrası, eski sunucu):** 1.1 onaylı test hesabıyla uygulamayı aç.
+   - İzin ekranı açılmalı: FASHN satırı ve "Kendi fotoğrafın Claude'a (Anthropic) gönderilmez" cümlesi görünmeli.
+   - Onayla. `consent_events`'te `ai_processing` / `2.0` satırı oluşmalı; kıyafet ekleme normal çalışmalı.
+2. **403 ve kaldığı yerden devam (sunucu deploy sonrası):**
+   - Uygulama açıkken SQL ile test hesabına `ai_processing` / `1.1` / `granted` satırı ekle.
+   - Kıyafet ekle. Arka plan adımında izin ekranı açılmalı.
+   - **Onay:** işlem aynı fotoğrafla sürmeli ve `2.0` satırı oluşmalı.
+   - **"Şimdi değil":** elle akışa düşmeli.
+   - "Uyar mı?" taramasında aynı davranış beklenir.
+   - curl ile `anthropic-proxy` → 403 `{"error":"consent-version-outdated","kinds":["ai_processing"]}`.
+3. **Try-on ve web:**
+   - 1.0 try-on rızalı hesapta deneme değişmeden çalışmalı (fashn-proxy 403 vermemeli).
+   - Web `draft` önizlemesi: açık rıza sayfasında 2.0; gizlilik, hesap silme ve aydınlatma sayfalarında "üç gün" ifadesi geçmemeli, "60 dakika" geçmeli.
+
+**Demo hesabı** (`demo@sestinaapp.com`; SQL Editor'de, sunucu deploy'undan önce ya da sonra):
+```sql
+insert into public.consent_events (user_id, kind, granted, text_version)
+select id, 'ai_processing', true, '2.0' from auth.users where email = 'demo@sestinaapp.com';
+
+-- kontrol: her tür için en son kayıt
+select distinct on (kind) kind, granted, text_version, created_at
+  from public.consent_events
+ where user_id = (select id from auth.users where email = 'demo@sestinaapp.com')
+ order by kind, id desc;
+```
+- Try-on rızaları (`tryon_photo` / `tryon_physical` 1.0) bu değişiklikten etkilenmez. Kontrol sorgusunda `granted = true` görünmüyorsa inceleme ekibi try-on'da rıza penceresini görür.
+- Bu satır kişinin kendisi tarafından verilmemiş bir onay kaydıdır; yalnızca bizim demo hesabımız için kullanılır.
 
 ### Açık iş (koşullu): FASHN'a gitmeden bırakılan rezervasyonun iadesi
 

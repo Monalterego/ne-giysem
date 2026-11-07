@@ -1,6 +1,6 @@
 # Kişisel Veri Saklama ve İmha Politikası
 
-**Sürüm:** 1.2 · **Son güncelleme:** 5 Kasım 2026 · **Sorumlu:** Hasan Can Demircan (veri sorumlusu; tüm roller)
+**Sürüm:** 1.3 · **Son güncelleme:** 7 Kasım 2026 · **Sorumlu:** Hasan Can Demircan (veri sorumlusu; tüm roller)
 **Kaynak:** `data-inventory.md` · **Dayanak:** KVKK m. 7; Kişisel Verilerin Silinmesi, Yok Edilmesi veya Anonim Hale Getirilmesi Hakkında Yönetmelik ("Yönetmelik")
 
 Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kayıtla yükümlü veri sorumluları içindir. Veri sorumlusu bundan istisnadır (`verbis-degerlendirmesi.md`); bu politika iyi uygulama olarak tutulur.
@@ -12,21 +12,22 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 | Ortam | İçerik | Konum |
 |---|---|---|
 | Supabase Postgres | Hesap, dolap meta verisi, kombinler, rıza kayıtları, sayaçlar, silme kaydı | Supabase, Inc.; proje bölgesi AB / Frankfurt (`eu-central-1`) |
-| Supabase Storage (özel bucket'lar) | `wardrobe-items`, `avatars`, `mannequin-cache` | Aynı |
+| Supabase Storage (özel bucket'lar) | `wardrobe-items`, `avatars`, `mannequin-cache` (try-on sonuçları, yapay manken; deneme süresince ara çıktılar `tmp_…`) | Aynı |
 | Supabase log'ları | Edge function ve auth log'ları | Aynı; 1 gün (Free plan) |
 | Veritabanı yedekleri | Haftalık DB dökümü (fotoğraflar yok) | Veri sorumlusunun kişisel Google Drive'ı ("Sestina Yedekler"), AES-256 (gpg) |
 | E-posta | Destek ve başvuru yazışmaları | Cloudflare (yönlendirme) → Gmail |
 | Kullanıcı cihazı | Oturum, dil, görünüm tercihi | Cihaz (bizim kontrolümüzde değil) |
-| Üçüncü taraflar | Poof, Anthropic, FASHN, RevenueCat, Expo, OpenWeather | Sağlayıcıların beyan ettiği süreler |
+| Üçüncü taraflar | Poof (geçiş süresince), Anthropic, FASHN, RevenueCat, Expo, OpenWeather | Sağlayıcıların beyan ettiği süreler (FASHN: bölüm 2, "FASHN" notu) |
 
 ## 2. Saklama süreleri ve imha yöntemi
 
 | Veri (envanter #) | Süre | İmha yöntemi | Nasıl tetiklenir |
 |---|---|---|---|
 | Hesap, stil, dolap, kombinler, favoriler, abonelik, kota kayıtları, rıza kayıtları (#1–5, 15, 16, 18, 19) | Hesap süresince | **Silme** (DB satırı + depo dosyası) | Hesap silme: `delete-account` → depo temizliği + `auth.admin.deleteUser` (cascade) |
-| Tek parça ve ilgili try-on görselleri (#4, #14) | Kullanıcı silene kadar | Silme | Uygulamada parça silme (`privacyActions.deleteWardrobeItemFiles`) |
-| Profil fotoğrafı ve ondan türeyen görseller (#11, #14) | Kaldırma / rıza geri çekme / hesap silme | Silme | `privacyActions.removeAvatarAndTryOns` |
-| Fiziksel profil, manken ve mankenli görseller (#12, #14) | Rıza geri çekme / hesap silme | Silme (alanlar NULL, dosyalar silinir) | `privacyActions.removePhysicalData` |
+| Tek parça ve ilgili try-on görselleri (#4, #14) | Kullanıcı silene kadar | Silme | Uygulamada parça silme (`privacyActions.deleteWardrobeItemFiles`; try-on ara çıktıları `tmp_` de silinir) |
+| Profil fotoğrafı ve ondan türeyen görseller (#11, #14) | Kaldırma / rıza geri çekme / hesap silme | Silme | `privacyActions.removeAvatarAndTryOns` (ara çıktılar `tmp_` dahil) |
+| Fiziksel profil, manken ve mankenli görseller (#12, #14) | Rıza geri çekme / hesap silme | Silme (alanlar NULL, dosyalar silinir) | `privacyActions.removePhysicalData` (ara çıktılar `tmp_` dahil) |
+| Try-on ara çıktıları (#14) — `mannequin-cache/<uid>/tmp_<render>_<id>.<ext>` | Deneme bitince; en geç **1 saat** | Silme | fashn-proxy `finish` (deneme sonu ve hata); kalanlar kullanıcının bir sonraki denemesinin başında (`start`, 1 saatten eski olanlar). Hesap silme `<uid>/` kökünü siler (bölüm 3) |
 | Günlük kullanım sayaçları (#20) | **13 ay** | Silme | Otomatik, günlük (bölüm 3) |
 | Operasyon kayıtları (#21) | **12 ay** | Silme | Otomatik, günlük |
 | Hesap silme kaydı (#22) — `subject_hash` (geri döndürülemeyen özet) dahil | **En az 3 yıl, sonra silinir** (Yönetmelik m. 7/3) | Silme | Otomatik, günlük |
@@ -37,7 +38,17 @@ Not: Yönetmelik m. 5 uyarınca politika hazırlama yükümlülüğü sicile kay
 | Başvuru kayıt defteri | Başvuru kapanışından **2 yıl** (yazışmalarla aynı) | Silme | Elle, aylık kontrol |
 | Sağlayıcılara iletilen veriler | Sağlayıcının beyan ettiği süre | Sağlayıcı siler | Bizim kontrolümüz dışında |
 
+**FASHN (06.11.2026'dan itibaren):**
+- FASHN çıktıyı CDN'e koymadan (`return_base64`) döndürür. Sağlayıcının beyanına göre çıktı FASHN'da **en geç 60 dakika** erişilebilir kalır ([veri saklama](https://docs.fashn.ai/api-overview/data-retention-privacy)).
+- Girdi görselleri 10 dakika geçerli imzalı bağlantıyla gönderilir. FASHN görseli yalnızca işlem için indirir.
+- FASHN istek kayıtlarında yalnızca süresi dolmuş imzalı bağlantılar ve çıktı yer tutucuları kalır; görsel verisi kalmaz, bu nedenle hesap silmede FASHN'a ayrı talep gönderilmez.
+- **Açık nokta [doğrulanmadı]:** yapay manken üretiminde (model-create) fiziksel profilden oluşan metin tarifi (yaş, boy, kilo, vücut tipi, ten rengi, saç) FASHN'a gider. Bu tarifin istek kaydında kalıp kalmadığını FASHN dokümanı belirtmiyor; ten rengi özel nitelikli veri sayılabilir (`ozel-nitelikli-veri-siniflandirmasi.md`). Ayrıca imzalı bağlantının yolunda kullanıcı kimliği (uid) yer alır.
+  - FASHN'dan (legal@fashn.ai) yazılı teyit alınacak.
+  - Tarif kayıtta kalıyorsa hesap silmede prediction id'leriyle silme talebi gönderilmesi değerlendirilir (id'ler `tryon_renders.prediction_ids`'te; hesap silinince cascade ile gider).
+
 ## 3. Otomatik temizlik
+
+**Try-on ara çıktıları** (pg_cron dışında): fashn-proxy her deneme sonunda (`finish`) o denemenin `tmp_` dosyalarını siler. Bir deneme yarım kalırsa, kullanıcının bir sonraki denemesinin başında (`start`) 1 saatten eski `tmp_` dosyaları silinir (`supabase/functions/fashn-proxy/index.ts`, `removeTemp`). Dosyalar `<uid>/` kökünde durur; hesap silme (`delete-account`) bu kökü sildiği için kapsanır.
 
 - **Fonksiyon:** `public.purge_retention()` — tanım: `014_privacy_consent.sql`, `015_deletion_log_retention.sql`, son hâli `016_auth_audit_retention.sql`. Dönüş değeri: silinen satır sayıları (`api_usage`, `ops_events`, `deletion_log`, `auth_audit`).
 - **Zamanlama:** pg_cron işi `sestina_retention_purge`, her gün 03:17 UTC (`014_privacy_consent.sql`, sondaki `do` bloğu).

@@ -1,6 +1,6 @@
 # Özel Nitelikli Veri Sınıflandırması
 
-**Tarih:** 22 Ekim 2026 · **Kaynak:** `data-inventory.md` (satır numaraları `#n`) · **Dayanak:** KVKK m. 6
+**Tarih:** 22 Ekim 2026 (güncelleme: 7 Kasım 2026 — FASHN aktarımı) · **Kaynak:** `data-inventory.md` (satır numaraları `#n`) · **Dayanak:** KVKK m. 6
 
 KVKK m. 6/1'deki özel nitelikli kişisel veriler: ırk, etnik köken, siyasi düşünce, felsefi inanç, din, mezhep veya diğer inançlar, kılık ve kıyafet, dernek / vakıf / sendika üyeliği, sağlık, cinsel hayat, ceza mahkûmiyeti ve güvenlik tedbirleri ile biyometrik ve genetik veriler.
 
@@ -20,7 +20,7 @@ Kod referansları `ne-giysem/` altındaki yollardır; satır numaraları `1ae49a
 | Fiziksel profil — vücut tipi, boy, kilo, yaş (#12) | Seçimler / sayılar | **Değerlendirilmedi** — vücut tipi ve kilo, sağlık verisi çağrışımı açısından [?] | Tek başına tanı içermez; kilo / beden bilgisinin sağlık verisi sayılıp sayılmadığı hukuki görüş gerektirir | Açık rıza (`tryon_physical`) — sonuç değişmez | Ten rengi ile aynı |
 | Fiziksel profil — saç rengi, uzunluğu, tipi (#12) | Seçimler | Düşük olasılık; saç tipi ("afro") etnik köken çağrışımı taşıyabilir [?] | — | Açık rıza (`tryon_physical`) | Ten rengi ile aynı |
 | Yapay manken (#14) | Fiziksel profilden üretilen görsel | **Evet — ırk / etnik köken** (ten rengi tarifi yansır), kılık-kıyafet | Manken, kullanıcının ten rengi ve fiziğine benzetilir | Açık rıza (`tryon_physical`) | `privacyActions.ts:97` (manken ve `_m.jpg` silinir) |
-| FASHN'a aktarım (#13) | Fotoğraf / manken bağlantısı, kıyafet görselleri, manken tarifi | Yukarıdakilerle aynı | — | Açık rıza; yurt dışına aktarım [?] (bölüm 3) | 10 dakikalık bağlantı (`storageUrls.ts:14`). Proxy yalnızca kullanıcının kendi depo yolunu kabul eder: `fashn-proxy/index.ts:46-55`. Rıza kontrolü `:143`, `:208` |
+| FASHN'a aktarım (#13) | Fotoğraf / manken bağlantısı, kıyafet görselleri, manken tarifi | Yukarıdakilerle aynı | — | Açık rıza; yurt dışına aktarım [?] (bölüm 3) | 10 dakikalık bağlantı (`storageUrls.ts:14`). Katmanlar arası ara çıktılar da artık bizim depomuzdan (`mannequin-cache/<uid>/tmp_…`, 10 dk imzalı bağlantı) gider; FASHN çıktıyı CDN'e koymaz, en geç 60 dk tutar [beyan]. Proxy yalnızca kullanıcının kendi depo yolunu kabul eder: `fashn-proxy/index.ts:179`, `:227`. Rıza ve sürüm kontrolü `:273`, `:352` (`_shared/consent.ts`). Manken tarifinin FASHN istek kaydında kalıp kalmadığı [?] (`saklama-imha-politikasi.md` bölüm 2) |
 | Kıyafet fotoğrafı (#4) | Yalnız kıyafet | Kural olarak **hayır**; fotoğrafta kişi görünürse kılık-kıyafet | Fotoğraf rehberi düz zeminde, kişisiz çekimi önerir | m. 5/2-c | Özel bucket, imzalı bağlantı. Kişi içeren fotoğraf için ek kontrol **yok** [?] |
 | Yapay zekâ analizi — Poof, Anthropic (#6, #7) | Kıyafet / ürün fotoğrafı | Kural olarak hayır (#4 ile aynı) | — | m. 5/2-c (izin = tercih) | Sunucu izin kontrolü: `bg-removal-proxy/index.ts:34`, `anthropic-proxy/index.ts:80` |
 | Stil profili (#3) | Stil adları ve ağırlıkları | Hayır | Felsefi / dini inanç göstergesi değil | m. 5/2-c | — |

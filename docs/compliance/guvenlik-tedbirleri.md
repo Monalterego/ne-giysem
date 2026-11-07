@@ -1,6 +1,6 @@
 # Teknik ve İdari Güvenlik Tedbirleri
 
-**Sürüm:** 1.1 · **Tarih:** 23 Ekim 2026 · **Dayanak:** KVKK m. 12 · **Kaynak:** `data-inventory.md`
+**Sürüm:** 1.2 · **Tarih:** 7 Kasım 2026 · **Dayanak:** KVKK m. 12 · **Kaynak:** `data-inventory.md`
 Kod referansları `ne-giysem/` altındaki yollardır (`1ae49a9` sonrası). `[?]` = kodda doğrulanamayan, veri sorumlusunun teyit etmesi gereken nokta.
 
 ---
@@ -55,18 +55,19 @@ Her kullanıcı tablosunda RLS açık; istemci (`authenticated`) yalnızca kendi
 - Görüntüleme yalnızca imzalı bağlantıyla, **1 saat**: `src/lib/storageUrls.ts:13`, `:72`.
 - FASHN'a giden bağlantı **10 dakika**: `src/lib/storageUrls.ts:14`, `:175`.
 - Verilerimi indir bağlantıları 1 saat: `supabase/functions/export-my-data/index.ts:16`.
-- fashn-proxy yalnızca kullanıcının kendi depo yolunu ya da kendi FASHN çıktısını kabul ediyor: `supabase/functions/fashn-proxy/index.ts:46-55`, `:101`.
+- fashn-proxy yalnızca kullanıcının kendi depo yolunu kabul ediyor: `supabase/functions/fashn-proxy/index.ts:179` (`isOwnStorageUrl`), `:227`. Katmanlar arası ara çıktılar kullanıcının `mannequin-cache/<uid>/tmp_…` dosyalarıdır (10 dk imzalı). Eski yol, FASHN https dönerse kullanıcının kendi FASHN çıktısının kabul edilmesi (`user_owns_output`), yedek olarak duruyor.
+- FASHN çıktıları CDN'e konmuyor: proxy her çağrıya `return_base64: true` ekliyor (`fashn-proxy/index.ts:373`). Çıktıyı depomuza yazıp imzalıyor; ara çıktıları `finish` (`:481`) ve `start` temizliği (`removeTemp`, `:99`) siliyor.
 
 ## 4. Sunucu tarafı kontroller
 
 | Kontrol | Referans |
 |---|---|
 | Her proxy'de kullanıcı doğrulaması (`auth.getUser`; yalnızca anon key yetmez) | `supabase/functions/_shared/auth.ts:29` |
-| Yapay zekâ izni yoksa 403 | `bg-removal-proxy/index.ts:34`, `anthropic-proxy/index.ts:80` |
-| Sanal deneme rızası yoksa 403 (start: biri; run: manken → fiziksel, avatar → fotoğraf) | `fashn-proxy/index.ts:143-144`, `:208` |
-| Rıza kararı fonksiyonu (son satır) | `014_privacy_consent.sql:76` (`consent_granted`) |
+| Yapay zekâ izni yoksa 403 `ai-consent-required`; onaylanan metin ana sürümü < 2 ise 403 `consent-version-outdated` | `bg-removal-proxy/index.ts:35`, `anthropic-proxy/index.ts:81` (`aiConsentGate`) |
+| Sanal deneme rızası yoksa 403 (start: biri; run: manken → fiziksel, avatar → fotoğraf); eski sürüm → `consent-version-outdated` | `fashn-proxy/index.ts:273`, `:352` |
+| Rıza kararı (son satır + en düşük ana sürüm; tek yer) | `supabase/functions/_shared/consent.ts:20` (`MIN_CONSENT_MAJOR`), `:36` (`consentState`); tablo `014_privacy_consent.sql` (`consent_events`) |
 | Anthropic isteği beyaz listeyle yeniden kuruluyor (model, token, görsel sayısı / boyutu) | `anthropic-proxy/index.ts` (`sanitizeMessages`) |
-| FASHN model / girdi beyaz listesi, maliyet sabitleri | `fashn-proxy/index.ts` (`ALLOWED_INPUTS`, `PINNED_VALUES`) |
+| FASHN model / girdi beyaz listesi, maliyet sabitleri; `return_base64` istemciden kabul edilmez, sunucu ekler; tryon-max `output_format` `jpeg` (yoksa sunucu ekler) | `fashn-proxy/index.ts` (`ALLOWED_INPUTS`, `PINNED_VALUES`, `DEFAULT_VALUES`) |
 | Boyut tavanı ve günlük kullanım tavanları | `bg-removal-proxy/index.ts:9-11`, `:39-41`; `export-my-data/index.ts:68` (günde 3) |
 | Kota ve plan sınırları sunucuda (istemci atlayamaz) | `013_premium_entitlements.sql` (`start_tryon`, `start_scan`, trigger'lar) |
 | RevenueCat webhook kimliği: paylaşılan secret | `supabase/functions/revenuecat-webhook/index.ts:46` |
