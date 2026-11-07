@@ -75,23 +75,24 @@ Deno.serve(async (req) => {
       .from("profiles").select("*").eq("id", uid).maybeSingle();
     if (profErr) throw new Error(`profiles: ${profErr.message}`);
 
-    const [styleProfiles, wardrobe, combos, favorites, consents] = await Promise.all([
+    const [styleProfiles, wardrobe, combos, favorites, consents, trials] = await Promise.all([
       rows(admin, "style_profiles",  "user_id", uid),
       rows(admin, "wardrobe_items",  "user_id", uid),
       rows(admin, "combos",          "user_id", uid),
       rows(admin, "favorite_combos", "user_id", uid),
       rows(admin, "consent_events",  "user_id", uid, "id"),
+      rows(admin, "trials",          "user_id", uid, "started_at"),
     ]);
 
-    // Abonelik: satır yoksa ücretsiz. Karar kuralı 013 ile aynı (expires_at > now)
+    // Abonelik: satır yoksa erişim yok. Karar kuralı 013 / 022 ile aynı (expires_at > now)
     const { data: ent, error: entErr } = await admin
       .from("entitlements")
-      .select("product_id, store, period_type, expires_at, will_renew, updated_at")
+      .select("product_id, store, period_type, period_started_at, expires_at, will_renew, updated_at")
       .eq("user_id", uid)
       .maybeSingle();
     if (entErr) throw new Error(`entitlements: ${entErr.message}`);
     const expiresAt = ent?.expires_at ? Date.parse(ent.expires_at) : NaN;
-    const isPremium = !!ent && (ent.expires_at === "infinity" || expiresAt > Date.now());
+    const hasAccess = !!ent && (ent.expires_at === "infinity" || expiresAt > Date.now());
 
     const files: Record<string, { path: string; url: string | null }[]> = {};
     for (const bucket of BUCKETS) {
@@ -116,8 +117,9 @@ Deno.serve(async (req) => {
       favorite_combos: favorites,
       consent_history: consents,
       subscription: {
-        plan:        isPremium ? "premium" : "free",
+        plan:        hasAccess ? (ent?.period_type === "trial" ? "trial" : "premium") : "none",
         entitlement: ent ?? null,
+        trials,
       },
       files,
       files_note:       "Links are valid for 1 hour.",

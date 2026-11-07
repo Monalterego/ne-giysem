@@ -34,10 +34,13 @@ export interface EntitlementState {
   product_id: string | null;
   store: string | null;
   period_type: string | null;
+  // Aboneliğin purchase_date'i (son satın alma / yenileme; denemede deneme başlangıcı). 022
+  period_started_at: string | null;
 }
 
 const FREE: EntitlementState = {
   plan: "free", expires_at: null, will_renew: null, product_id: null, store: null, period_type: null,
+  period_started_at: null,
 };
 
 // ── RevenueCat REST v1 yanıtının kullandığımız kısmı ─────────────────────────
@@ -48,6 +51,7 @@ interface RcEntitlement {
 }
 interface RcSubscription {
   expires_date: string | null;
+  purchase_date?: string | null;
   store?: string;
   period_type?: string;
   unsubscribe_detected_at?: string | null;
@@ -107,6 +111,7 @@ function toState(sub: RcSubscriber): EntitlementState | null {
     product_id: ent.product_identifier ?? null,
     store,
     period_type: s?.period_type ?? null,
+    period_started_at: s?.purchase_date ?? null,
   };
 }
 
@@ -135,6 +140,7 @@ export async function syncEntitlement(
     product_id:     state.product_id,
     store:          state.store,
     period_type:    state.period_type,
+    period_started_at: state.period_started_at,
     expires_at:     state.expires_at,
     will_renew:     state.will_renew,
     updated_at:     now,

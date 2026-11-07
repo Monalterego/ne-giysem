@@ -3,7 +3,7 @@
 // İstemci satın alma / geri yükleme sonrası hemen çağırır — webhook gecikmesini
 // beklemeden entitlements güncellensin. Yalnızca çağıranın kendi uid'i senkronlanır.
 //
-// Yanıt: { plan, expires_at, will_renew, product_id, store, period_type }
+// Yanıt: { plan, expires_at, will_renew, product_id, store, period_type, period_started_at }
 // Ayrıntılı limitler için istemci ardından get_usage() RPC'sini çağırır.
 //
 // Gerekli secret: REVENUECAT_SECRET_API_KEY (yoksa 503 + ops_events)
