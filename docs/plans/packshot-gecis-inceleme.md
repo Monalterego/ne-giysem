@@ -553,8 +553,8 @@ Gerçek kullanıcı olmadığı için (Karar 3) eski istemci uyumluluğu için a
 | 12 | ✅ kod (07.11.2026, `f990376`; yayın bekliyor, ayrıntı "Adım 12 + 13" bölümü) "Uyar mı?" Poof’suz (Karar 1): `ScanScreen` arka plan kaldırmaz, orijinal base64 `StoreResult`'a ve Claude'a gider | OTA | Tarama: `bg` sayacı artmamalı; sonuç ekranı orijinali göstermeli; storage'a dosya yazılmamalı |
 | 13 | ✅ kod (07.11.2026, `891e7ba` + web `draft` `226a6ab`; deploy/secret silme veri sorumlusunda) Poof kaldırma: `bg-removal-proxy` deploy'dan silinir, `POOF_API_KEY` secret'ı silinir, Poof hesabı kapanır, kod/çeviri temizliği (c.1) | sunucu + OTA | Adım 10 ve 12 test hesaplarında doğrulandıktan sonra; `grep -i poof` yalnızca tarihsel dokümanlarda sonuç vermeli |
 | 14 | Ucuz model testi (b.4): önce prompt'un saf modüle taşınması, betik yerelde. Karar 2'ye göre test görselleri **orijinal + packshot** | OTA + yerel | Rapor; geçerse önce `ALLOWED_MODELS` (sunucu), ardından `visionAnalysis.ts:198` (OTA) |
-| 15 | Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
-| 15a | **Kalan hak göstergesi** (15'in alt maddesi): try-on ve "Uyar mı?" için kalan/toplam hak `get_usage`'dan okunup gösterilecek. Yerler: deneme butonu yanında ve "Uyar mı?" ekranında. Metinler (TR + EN): premium "Bu ay X / Y deneme hakkın kaldı", ücretsiz "X ücretsiz deneme hakkın var" (toplam hak), hak bitince "Z tarihinde yenilenir" (premium) ya da paywall'a yönlendirme (ücretsiz). Açık rezervasyonlar (son 30 dk) kullanılmış sayıldığı için göstergeyle tutarlı olmalı | OTA | Premium ve ücretsiz test hesabında gösterge `get_usage` ile aynı sayıyı vermeli; deneme başlayınca (açık rezervasyon) ve iade sonrası güncellenmeli; hak bitince premium'da yenilenme tarihi, ücretsizde paywall; TR ve EN metinler |
+| 15 | **Yerine geçti: "Adım 15 tasarım" (07.11.2026, hard paywall + deneme).** Eski tanım: Hedef limitler (Karar 3, geçişsiz): `app_limits` değerleri (ücretsiz: dolap 50, packshot 3, deneme 1 ayakkabısız, tarama 3/ay; premium: sınırsız dolap ve packshot, deneme 5/ay ayakkabılı); ücretsizde ayakkabı zorlaması (`start_tryon` render'a plan yazar, `fashn-proxy` tryon-max'i 403'ler); **istemcideki sabit sayılar ve paywall metinleri** (b.5, "İstemcide sabit yazılı limitler"); CLAUDE.md tablosu | sunucu + OTA | Ücretsiz: tryon-max 403, ayakkabısız sonuç, 2. deneme reddi; premium: 5/ay, 6.'da yenilenme tarihi; paywall karşılaştırma tablosu yeni değerleri göstermeli; test hesaplarının sayaçları sıfırlanarak |
+| 15a | **Yerine geçti: "Adım 15 tasarım", 15.5–15.6.** Eski tanım: **Kalan hak göstergesi** (15'in alt maddesi): try-on ve "Uyar mı?" için kalan/toplam hak `get_usage`'dan okunup gösterilecek. Yerler: deneme butonu yanında ve "Uyar mı?" ekranında. Metinler (TR + EN): premium "Bu ay X / Y deneme hakkın kaldı", ücretsiz "X ücretsiz deneme hakkın var" (toplam hak), hak bitince "Z tarihinde yenilenir" (premium) ya da paywall'a yönlendirme (ücretsiz). Açık rezervasyonlar (son 30 dk) kullanılmış sayıldığı için göstergeyle tutarlı olmalı | OTA | Premium ve ücretsiz test hesabında gösterge `get_usage` ile aynı sayıyı vermeli; deneme başlayınca (açık rezervasyon) ve iade sonrası güncellenmeli; hak bitince premium'da yenilenme tarihi, ücretsizde paywall; TR ve EN metinler |
 
 ### Adım 6 + 7 (07.11.2026): sunucuda izin sürümü kontrolü + izin metni 2.0
 
@@ -1021,7 +1021,334 @@ Krediyle ilgili testler en sonda.
 3. **İzin 2.1:** 2.0 onaylı hesapta izin ekranı yeniden açılmamalı. Yeni karar verilirse `consent_events`'e `2.1` yazılmalı.
    - İzin ekranında Poof satırı olmamalı. "İzin vermezsen" bölümü cihaz üstü kesimi anlatmalı.
 4. **Yükseltme:** `image_source` null olan bir parçanın menüsünde "Stüdyo kalitesine yükselt" görünmeli; öneri kartı bu parçayı saymalı.
-5. **grep:** `grep -rni "poof|bg-removal" ne-giysem/src ne-giysem/supabase/functions` yalnızca sürüm geçmişi yorumlarını (`constants/consent.ts:15`, `:18`, `_shared/consent.ts:18`) vermeli; çağrı, URL, secret ya da çeviri kalmamalı. Repoda geri kalan sonuçlar tarihsel kayıt ve migration yorumudur.
+5. **grep:** `grep -rni "poof\|bg-removal" ne-giysem/src ne-giysem/supabase/functions` yalnızca sürüm geçmişi yorumlarını (`constants/consent.ts:15`, `:18`, `_shared/consent.ts:18`) vermeli; çağrı, URL, secret ya da çeviri kalmamalı. Repoda geri kalan sonuçlar tarihsel kayıt ve migration yorumudur.
+
+## Adım 15 tasarım (07.11.2026) — onay bekliyor
+
+Bu bölüm yalnızca tasarım; kod yazılmadı. 15 ve 15a'nın d tablosundaki eski tanımının (ücretsiz plan: packshot 3, deneme 1 ayakkabısız, tarama 3/ay) **yerine geçer**. Ayakkabı zorlaması (`start_tryon` → plan, `fashn-proxy` tryon-max 403) artık gerekmiyor: deneme ve premium'da try-on ayakkabılı.
+
+**Kararlar (07.11.2026, kullanıcı):**
+- **Hard paywall, ücretsiz plan yok.** Onboarding (stil testi) bitince paywall açılır. Abonelik ya da deneme olmadan ana ekranlara girilmez. Paywall'da "Satın alımları geri yükle", Kullanım Koşulları ve Gizlilik bağlantıları bulunur.
+- **Ürünler:**
+  - Yıllık plan 7 gün ücretsiz denemeli; deneme mağazada tanımlanır (kullanıcı yapar). Aylık plan denemesiz.
+  - Yıllık plan varsayılan seçili ve üstte; "%X tasarruf" rozeti ve aylık karşılığıyla gösterilir.
+  - Fiyatlar ve oran RevenueCat'in mağaza fiyatlarından hesaplanır; kodda fiyat yok.
+- **Limitler** (`app_limits`, sunucuda zorunlu):
+
+| | Deneme (7 gün, toplam) | Premium |
+|---|---|---|
+| Packshot | 15 | Ayda 40; yıllık planda ilk 30 gün 150; günde en fazla 60 |
+| Try-on (ayakkabılı) | 2 | Ayda 5 |
+| "Uyar mı?" | 5 | Ayda 40 |
+| Dolap | Sınırsız | Sınırsız |
+
+- "Uyar mı?" hakkı sunucuda düşer (bugün istemci `start_scan` çağırıyor).
+- 15a: kalan hak göstergesi, deneme ve premium için.
+
+### 15.1 Deneme durumunun tespiti
+
+**Bugün:**
+- Webhook olay içeriğine güvenmez: her olayda REST v1 `GET /subscribers/{id}` çağrılır (`_shared/revenuecat.ts:62`).
+- `entitlements.period_type` zaten yazılıyor (`:109`, `:137`). Değer, abonelik kaydının `period_type` alanıdır.
+- REST v1'de değerler küçük harf: `normal` / `trial` / `intro`. Webhook olayındaki `TRIAL` büyük harf, ama okunmuyor. **[doğrulanmadı: sandbox'ta görülmeli]**
+- Deneme süresince entitlement aktiftir; `expires_at` = deneme bitişi. Yani `is_premium_user` deneme kullanıcısı için de bugün `true` döner.
+
+**Eksik:** deneme penceresinin başlangıcı ve deneme → ücretli geçişin zamanı.
+- `entitlements` satırı entitlement kaybolunca silinir (`:125-128`).
+- Yenilemelerde başlangıç tarihi değişir.
+- Bu yüzden ayrı ve kalıcı bir kayıt gerekiyor.
+
+**Öneri (migration 022):**
+- `entitlements.period_started_at timestamptz`: abonelik kaydının `purchase_date` alanı ("son satın alma ya da yenileme"). Denemede bu, deneme başlangıcıdır. **[doğrulanmadı: sandbox'ta `purchase_date` = deneme başlangıcı mı]**
+  - `RcSubscription`'a `purchase_date` eklenir, `syncEntitlement` yazar.
+- Yeni tablo **`trials`**:
+  - Kolonlar: `user_id` → auth.users cascade, `started_at`, `ends_at`, `product_id`, `store`, `converted_at null`. PK `(user_id, started_at)`.
+  - Yalnızca service_role erişir.
+- Tetikleyici `entitlements` AFTER INSERT/UPDATE:
+  - `new.period_type = 'trial'` → `trials` upsert (`started_at = new.period_started_at`, `ends_at = new.expires_at`).
+  - `old.period_type = 'trial'` ve `new.period_type = 'normal'` → son denemede `converted_at = new.period_started_at` (ilk ücretli dönemin başı).
+  - Entitlement silinir ya da süre dolarsa ayrı bir yazma olmaz. "Bitti" bilgisi `ends_at < now()` ve `converted_at is null` ile okunur.
+- **`packshot_setup_on_entitlement` değişir:** `coalesce(new.period_type, '') <> 'trial'` şartı eklenir.
+  - Yoksa yıllık deneme kullanıcısının 30 günlük "kurulum ayı" deneme başında başlar ve deneme bitince 23 günü kalır.
+  - Böylece kurulum ayı ilk ücretli günde başlar.
+- **Yardımcılar:**
+  - `has_access(p_user)` = bugünkü `is_premium_user` (deneme dahil). Ad netleşsin diye yeni ad; eskisi uyumluluk için kalır.
+  - `trial_window(p_user)`: aktif denemede `(started_at, ends_at)`, değilse null. Koşul: `period_type = 'trial' and expires_at > now()`.
+
+**Senaryolar:**
+
+| Olay | entitlements | trials | Kullanıcı |
+|---|---|---|---|
+| Deneme başlar | `period_type = trial`, `expires_at` = +7 gün | yeni satır | Deneme limitleri |
+| Deneme içinde iptal | `will_renew = false`, `expires_at` aynı | değişmez | Deneme sonuna kadar deneme limitleri; sonra paywall |
+| Deneme → ücretli | `period_type = normal`, yeni `expires_at` | `converted_at` dolar | Premium limitleri; sayaçlar 15.5'e göre |
+| Ödeme sorunu (grace) | `effectiveExpiry` grace bitişini alır (`:81`) | — | Grace boyunca erişim |
+| İade / iptal (revoke) | entitlement yok → satır silinir | kalır | Paywall |
+| Ücretli dönem biter | `expires_at < now()` | — | Paywall |
+
+### 15.2 Mevcut ücretsiz plan kodu: ne kapanır, ne kalır
+
+**Sunucu:**
+
+| Parça | Karar |
+|---|---|
+| `limit_for` anahtarları `free.wardrobe_max`, `free.tryon_lifetime`, `free.scan_monthly`, `free.packshot_lifetime` | **Kalkar**: CASE'ten ve `app_limits`'ten silinir. Kalırsa yanlışlıkla kullanılabilir; `limit_for_unknown` hatası korur |
+| Yeni anahtarlar | `trial.packshot_total` 15, `trial.tryon_total` 2, `trial.scan_total` 5, `premium.tryon_monthly` 5 (8'den), `premium.scan_monthly` 40 (yeni; bugün sınırsız) |
+| Kalan anahtarlar | `premium.packshot_monthly` 40, `premium.packshot_annual_setup` 150, `premium.packshot_setup_days` 30, `abuse.garment_daily` 60. Hepsi `app_limits`'e satır olarak girer (bugün yalnızca CASE varsayılanı) |
+| `enforce_wardrobe_limit` | Erişim yoksa `raise 'subscription-required'`. Erişim varsa sınır yok. 50 sınırı kalkar |
+| `enforce_planning_premium` | `has_access` (deneme dahil planlama açık). Mesaj aynı: `planning-premium` |
+| `tryon_used(p_user, null)` (ömür boyu) | Fonksiyon kalır; `p_since` hep dolu çağrılır. Ömür boyu dal kullanılmaz |
+| `start_tryon` | Erişim yok → `{allowed:false, error:'subscription-required'}`. Deneme → `trial.tryon_total`, `since = trial.started_at`, `reset_at = null`, `window:'trial'`. Premium → 15.5 |
+| `packshot_quota` | `'free'` penceresi kalkar → `'trial'` (15, `since = started_at`) ve `'none'` (limit 0). `'setup'` / `'monthly'` aynı, `since` 15.5'e göre |
+| `start_scan` (istemci RPC) | **Kalkar**; yerine sunucuda `scan_jobs` (15.2a). `authenticated` yetkisi OTA'dan sonra geri alınır. Eski bundle hata alırsa `spendScan` engellemiyor (`premiumGate.ts:44-47`) |
+| `get_usage` | Yeni biçim, bkz. 15.5 |
+| Edge function'lar | `anthropic-proxy`, `garment-image`, `fashn-proxy` (start), `fetch-product`: `has_access` yoksa **403 `subscription-required`**. Kontrol rezervasyondan önce yapılır; kredi ya da iade gerekmez. Onboarding'deki Stil DNA adı çağrısı zaten izin yokluğundan 403 alıp yerel ada düşüyor (`StyleResultScreen.tsx:103`), değişiklik yok |
+
+**15.2a "Uyar mı?" sunucuda:**
+- Yeni tablo `scan_jobs`: `id`, `user_id` cascade, `created_at`, `succeeded_at`, `failed_at`. `garment_jobs` deseni, service_role.
+  - `api_usage` kullanılmaz: iade için iş satırı gerekiyor.
+- `anthropic-proxy`'ye `purpose: 'scan'`:
+  1. `start_scan_job(p_user)` kota kontrolü yapar ve iş açar. Dolu → **402 `scan-limit`** + `{used, limit, reset_at, window}`.
+  2. Claude çağrısı.
+  3. Yanıtta geçerli JSON ve `category` alanı varsa `complete_scan_job`; yoksa ya da üst servis hatasında `fail_scan_job` (iade).
+  - Böylece "tanıyamadık → hak düşmez" kuralı (`StoreResultScreen.tsx:178`) sunucuda uygulanır.
+  - Açık iş 10 dk kotadan düşer (garment deseni).
+- İstemci: `StoreResult` analizi `purpose:'scan'` ile ister; `spendScan` kalkar.
+- **Kabul edilen risk:** değiştirilmiş istemci taramayı `purpose` olmadan, kıyafet analizi olarak isteyebilir. Kıyafet analizinin kendi kotası yok.
+  - Sınırlar: abonelik şartı + `anthropic` günlük 150 tavanı.
+  - Kapatmak için kıyafet analizini packshot işine bağlamak gerekir. İzinsiz ya da kotası dolu kullanıcıda packshot işi olmadığından bu önerilmez.
+
+**İstemci (kalkar / değişir):**
+
+| Yer | Ne olur |
+|---|---|
+| `RootNavigator.tsx:39` | `isOnboarded` sonrası yeni dal: erişim yoksa yalnızca **hard paywall** (kapatılamaz) |
+| `premiumGate.ts:14` `guardWardrobeAdd`, `:60` `wardrobeCountLabel`, `:69` `wardrobeLimitMessage`; `WardrobeScreen.tsx:124-130, 476`; `HomeScreen.tsx:285`; `StoreResultScreen.tsx:229`; `UploadDetailScreen.tsx:319` (`wardrobe-limit`) | Kalkar. `subscription-required` gelirse gate'e düşülür |
+| `premiumGate.ts:25` `guardScan`, `:41` `spendScan`; `ScanScreen.tsx:58, 127, 182`; `StoreResultScreen.tsx:182` | Ön kontrol `get_usage.scan`'den gösterge + "hak bitti" mesajı olur (paywall değil); harcama sunucuda |
+| `PaywallScreen.tsx` | Ücretsiz/Premium tablosu (`:180-193`, `COMPARE_ROWS`) → özellik listesi. `reason` metinleri (`:105-118`) → yalnızca gate. Kapat (`:158`) gate'te gizli. Deneme satırı ve CTA (15.6). Fiyat matematiği aynen (`annualMath` `:48`) |
+| `CombosScreen.tsx:518, 916, 938, 1219` | Planlama kilidi `plan !== 'premium'` → erişim yoksa zaten gate. Try-on hak bitince paywall değil, mesaj (deneme / yenilenme tarihi) |
+| `ProfileScreen.tsx:115-353` | "Ücretsiz" rozeti kalkar; "Deneme · {tarih} bitiyor" ya da "Premium · {tarih} yenilenir" |
+| `usePlanStore.ts:10` | `Plan = 'trial' \| 'premium' \| 'none'`; `premiumExpired` → `accessExpired` |
+| `virtualModel.ts:86-97` | `plan: 'free'` dalı → `'trial'` |
+| `navigation/types.ts` `PaywallReason` | `'wardrobe' \| 'scan' \| 'planning' \| 'tryon'` kalkar; `'gate' \| 'generic'` kalır |
+| i18n `premium.*` | `compareFree`, `row*Free`, `badgeFree`, `planFree`, `wardrobeCount`, `wardrobeLimitBody`, `reasonScan*`, `reasonTryon`, `scanRemaining` → yeni anahtarlar (15.6) |
+
+**Gate ayrıntıları:**
+- **Erişim kararı:** `get_usage.plan in ('trial','premium')`. Sunucu senkronu gecikirse RevenueCat SDK'nın `customerInfo.entitlements.active` değeri de kabul edilir (satın alma sonrası saniyeler). Asıl sınırı sunucu uygular.
+- **Çevrimdışı:**
+  - Son bilinen erişim ve `expires_at` AsyncStorage'da tutulur. `expires_at` gelecekteyse ana ekranlar açılır.
+  - Hiç okunamadıysa gate "Tekrar dene" ile açılır.
+  - Ödeme yapmış kullanıcı ağ hatası yüzünden kilitlenmemeli.
+- **Gate'te hesap işlemleri — öneri, karar gerekiyor:**
+  - Apple 5.1.1(v): hesap silme uygulama içinde bulunabilir olmalı. Hard paywall Profil'i kapatıyor.
+  - Gate'e "Hesap" bağlantısı: Çıkış yap · Verilerimi indir · Hesabımı sil (mevcut `privacyActions` / `delete-account`). Abone olmayan kullanıcı verisine ulaşamazsa KVKK m. 11 erişim hakkı da sorun olur.
+
+### 15.3 Aboneliği biten ya da denemeyi iptal eden kullanıcı
+
+- **Uygulamayı açınca:** gate (paywall).
+  - Metin: "Aboneliğin sona erdi. Dolabın ve kombinlerin duruyor; devam etmek için abone ol."
+  - Deneme bitmişse: "Deneme süren bitti."
+  - Ayrım: `access_expires_at` geçmişte ve `trials`'ta `converted_at is null`.
+- **Veri:**
+  - Silinmez: dolap, fotoğraflar, kombinler, takvim, rızalar.
+  - Sunucu yeni ekleme / AI çağrısı kabul etmez. Var olanı silme ve düzenleme serbest (trigger'lar yalnızca INSERT'te; mevcut kural `013:18-19`).
+  - Yeniden abone olunca her şey kaldığı yerden sürer.
+- **Saklama politikasında hareketsiz hesap süresi YOK.** `saklama-imha-politikasi.md` bölüm 2: "Hesap, stil, dolap … Hesap süresince". Silme yalnızca kullanıcı isteğiyle.
+  - Hard paywall'la birlikte hiç abone olmamış ya da aboneliği bitmiş hesapların fotoğrafları süresiz kalır. KVKK m. 4/2-ç ("amaç için gerekli süre") açısından zayıf.
+  - **Öneri — karar ve hukuki görüş gerekiyor:**
+    - (a) Erişimi olmayan ve 24 ay giriş yapmayan hesap: 30 gün önce e-posta, sonra `delete-account` ile aynı silme. Hiç abone olmamış hesap için 12 ay.
+    - `purge_retention` ya da ayrı bir cron işi; `deletion_log` kanalı `inactive`.
+    - Saklama politikası, gizlilik (bölüm 9) ve koşullar buna göre yazılır.
+    - (b) Süresiz tutmak ve bunu politikaya açıkça yazmak.
+
+### 15.4 Mevcut hesaplar
+
+Gerçek kullanıcı yok (Karar 3); etkilenen yalnızca test hesapları. Uygulamadan önce SQL Editor'de:
+
+```sql
+-- Özet: kaç hesap paywall'a takılır
+select count(*)                                                        as toplam,
+       count(*) filter (where e.expires_at > now())                    as erisimi_var,
+       count(*) filter (where e.user_id is null or e.expires_at <= now()) as paywall
+  from auth.users u
+  left join public.entitlements e on e.user_id = u.id;
+
+-- Liste: paywall'a takılacaklar
+select u.email, u.created_at, e.store, e.product_id, e.period_type, e.expires_at,
+       (select count(*) from public.wardrobe_items w where w.user_id = u.id) as parca
+  from auth.users u
+  left join public.entitlements e on e.user_id = u.id
+ where e.user_id is null or e.expires_at <= now()
+ order by u.created_at;
+
+-- Demo hesabı: ömür boyu promosyonel → expires_at = 'infinity', store = 'promotional'
+select e.* from public.entitlements e
+  join auth.users u on u.id = e.user_id
+ where u.email = 'demo@sestinaapp.com';
+```
+
+- **Demo hesabı:**
+  - `expires_at = 'infinity'` olduğu için `has_access` true döner.
+  - Promosyonel kayıtta `subscriptions` girdisi yok, dolayısıyla `period_type` null: deneme sayılmaz, premium limitleri uygulanır. `packshot_setup`'a girmez (ürün `annual_products`'ta değil).
+  - Etkilenmez. Yalnızca try-on 8 → 5/ay ve tarama sınırsız → 40/ay değişir.
+- **App Review notu:** inceleme ekibi demo hesabıyla girerse paywall'u görmez.
+  - İnceleme notuna "Yeni hesap açarak onboarding → paywall → sandbox satın alma akışı görülebilir; demo hesabı premium" yazılmalı.
+- **Test hesapları:** sandbox'ta deneme ya da RevenueCat panelinden promosyonel entitlement.
+
+### 15.5 Limitler ve sayım pencereleri
+
+| Hak | Deneme penceresi | Premium penceresi | Kaynak tablo |
+|---|---|---|---|
+| Packshot | `trials.started_at` → deneme sonu, toplam 15 | Yıllık: kurulum ayı (`packshot_setup.started_at` + 30 gün, ilk ücretli günden) 150; sonra İstanbul ayı 40. Aylık: İstanbul ayı 40. Günlük 60 (`abuse.garment_daily`) | `garment_jobs` |
+| Try-on | aynı pencere, 2 | İstanbul ayı 5 | `tryon_renders` |
+| "Uyar mı?" | aynı pencere, 5 | İstanbul ayı 40 | `scan_jobs` |
+
+- **Denemeden premium'a geçiş:** deneme sayaçları sıfırlanır. Ücretli dönemde deneme harcamaları sayılmaz.
+  - Kural: premium `since = greatest(istanbul_month_start(), coalesce(son_deneme.converted_at, son_deneme.ends_at, '-infinity'))`.
+  - Örnek: 3 Kasım'da başlayan deneme 10 Kasım'da ücretliye döner. Kasım'ın try-on sayımı 10 Kasım'dan başlar: 5 hak; denemedeki 2 sayılmaz. Aralık 1'de normal ay.
+  - Packshot yıllık: kurulum ayı zaten dönüşümde başlıyor (15.1 tetikleyici değişikliği), deneme işleri sayılmaz.
+- **Deneme iptal edilip sonra aylık alınırsa:** `converted_at` dolmaz; aynı ifadedeki `ends_at` devreye girer, deneme harcamaları ilk ayda sayılmaz.
+- **Açık rezervasyonlar** kullanılmış sayılır: try-on 30 dk, packshot 10 dk, tarama 10 dk. `get_usage` aynı `*_used` fonksiyonlarını çağırdığı için gösterge ile red tutarlı.
+
+**`get_usage` yeni biçimi:**
+```
+{
+  plan: 'trial' | 'premium' | 'none',
+  access_expires_at, will_renew,
+  trial: { started_at, ends_at } | null,     -- aktif deneme
+  trial_used: boolean,                        -- daha önce deneme var mı (metin seçimi)
+  wardrobe: { used, limit: null },
+  tryon:    { used, limit, reset_at, window: 'trial' | 'monthly' | 'none' },
+  scan:     { used, limit, reset_at, window: 'trial' | 'monthly' | 'none' },
+  packshot: { used, limit, reset_at, window: 'trial' | 'setup' | 'monthly' | 'none' }
+}
+```
+- `reset_at`: deneme → null (deneme bitince ücretli pencere başlar, gösterge `trial.ends_at`'i kullanır). Premium → sonraki ay başı ya da kurulum bitişi.
+- `premium_expires_at` → `access_expires_at` olarak yeniden adlandırılır. Eski bundle geçiş günü hata vermesin diye bir sürüm boyunca ikisi birden döner.
+
+### 15.6 Metinler
+
+**Paywall (gate)**
+
+| Anahtar | TR | EN |
+|---|---|---|
+| `paywall.eyebrow` | Sestina Premium | Sestina Premium |
+| `paywall.title` | Dolabın hazır. Şimdi kombinlere geçelim. | Your wardrobe is ready. Let's get to the outfits. |
+| `paywall.titleExpired` | Aboneliğin sona erdi | Your subscription has ended |
+| `paywall.titleTrialEnded` | Ücretsiz deneme süren bitti | Your free trial has ended |
+| `paywall.bodyExpired` | Dolabın ve kombinlerin duruyor. Devam etmek için abone ol. | Your wardrobe and outfits are still here. Subscribe to continue. |
+| `paywall.feature1` | Sınırsız dijital dolap | Unlimited digital wardrobe |
+| `paywall.feature2` | Her parça için stüdyo görseli | A studio image for every piece |
+| `paywall.feature3` | Tarzına göre kombin önerileri ve planlama | Outfit ideas for your style, plus planning |
+| `paywall.feature4` | Sanal deneme | Virtual try-on |
+| `paywall.feature5` | "Uyar mı?" ile alışverişte dolap uyumu | "Will it work?" checks your wardrobe while you shop |
+| `paywall.annual` | Yıllık | Yearly |
+| `paywall.monthly` | Aylık | Monthly |
+| `paywall.saveBadge` | %{percent} tasarruf | Save {percent}% |
+| `paywall.perMonth` | aylık {price} | {price}/month |
+| `paywall.trialBadge` | {days} gün ücretsiz | {days}-day free trial |
+| `paywall.ctaTrial` | {days} gün ücretsiz dene | Start {days}-day free trial |
+| `paywall.cta` | Abone ol | Subscribe |
+| `paywall.restore` | Satın alımları geri yükle | Restore purchases |
+| `paywall.account` | Hesap | Account |
+| `paywall.terms` / `paywall.privacy` | Kullanım Koşulları / Gizlilik Politikası | Terms of Use / Privacy Policy |
+
+- Gate'te limit sayısı gösterilmez (öneri; karar 3). Sayılar koşullarda ve 15a göstergesinde var. Gösterilecekse değerler yeni bir `get_limits()` RPC'sinden (`authenticated`, yalnızca okuma) gelir; kodda sayı yazılmaz.
+- **Deneme koşulları (CTA altı; yıllık + deneme uygunsa):**
+  - **TR iOS:** "{days} gün ücretsiz, ardından {price}/yıl. Deneme bitmeden en az 24 saat önce iptal etmezsen abonelik otomatik başlar ve her yıl yenilenir. App Store hesap ayarlarından istediğin zaman iptal edebilirsin; deneme içinde iptal edersen ücret alınmaz."
+  - **TR Android:** "{days} gün ücretsiz, ardından {price}/yıl. Deneme bitmeden iptal etmezsen abonelik otomatik başlar ve her yıl yenilenir. Google Play → Abonelikler'den istediğin zaman iptal edebilirsin; deneme içinde iptal edersen ücret alınmaz."
+  - **EN iOS:** "{days} days free, then {price}/year. Unless you cancel at least 24 hours before the trial ends, your subscription starts automatically and renews every year. You can cancel anytime in your App Store account settings; you won't be charged if you cancel during the trial."
+  - **EN Android:** "{days} days free, then {price}/year. Unless you cancel before the trial ends, your subscription starts automatically and renews every year. You can cancel anytime in Google Play → Subscriptions; you won't be charged if you cancel during the trial."
+  - Deneme yoksa (aylık ya da uygun değil): mevcut `premium.autoRenewIos` / `premium.autoRenewAndroid`.
+- **Deneme bilgisi kaynağı:** `{days}` ve `{price}` mağazadan gelir:
+  - `product.introPrice` (fiyat 0, `periodNumberOfUnits` + `periodUnit`) ve `product.priceString`.
+  - Uygunluk iOS'ta `checkTrialOrIntroductoryPriceEligibility`. Android'de teklif uygunsa `defaultOption`'da ücretsiz faz görünür. **[doğrulanmadı: react-native-purchases'ın Android'de `introPrice`'ı doldurup doldurmadığı]**
+  - Deneme bilgisi okunamazsa deneme metni hiç gösterilmez; yanlış vaat yerine yalnızca fiyat.
+
+**15a göstergeleri**
+
+| Durum | TR | EN |
+|---|---|---|
+| Try-on, deneme | Ücretsiz deneme süresince {left} / {limit} sanal deneme hakkın var | {left} of {limit} virtual try-ons left in your trial |
+| Try-on, premium | Bu ay {left} / {limit} sanal deneme hakkın kaldı | {left} of {limit} virtual try-ons left this month |
+| Tarama, deneme | Ücretsiz deneme süresince {left} / {limit} tarama hakkın var | {left} of {limit} checks left in your trial |
+| Tarama, premium | Bu ay {left} / {limit} tarama hakkın kaldı | {left} of {limit} checks left this month |
+| Packshot, deneme / ay | {left} / {limit} stüdyo görseli hakkın var | {left} of {limit} studio images left |
+| Packshot, kurulum ayı | İlk 30 gün: {left} / {limit} stüdyo görseli | First 30 days: {left} of {limit} studio images |
+| Hak bitti, premium | Hakların {date} tarihinde yenilenir | Renews on {date} |
+| Hak bitti, deneme | Deneme hakların bitti. Aboneliğin {date} tarihinde başlayınca her ay yeni hakların olacak. | You've used your trial allowance. New allowances arrive every month once your subscription starts on {date}. |
+| Hak bitti, deneme iptal edilmiş (`will_renew = false`) | Deneme hakların bitti. Ücretsiz deneme süren {date} tarihinde sona eriyor. | You've used your trial allowance. Your trial ends on {date}. |
+
+- **Yerler:** try-on butonu yanı (`CombosScreen`), Tara başlığı (`ScanScreen.tsx:180` yerine), Ekle ekranı ipucu (packshot), Profil kartı (hepsi).
+- **Sayı kaynağı:** `get_usage`. Deneme başlayınca ya da iade sonrası `refresh()` (mevcut).
+- "Sanal deneme" (try-on) ile "ücretsiz deneme" (trial) Türkçede karışıyor. Metinlerde trial için hep "ücretsiz deneme (süresi)", try-on için "sanal deneme" kullanıldı.
+
+**store-listing.md "ÜCRETSİZ VE PREMİUM" paragrafının yerine**
+- **TR:**
+  > SESTINA PREMIUM
+  > Yıllık planla 7 gün ücretsiz dene. Premium'da dolabın sınırsız; her ay stüdyo görselleri, sanal denemeler ve "Uyar mı?" hakların yenilenir, kombinlerini önceden planlarsın. Ücretsiz deneme süresince de tüm özellikleri kullanabilirsin.
+  >
+  > Sestina Premium aylık ve yıllık otomatik yenilenen abonelik olarak sunulur. Yıllık planın 7 günlük ücretsiz denemesi bitmeden iptal etmezsen abonelik otomatik başlar. Ödeme, satın alma onaylandığında (ücretsiz denemede deneme bitince) hesabından alınır. Abonelik, dönem bitmeden en az 24 saat önce iptal edilmezse otomatik olarak yenilenir. Aboneliğini mağaza hesap ayarlarından yönetebilir ve iptal edebilirsin.
+- **EN:**
+  > SESTINA PREMIUM
+  > Try it free for 7 days with the yearly plan. Premium gives you an unlimited wardrobe, monthly studio images, virtual try-ons and "Will it work?" checks, plus outfit planning. You can use every feature during the free trial too.
+  >
+  > Sestina Premium is offered as monthly and yearly auto-renewing subscriptions. The yearly plan includes a 7-day free trial; unless you cancel before it ends, your subscription starts automatically. Payment is charged to your account when you confirm the purchase (for the free trial, when the trial ends). Your subscription renews automatically unless cancelled at least 24 hours before the end of the current period. You can manage and cancel your subscription in your store account settings.
+- Sayılar mağaza metnine yazılmadı (limit değişince mağaza güncellemesi gerekmesin). İstenirse eklenir.
+
+**Web'de ücretsiz plandan bahseden yerler (değiştirilmedi, liste):**
+- `kosullar.html:25` (içindekiler "Ücretsiz plan ve Premium"), `:62` (bölüm 4 başlığı), `:66-72` (Ücretsiz / Premium tablosu: dolap 50, sanal deneme 3 / ay 8, "Uyar mı?" ay 3 / sınırsız, takvim), `:76` (aylık haklar takvim ayı), `:79` (premium bitince limit üstü parçalar; "ücretsiz plan sınırları")
+- `kosullar.html:82-92` (bölüm 5 abonelik): ücretsiz plan geçmiyor ama **ücretsiz deneme maddesi eksik**; eklenmeli
+- `terms.html` aynı satırlar (`:25`, `:62`, `:66-72`, `:76`, `:79`, `:82-92`)
+- `gizlilik.html:109-111` / `privacy.html` aynı satır: "Abonelik … Premium alırsan" → herkes için (dönem türü, deneme başlangıcı dahil)
+- `gizlilik.html:115` (operasyonel kayıtlar): `trials`, `scan_jobs`, `garment_jobs` eklenecek
+- `gizlilik.html:294-295` (bölüm 8 abonelik): deneme kaydı (`trials`) eklenecek
+- 15.3 kararına göre `gizlilik.html` bölüm 9 (saklama) ve koşullar
+- "Free plan" geçen diğer yerler (`gizlilik:322`, `aydinlatma:215`) Supabase'in planı, ilgisiz
+- Ayrıca `CLAUDE.md` "Monetizasyon" tablosu (ücretsiz sütunu) ve `013_premium_entitlements.sql:11-16` başlık yorumu
+
+### 15.7 `garment_jobs` (ve yeni tablolar) için envanter ve saklama taslağı
+
+**data-inventory.md — yeni satırlar (#31–#33):**
+
+| # | Faaliyet | Veri | Amaç | Hukuki sebep | Toplama | Alıcı / konum | Saklama | Silme | İzin | Kod |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 31 | Stüdyo görseli kota kaydı | Kullanıcı kimliği, iş zamanı, FASHN işlem kimliği, ilgili parça kimliği (yükseltmede), başarı / hata zamanı. Görsel yok | Packshot kotası, sahiplik kontrolü, kötüye kullanımın önlenmesi | m. 5/2-c (plan hakkı), m. 5/2-f | Otomatik, packshot isteğinde | Supabase · veri işleyen | Karar 4'e göre: 13 ay ya da hesap süresince. Parça silinince satır kalır (`item_id` null), hak geri gelmez. Hesap silinince cascade | Otomatik / hesap silme | — | `garment_jobs` (021), `functions/garment-image` |
+| 32 | "Uyar mı?" kota kaydı | Kullanıcı kimliği, tarama zamanı, başarı / hata zamanı. Fotoğraf yok | Tarama hakkı, iade | m. 5/2-c, m. 5/2-f | Otomatik | Supabase · veri işleyen | 13 ay (aylık / deneme penceresi için yeterli) | Otomatik (`purge_retention`) / hesap silme | — | `scan_jobs` (022), `functions/anthropic-proxy` |
+| 33 | Ücretsiz deneme kaydı | Deneme başlangıç / bitiş, ürün, mağaza, ücretliye geçiş zamanı | Deneme haklarının penceresi; ücretli dönem sayımının başlangıcı | m. 5/2-c | RevenueCat senkronu | Supabase · veri işleyen | Hesap süresince (deneme bitse de: ilk ücretli ayın sayımını etkiliyor). Hesap silinince cascade | Hesap silme | — | `trials` (022), `_shared/revenuecat.ts` |
+
+- Bugün `garment_jobs` "hesap süresince" duruyor; gerekçesi ücretsiz plandaki ömür boyu "ilk 3" sayımıydı (021 başlığı). Ücretsiz plan kalkınca bu gerekçe kalmıyor, en uzun pencere 30 günlük kurulum ayı. Öneri: 13 ay (`api_usage` ile aynı); aynı karar `tryon_renders` (#15) için de verilebilir.
+- #18 (abonelik) satırına `period_started_at` eklenir.
+
+**saklama-imha-politikasi.md bölüm 2 — taslak:**
+
+| Veri (envanter #) | Süre | İmha yöntemi | Nasıl tetiklenir |
+|---|---|---|---|
+| Stüdyo görseli kota kaydı (#31) | 13 ay (karar 4) | Silme | Otomatik, günlük (`purge_retention`) + hesap silme (cascade) |
+| "Uyar mı?" kota kaydı (#32) | 13 ay | Silme | Otomatik, günlük (`purge_retention`) + hesap silme |
+| Ücretsiz deneme kaydı (#33) | Hesap süresince | Silme | Hesap silme (cascade) |
+
+Ayrıca 15.3 kararına göre "Hareketsiz hesap" satırı.
+
+### 15.8 Uygulama sırası
+
+Gerçek kullanıcı yok (Karar 3). Sunucu ve OTA aynı gün yayınlanır; test hesapları yeni OTA'yı almadan H3 yapılmaz. Kredili testler en sonda.
+
+| # | Grup | Katman | Test (kredisiz önce) |
+|---|---|---|---|
+| H1 | Migration 022: `entitlements.period_started_at`, `trials` + tetikleyici, `packshot_setup` deneme şartı, `has_access` / `trial_window`, `app_limits` (yeni anahtarlar, `free.*` silinir), `start_tryon` / `packshot_quota` / `get_usage` yeni pencereler, `scan_jobs` + `start/complete/fail_scan_job`, `enforce_wardrobe_limit` → `subscription-required`, `purge_retention`'a yeni tablolar (karar 4). Geri alma SQL'i dosyada | sunucu | **Kredisiz, SQL:** test kullanıcısına elle `entitlements` satırı (deneme: `period_type='trial'`, `period_started_at = now()-1 day`, `expires_at = now()+6 days`) → `get_usage` deneme pencereleri; 15 `garment_jobs` / 2 `tryon_renders` / 5 `scan_jobs` ekle → 16./3./6. red; `period_type='normal'` yap → `converted_at` dolu, sayaçlar sıfır, yıllıkta `packshot_setup` şimdi; süresi geçmiş → `plan:'none'`, `wardrobe_items` INSERT `subscription-required`; demo hesabı premium kalmalı |
+| H2 | `_shared/revenuecat.ts`: `purchase_date` → `period_started_at`. Deploy `revenuecat-webhook --no-verify-jwt`, `sync-entitlement` | sunucu | **Kredisiz, sandbox:** yıllık deneme satın al → `entitlements.period_type = 'trial'`, `trials` satırı. Sandbox'ta yenileme süreleri kısaltılmış **[doğrulanmadı: deneme süresi]**; dönüşümde `converted_at`. İptal → `will_renew = false`. Bu ölçümle 15.1'deki iki [doğrulanmadı] kapanır |
+| H3 | Edge: `has_access` kontrolü (`anthropic-proxy`, `garment-image`, `fashn-proxy` start, `fetch-product`) → 403 `subscription-required`; `anthropic-proxy` `purpose:'scan'` + `scan_jobs` | sunucu | **Kredisiz:** erişimsiz hesapla curl → 403, FASHN'a istek gitmemeli. Tarama: SQL ile 40 `scan_jobs` → 41. istek 402, Claude çağrısı yok. **Az maliyetli (Anthropic):** gerçek tarama → iş `succeeded_at`; bulanık fotoğraf → "tanıyamadık", iş `failed_at` (iade) |
+| H4 | OTA: gate (`RootNavigator`), yeni Paywall (deneme satırı, CTA, koşullar, Hesap menüsü), ücretsiz plan UI'ının kaldırılması, `purpose:'scan'`, 15a göstergeleri, TR + EN metinler | OTA (runtime 1.1.0) | **Kredisiz:** yeni hesap → onboarding → gate (kapatılamaz); geri yükle (sandbox); Koşullar / Gizlilik bağlantıları; Hesap → silme çalışmalı; çevrimdışı açılış (son bilinen erişim); gösterge `get_usage` ile aynı; TR ve EN; iOS ve Android deneme metni. **Kredili, en son:** deneme hesabında 2 try-on ve 3.'nün reddi; packshot için SQL ile 14 iş ekleyip 1 gerçek packshot, 16. red |
+| H5 | Mağaza: yıllık üründe 7 günlük deneme (kullanıcı), `annual_products`'a ürün kimlikleri (SQL), `start_scan` yetkisinin geri alınması (`revoke execute … from authenticated`) | mağaza + sunucu | Paywall'da deneme rozeti yalnızca uygun hesapta; daha önce deneme kullanmış sandbox hesabında görünmemeli |
+| H6 | Web + docs: koşullar / terms (bölüm 4 ve 5: deneme maddesi), gizlilik / privacy (15.6 listesi), `store-listing.md`, `CLAUDE.md` tablosu, envanter #31–#33, saklama, 15.3 kararı | web + docs | OTA ile aynı gün yayın; mağaza metni, uygulama ve koşullar aynı şeyi söylemeli |
+
+**Senin kararın gereken konular:**
+1. **Gate'te "Hesap" menüsü** (çıkış, verilerimi indir, hesabı sil). Önerim: evet (Apple 5.1.1(v), KVKK m. 11).
+2. **Hareketsiz hesap süresi** (15.3): (a) 24 ay / hiç abone olmamışsa 12 ay + 30 gün önceden e-posta, ya da (b) süresiz ve politikada açıkça yazılı. Hukuki görüş önerilir.
+3. **Paywall'da limit sayıları:** göstermemek (önerim) ya da `get_limits()` RPC'siyle göstermek.
+4. **Kota kayıtlarının saklama süresi:** `garment_jobs` / `tryon_renders` / `scan_jobs` için 13 ay (önerim) ya da hesap süresince.
+5. **Deneme → ücretli geçişte sayaç sıfırlama** (15.5): önerim sıfırlamak (deneme harcamaları ilk ücretli ayda sayılmaz).
 
 ## e. Riskler ve açık sorular
 
