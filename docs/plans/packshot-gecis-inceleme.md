@@ -1021,7 +1021,7 @@ Krediyle ilgili testler en sonda.
 3. **İzin 2.1:** 2.0 onaylı hesapta izin ekranı yeniden açılmamalı. Yeni karar verilirse `consent_events`'e `2.1` yazılmalı.
    - İzin ekranında Poof satırı olmamalı. "İzin vermezsen" bölümü cihaz üstü kesimi anlatmalı.
 4. **Yükseltme:** `image_source` null olan bir parçanın menüsünde "Stüdyo kalitesine yükselt" görünmeli; öneri kartı bu parçayı saymalı.
-5. **grep:** `grep -rni poof ne-giysem/src ne-giysem/supabase/functions` boş olmalı. Repoda yalnızca tarihsel dokümanlarda ve migration yorumlarında sonuç vermeli.
+5. **grep:** `grep -rni "poof|bg-removal" ne-giysem/src ne-giysem/supabase/functions` yalnızca sürüm geçmişi yorumlarını (`constants/consent.ts:15`, `:18`, `_shared/consent.ts:18`) vermeli; çağrı, URL, secret ya da çeviri kalmamalı. Repoda geri kalan sonuçlar tarihsel kayıt ve migration yorumudur.
 
 ## e. Riskler ve açık sorular
 
