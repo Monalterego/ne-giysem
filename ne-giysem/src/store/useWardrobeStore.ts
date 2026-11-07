@@ -79,6 +79,7 @@ function mapRow(row: any): WardrobeItem {
     originalImageUrl: row.image_url ?? '',
     processedImageUrl: row.processed_image_url ?? '',
     thumbUrl: row.thumb_url ?? undefined,
+    imageSource: row.image_source ?? undefined,
     category: row.category,
     subCategory:  row.subcategory    ?? undefined,
     colors:       parseJsonArray(row.colors),

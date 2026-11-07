@@ -19,7 +19,7 @@ import { useUserStore } from '../../store/useUserStore';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { usePlanStore } from '../../store/usePlanStore';
 import { openPaywall } from '../../navigation/navigationRef';
-import type { ClothingCategory, Fabric, Season, WardrobeItem } from '../../types';
+import type { ClothingCategory, Fabric, ImageSource, Season, WardrobeItem } from '../../types';
 import { CATEGORY_META, CATEGORY_ORDER, catLabel, subcatLabel } from '../../constants/categories';
 import { uuidv4 } from '../../utils/uuid';
 import { base64Decode } from '../../utils/base64';
@@ -29,6 +29,7 @@ import { analyzeClothingImage, isUserFacingEdgeError } from '../../utils/visionA
 import { friendlyError } from '../../utils/errorMessage';
 import { isAiConsentError } from '../../lib/edgeFunctions';
 import { withAiReconsent } from '../../lib/aiConsent';
+import { takeAnalysis, discardAnalysis } from '../../lib/pendingAnalysis';
 import { useConsentStore } from '../../store/useConsentStore';
 import { GARMENT_SWATCHES, MAX_ITEM_COLORS } from '../../constants/garmentColors';
 import { t } from '../../i18n';
@@ -75,11 +76,15 @@ const SEASONS: { label: string; value: Season }[] = [
 ];
 
 export default function UploadDetailScreen({ route, navigation }: Props) {
-  const { processedBase64, originalUri, existingItem, manual: manualParam, bgFailed } = route.params as {
+  const {
+    processedBase64, originalUri, existingItem, manual: manualParam,
+    imageSource: imageSourceParam, analysisKey,
+  } = route.params as {
     processedBase64?: string;
     originalUri?: string;
     manual?: boolean;
-    bgFailed?: boolean;
+    imageSource?: ImageSource;
+    analysisKey?: string;
     existingItem?: WardrobeItem;
   };
   const isEditMode = !!existingItem;
@@ -124,8 +129,9 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (isEditMode || !processedBase64 || manualParam) return;
     let cancelled = false;
-    // İzin metni eskiyse güncel metin sorulur, onaylanırsa analiz yeniden denenir
-    withAiReconsent(() => analyzeClothingImage(processedBase64))
+    // Ekleme ekranında orijinal üzerinde başlatılan analiz (packshot ile paralel); yoksa
+    // kaydedilecek görsel üzerinde. İzin metni eskiyse güncel metin sorulur, onaylanırsa yeniden denenir
+    (takeAnalysis(analysisKey) ?? withAiReconsent(() => analyzeClothingImage(processedBase64)))
       .then((result) => {
         if (cancelled) return;
         if (result.failed) {
@@ -169,7 +175,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         if (!cancelled) setAnalyzing(false);
       });
     return () => { cancelled = true; };
-  }, [processedBase64, isEditMode, manualParam]);
+  }, [processedBase64, isEditMode, manualParam, analysisKey]);
 
   const handleCategoryChange = (cat: ClothingCategory) => {
     setCategory(cat);
@@ -300,6 +306,7 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         image_url:           originalImageUrl,
         processed_image_url: processedImageUrl,
         thumb_url:           thumbUrl,
+        image_source:        imageSourceParam ?? null,
         created_at:          now,
       });
       if (dbError) {
@@ -337,12 +344,12 @@ export default function UploadDetailScreen({ route, navigation }: Props) {
         originalImageUrl,
         processedImageUrl,
         thumbUrl: thumbUrl ?? undefined,
+        imageSource: imageSourceParam,
         createdAt: now,
       });
 
+      discardAnalysis();
       navigation.navigate('WardrobeList');
-      // Arka plan kaldırılamadıysa parça orijinal hâliyle eklendi — kullanıcıya söyle
-      if (bgFailed) Alert.alert(t('upload.bgFallbackTitle'), t('upload.bgFallback'));
     } catch (err: any) {
       Alert.alert(t('combos.errorTitle'), err.message ?? t('uploadDetail.saveFailed'));
     } finally {

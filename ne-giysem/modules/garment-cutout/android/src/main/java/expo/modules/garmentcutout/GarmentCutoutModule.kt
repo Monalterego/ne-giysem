@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
+import android.util.Base64
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.tasks.Tasks
@@ -59,6 +60,13 @@ class GarmentCutoutModule : Module() {
       }
     }
 
+    // Kayıttan / vazgeçmeden sonra: garment-cutout/ cache klasörünü boşalt
+    AsyncFunction("clearCache") {
+      File(context.cacheDir, CACHE_DIR).deleteRecursively()
+      Unit
+    }
+
+    // uri: file:// / content:// / mutlak yol ya da data:image/...;base64,... (packshot çıktısı)
     AsyncFunction("flattenOnWhite") { uri: String, promise: Promise ->
       try {
         val source = loadBitmap(uri)
@@ -120,18 +128,25 @@ class GarmentCutoutModule : Module() {
 
   // ─── Yardımcılar ────────────────────────────────────────────────────────────
 
-  /** file:// ya da content:// → bitmap (girdi toUploadJpeg çıktısı: yönü zaten düz) */
+  /** file:// / content:// / mutlak yol / data URI → bitmap (toUploadJpeg çıktısı: yönü zaten düz) */
   private fun loadBitmap(uri: String): Bitmap {
+    val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
+    if (uri.startsWith("data:")) {
+      val comma = uri.indexOf(',')
+      require(comma > 0) { "Geçersiz data URI" }
+      val bytes = Base64.decode(uri.substring(comma + 1), Base64.DEFAULT)
+      return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        ?: throw IllegalArgumentException("Görsel okunamadı")
+    }
     val parsed = if (uri.startsWith("/")) Uri.fromFile(File(uri)) else Uri.parse(uri)
     val stream = context.contentResolver.openInputStream(parsed)
       ?: throw IllegalArgumentException("Görsel açılamadı")
-    val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
     return stream.use { BitmapFactory.decodeStream(it, null, options) }
       ?: throw IllegalArgumentException("Görsel okunamadı")
   }
 
   private fun writeJpeg(bitmap: Bitmap): Map<String, Any> {
-    val dir = File(context.cacheDir, "garment-cutout").apply { mkdirs() }
+    val dir = File(context.cacheDir, CACHE_DIR).apply { mkdirs() }
     val file = File(dir, "${UUID.randomUUID()}.jpg")
     FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
     return mapOf(
@@ -142,6 +157,7 @@ class GarmentCutoutModule : Module() {
   }
 
   companion object {
+    private const val CACHE_DIR = "garment-cutout"
     private const val CUTOUT_MARGIN = 0.06f
     private const val JPEG_QUALITY = 90
   }

@@ -15,7 +15,7 @@ export type OnboardingStackParamList = {
   PhysicalProfile: undefined;
 };
 
-import type { WardrobeItem } from '../types';
+import type { ImageSource, WardrobeItem } from '../types';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -26,10 +26,17 @@ export type WardrobeStackParamList = {
   WardrobeList: undefined;
   Upload: undefined;
   UploadDetail:
-    // manual: yapay zekâ izni yok — fotoğraf olduğu gibi, otomatik tanıma yapılmaz
-    // bgFailed: arka plan kaldırılamadı — orijinal olduğu gibi kaydedilir, otomatik tanıma sürer
-    | { processedBase64: string; originalUri: string; manual?: boolean; bgFailed?: boolean; existingItem?: undefined }
-    | { processedBase64?: undefined; originalUri?: undefined; manual?: undefined; bgFailed?: undefined; existingItem: WardrobeItem };
+    // manual: yapay zekâ izni yok — otomatik tanıma yapılmaz (görsel yine cihazda kesilebilir)
+    // imageSource: kaydedilecek görselin kaynağı (wardrobe_items.image_source)
+    // analysisKey: UploadScreen'de orijinal üzerinde başlatılan analiz (lib/pendingAnalysis)
+    | {
+        processedBase64: string; originalUri: string; manual?: boolean;
+        imageSource: ImageSource; analysisKey?: string; existingItem?: undefined;
+      }
+    | {
+        processedBase64?: undefined; originalUri?: undefined; manual?: undefined;
+        imageSource?: undefined; analysisKey?: undefined; existingItem: WardrobeItem;
+      };
 };
 
 export type ScanStackParamList = {

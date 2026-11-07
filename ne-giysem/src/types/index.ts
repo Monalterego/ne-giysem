@@ -27,6 +27,16 @@ export type Fabric =
   | 'saten' | 'kadife' | 'deri' | 'suni_deri' | 'triko' | 'sifon'
   | 'karisim' | 'bilmiyorum';
 
+/**
+ * Kayıtlı görselin nereden geldiği (wardrobe_items.image_source, 021):
+ *   'packshot'      FASHN stüdyo görseli
+ *   'bg_removed'    ayrılmış, kullanılmıyor (FASHN background-remove yok)
+ *   'device_cutout' cihaz üstü kesim (modules/garment-cutout)
+ *   'original'      olduğu gibi (kesim desteklenmiyor / başarısız)
+ * Eski (Poof dönemi) kayıtlarda yok.
+ */
+export type ImageSource = 'packshot' | 'bg_removed' | 'device_cutout' | 'original';
+
 export interface WardrobeItem {
   id: string;
   userId: string;
@@ -34,6 +44,7 @@ export interface WardrobeItem {
   processedImageUrl: string;
   /** 400px küçük kopya — liste/grid gösterimlerinde kullanılır. Eski kayıtlarda yok. */
   thumbUrl?: string;
+  imageSource?: ImageSource;
   category: ClothingCategory;
   subCategory?: string;
   colors: string[];

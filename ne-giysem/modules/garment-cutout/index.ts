@@ -27,8 +27,21 @@ export async function cutoutGarment(uri: string): Promise<CutoutResult | null> {
   return Native.cutout(uri);
 }
 
-/** Saydam PNG'yi (örn. packshot çıktısı) beyaz zemin JPEG'e çevirir. */
+/** Saydam PNG'yi (file:// ya da data URI; örn. packshot çıktısı) beyaz zemin JPEG'e çevirir. */
 export async function flattenOnWhite(uri: string): Promise<CutoutResult> {
   if (!Native) throw new Error('garment-cutout: native modül yok');
   return Native.flattenOnWhite(uri);
+}
+
+/** Native modül var mı? (flattenOnWhite kullanılabilir mi) */
+export const hasCutoutModule = Native !== null;
+
+/** Kesim cache'ini boşaltır (kayıttan / vazgeçmeden sonra). Hata vermez. */
+export async function clearCutoutCache(): Promise<void> {
+  if (!Native) return;
+  try {
+    await Native.clearCache();
+  } catch (err) {
+    console.warn('[garment-cutout] cache temizlenemedi:', err);
+  }
 }

@@ -40,6 +40,12 @@ public class GarmentCutoutModule: Module {
       }
     }
 
+    // Kayıttan / vazgeçmeden sonra: garment-cutout/ cache klasörünü boşalt
+    AsyncFunction("clearCache") { () in
+      try? FileManager.default.removeItem(at: GarmentCutoutModule.cacheDir())
+    }
+
+    // uri: file:// / mutlak yol ya da data:image/...;base64,... (packshot çıktısı)
     AsyncFunction("flattenOnWhite") { (uri: String, promise: Promise) in
       DispatchQueue.global(qos: .userInitiated).async {
         do {
@@ -81,10 +87,21 @@ public class GarmentCutoutModule: Module {
     var errorDescription: String? { message }
   }
 
-  /** file:// ya da mutlak yol → yönü düzeltilmiş CGImage (Vision yön bilgisini okumasın) */
+  static func cacheDir() -> URL {
+    FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("garment-cutout", isDirectory: true)
+  }
+
+  /** file:// / mutlak yol / data URI → yönü düzeltilmiş CGImage (Vision yön bilgisini okumasın) */
   static func loadUprightImage(_ uri: String) throws -> CGImage {
-    let url = URL(string: uri).flatMap { $0.isFileURL ? $0 : nil } ?? URL(fileURLWithPath: uri)
-    guard let image = UIImage(contentsOfFile: url.path) else {
+    let loaded: UIImage?
+    if uri.hasPrefix("data:"), let comma = uri.firstIndex(of: ",") {
+      loaded = Data(base64Encoded: String(uri[uri.index(after: comma)...])).flatMap { UIImage(data: $0) }
+    } else {
+      let url = URL(string: uri).flatMap { $0.isFileURL ? $0 : nil } ?? URL(fileURLWithPath: uri)
+      loaded = UIImage(contentsOfFile: url.path)
+    }
+    guard let image = loaded else {
       throw CutoutError(message: "Görsel okunamadı")
     }
     if image.imageOrientation == .up, let cg = image.cgImage {
@@ -115,8 +132,7 @@ public class GarmentCutoutModule: Module {
       throw CutoutError(message: "Görsel yazılamadı")
     }
 
-    let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-      .appendingPathComponent("garment-cutout", isDirectory: true)
+    let dir = cacheDir()
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let file = dir.appendingPathComponent("\(UUID().uuidString).jpg")
     try data.write(to: file)

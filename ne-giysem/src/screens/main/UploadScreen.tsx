@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { WardrobeStackParamList } from '../../navigation/types';
 import { colors, fonts, typography, spacing, radius, shadows, layout } from '../../constants/theme';
-import { callEdge, edgeError, EdgeError, isAiConsentError } from '../../lib/edgeFunctions';
 import { friendlyError } from '../../utils/errorMessage';
 import { toUploadJpeg, alertAfterPicker } from '../../utils/imageNormalize';
+import { analyzeClothingImage } from '../../utils/visionAnalysis';
+import { uuidv4 } from '../../utils/uuid';
 import { ensureAiDecision, openAiConsent, withAiReconsent } from '../../lib/aiConsent';
+import { requestPackshot, cutoutToJpegBase64 } from '../../lib/garmentImage';
+import type { PackshotOutcome } from '../../lib/garmentImage';
+import { startAnalysis, discardAnalysis } from '../../lib/pendingAnalysis';
+import { clearCutoutCache } from '../../../modules/garment-cutout';
 import { useConsentStore, aiStatus } from '../../store/useConsentStore';
+import type { ImageSource } from '../../types';
 import { t } from '../../i18n';
 import PhotoGuideModal from '../../components/PhotoGuideModal';
 // Statik import — Metro dinamik yolu çözemez
@@ -33,27 +39,41 @@ import garmentDontDark from '../../../assets/guide/garment_dont_dark.jpg';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'Upload'>;
 
-async function removeBackground(imageBase64: string): Promise<string> {
-  const res = await callEdge('bg-removal-proxy', { image_b64: imageBase64 });
-  if (!res.ok) throw await edgeError(res);
+// Sonuç ekranındaki açıklama: packshot neden yok
+type ResultNote = 'quota' | 'failed' | null;
 
-  const json = await res.json();
-  const out = (json as any)?.result_b64;
-  // Boş sonuç sessizce "başarı" sayılmasın — sonuç ekranı boş kalırdı
-  if (typeof out !== 'string' || !out) throw new Error('bg-removal: result_b64 yok');
-  return out;
-}
+// Kaydedilecek görsel + kaynağı
+type Chosen = { base64: string; source: ImageSource };
 
 export default function UploadScreen({ navigation }: Props) {
   const [originalUri, setOriginalUri] = useState<string | null>(null);
-  const [processedBase64, setProcessedBase64] = useState<string | null>(null);
+  const [originalBase64, setOriginalBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [guideVisible, setGuideVisible] = useState(false);
-  // Yapay zekâ izni yok → fotoğraf olduğu gibi, otomatik tanıma yok (elle akış)
+  // Yapay zekâ izni yok → otomatik tanıma ve packshot yok (görsel yine cihazda kesilir)
   const [manual, setManual] = useState(false);
-  // Arka plan kaldırma başarısız → orijinal olduğu gibi kaydedilir (otomatik tanıma sürer)
-  const [bgFailed, setBgFailed] = useState(false);
+  // Packshot başarılı → yan yana karşılaştırma; kullanıcı seçince chosen dolar
+  const [packshotBase64, setPackshotBase64] = useState<string | null>(null);
+  const [cutoutBase64, setCutoutBase64] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<Chosen | null>(null);
+  const [note, setNote] = useState<ResultNote>(null);
+  // UploadDetail'in erken başlatılan analizi bulması için (lib/pendingAnalysis)
+  const analysisKey = useRef<string | null>(null);
+  // Her seçim yeni bir çalıştırma; geç dönen eski sonuç yok sayılır
+  const runId = useRef(0);
   const aiDeclined = useConsentStore((s) => aiStatus(s.records) === 'declined');
+
+  const reset = () => {
+    runId.current += 1;
+    setOriginalUri(null);
+    setOriginalBase64(null);
+    setPackshotBase64(null);
+    setCutoutBase64(null);
+    setChosen(null);
+    setNote(null);
+    analysisKey.current = null;
+    discardAnalysis();
+  };
 
   const pick = async (source: 'camera' | 'gallery') => {
     // İlk eklemeden önce yapay zekâ izni (karar verildiyse ekran açılmaz).
@@ -107,10 +127,10 @@ export default function UploadScreen({ navigation }: Props) {
     });
 
     // Hazırlanırken önizleme + bekleme göster (büyük galeri görseli birkaç saniye sürebilir)
+    reset();
+    const run = runId.current;
     setOriginalUri(asset.uri);
-    setProcessedBase64(null);
     setManual(!useAi);
-    setBgFailed(false);
     setLoading(true);
 
     let uri = asset.uri;
@@ -133,47 +153,61 @@ export default function UploadScreen({ navigation }: Props) {
       return;
     }
     setOriginalUri(uri);
+    setOriginalBase64(base64Input);
 
-    // İzin yok: arka plan kaldırılmaz, fotoğraf olduğu gibi kaydedilir
-    if (!useAi) {
-      setProcessedBase64(base64Input);
-      setLoading(false);
-      return;
+    // Paralel: (1) Claude analizi orijinal üzerinde (izin varsa), (2) cihaz kesimi
+    // (izin gerekmez, görsel cihazdan çıkmaz), (3) packshot (izin varsa; kota sunucuda).
+    // Görsel storage'a geçici dosya olarak yazılmaz.
+    const key = uuidv4();
+    analysisKey.current = useAi ? key : null;
+    if (useAi) {
+      // İzin metni eskiyse güncel metin sorulur, onaylanırsa yeniden denenir
+      startAnalysis(key, () => withAiReconsent(() => analyzeClothingImage(base64Input)));
     }
+    const cutoutPromise = Platform.OS === 'web' ? Promise.resolve(null) : cutoutToJpegBase64(uri);
+    const packshotPromise: Promise<PackshotOutcome> = useAi
+      ? requestPackshot({ imageB64: base64Input })
+      : Promise.resolve<PackshotOutcome>({ kind: 'failed', reason: 'no-ai' });
 
-    try {
-      // Web: Remove.bg atla, picker'dan gelen base64'ü direkt kullan
-      // İzin metni eskiyse güncel metin sorulur, onaylanırsa yeniden denenir (withAiReconsent)
-      const processed = Platform.OS === 'web'
-        ? base64Input
-        : await withAiReconsent(() => removeBackground(base64Input));
-      setProcessedBase64(processed);
-    } catch (err) {
-      // İzin başka cihazda geri çekilmiş olabilir (sunucu 403) → elle akışa düş
-      if (isAiConsentError(err)) {
-        console.warn('[Upload] bg-removal 403 ai-consent-required → elle akış');
-        useConsentStore.getState().refresh();
-        setManual(true);
-        setProcessedBase64(base64Input);
-      } else if (err instanceof EdgeError && err.status === 401) {
-        // Oturum yok → kayıt da yapılamaz; nedenini göster
-        setOriginalUri(null);
-        alertAfterPicker(t('combos.errorTitle'), friendlyError(err));
-      } else {
-        // Sağlayıcı hatası (kredi, kota, zaman aşımı, 5xx, format reddi): parça yine
-        // eklenebilsin — orijinal olduğu gibi kaydedilir, analiz orijinal üzerinde yapılır
-        console.warn(`[Upload] ${source} bg-removal başarısız → orijinal kullanılacak (b64=${base64Input.length}):`, err);
-        setBgFailed(true);
-        setProcessedBase64(base64Input);
-      }
-    } finally {
-      setLoading(false);
+    const [cutout, packshot] = await Promise.all([cutoutPromise, packshotPromise]);
+    // base64'ler alındı — kesim dosyaları cihazda kalmasın
+    void clearCutoutCache();
+    if (runId.current !== run) return;   // bu arada yeniden seçildi / vazgeçildi
+
+    setCutoutBase64(cutout);
+    console.log(`[Upload] ${source} packshot=${packshot.kind}${packshot.kind === 'failed' ? `:${packshot.reason}` : ''} cutout=${!!cutout}`);
+
+    if (packshot.kind === 'ok') {
+      setPackshotBase64(packshot.base64);   // yan yana karşılaştırma
+    } else {
+      // Packshot yok → cihaz kesimi, o da yoksa olduğu gibi (+ çekim ipucu)
+      setChosen(cutout
+        ? { base64: cutout, source: 'device_cutout' }
+        : { base64: base64Input, source: 'original' });
+      setNote(packshot.kind === 'quota' ? 'quota' : useAi ? 'failed' : null);
     }
+    setLoading(false);
   };
 
-  const handleContinue = () => {
-    if (!processedBase64 || !originalUri) return;
-    navigation.navigate('UploadDetail', { processedBase64, originalUri, manual, bgFailed });
+  // Karşılaştırmada "Orijinali kullan": cihaz kesimi (0 kredi), yoksa olduğu gibi
+  const chooseOriginal = () => {
+    if (!originalBase64) return;
+    setPackshotBase64(null);
+    setNote(null);
+    setChosen(cutoutBase64
+      ? { base64: cutoutBase64, source: 'device_cutout' }
+      : { base64: originalBase64, source: 'original' });
+  };
+
+  const goToDetail = (pick: Chosen) => {
+    if (!originalUri) return;
+    navigation.navigate('UploadDetail', {
+      processedBase64: pick.base64,
+      originalUri,
+      manual,
+      imageSource: pick.source,
+      analysisKey: analysisKey.current ?? undefined,
+    });
   };
 
   return (
@@ -191,7 +225,7 @@ export default function UploadScreen({ navigation }: Props) {
       </View>
 
       {/* Seçim ekranı */}
-      {!originalUri && !loading && (
+      {!originalUri && !loading && !chosen && !packshotBase64 && (
         <View style={styles.pickContainer}>
           <Text style={styles.hint}>{t('upload.howToAdd')}</Text>
 
@@ -249,43 +283,81 @@ export default function UploadScreen({ navigation }: Props) {
           <Image source={{ uri: originalUri }} style={styles.previewImage} contentFit="contain" />
           <View style={styles.loadingOverlay}>
             <ActivityIndicator color={colors.accent} size="large" />
-            <Text style={styles.loadingText}>{manual ? t('scan.preparingImage') : t('scan.removingBg')}</Text>
+            <Text style={styles.loadingText}>{manual ? t('scan.removingBg') : t('upload.preparingStudio')}</Text>
           </View>
         </View>
       )}
 
-      {/* Sonuç */}
-      {processedBase64 && !loading && (
+      {/* Yan yana: stüdyo görseli (packshot) | orijinal — kullanıcı seçer */}
+      {packshotBase64 && !chosen && !loading && originalUri && (
+        <View style={styles.resultContainer}>
+          <Text style={styles.compareTitle}>{t('upload.compareTitle')}</Text>
+          <Text style={styles.compareBody}>{t('upload.compareBody')}</Text>
+          <View style={styles.compareRow}>
+            <View style={styles.compareCol}>
+              <View style={styles.compareImageWrap}>
+                <Image
+                  source={{ uri: `data:image/jpeg;base64,${packshotBase64}` }}
+                  style={styles.compareImage}
+                  contentFit="contain"
+                />
+              </View>
+              <Text style={styles.compareLabel}>{t('upload.compareStudio')}</Text>
+            </View>
+            <View style={styles.compareCol}>
+              <View style={styles.compareImageWrap}>
+                <Image source={{ uri: originalUri }} style={styles.compareImage} contentFit="contain" />
+              </View>
+              <Text style={styles.compareLabel}>{t('upload.compareOriginal')}</Text>
+            </View>
+          </View>
+
+          <View style={styles.actions}>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={chooseOriginal} activeOpacity={0.75}>
+              <Text style={styles.secondaryBtnText}>{t('upload.useOriginal')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={() => goToDetail({ base64: packshotBase64, source: 'packshot' })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.primaryBtnText}>{t('upload.usePackshot')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Sonuç: cihaz kesimi ya da olduğu gibi */}
+      {chosen && !loading && (
         <View style={styles.resultContainer}>
           <View style={styles.imageWrapper}>
             <Image
-              source={{ uri: `data:image/jpeg;base64,${processedBase64}` }}
+              source={{ uri: `data:image/jpeg;base64,${chosen.base64}` }}
               style={styles.previewImage}
               contentFit="contain"
             />
-            {manual || bgFailed ? (
+            {chosen.source === 'original' ? (
               <View style={[styles.badge, styles.badgeMuted]}>
                 <Text style={[styles.badgeText, styles.badgeTextMuted]}>{t('upload.asIs')}</Text>
               </View>
             ) : (
               <View style={styles.badge}>
                 <Feather name="check" size={12} color={colors.white} />
-                <Text style={styles.badgeText}>
-                  {Platform.OS === 'web' ? t('upload.bgCleanedWeb') : t('upload.bgCleaned')}
-                </Text>
+                <Text style={styles.badgeText}>{t('upload.bgCleaned')}</Text>
               </View>
             )}
           </View>
 
+          {note === 'quota' && <Text style={styles.noteText}>{t('upload.packshotQuotaNote')}</Text>}
+          {note === 'failed' && <Text style={styles.noteText}>{t('upload.packshotFailedNote')}</Text>}
+          {/* Kesim yapılamadı: çekim ipucu */}
+          {chosen.source === 'original' && <Text style={styles.noteText}>{t('upload.asIsTip')}</Text>}
+
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.secondaryBtn}
-              onPress={() => { setOriginalUri(null); setProcessedBase64(null); }}
-              activeOpacity={0.75}
-            >
+            <TouchableOpacity style={styles.secondaryBtn} onPress={reset} activeOpacity={0.75}>
               <Text style={styles.secondaryBtnText}>{t('upload.reselect')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleContinue} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => goToDetail(chosen)} activeOpacity={0.85}>
               <Text style={styles.primaryBtnText}>{t('physicalProfile.continue')}</Text>
             </TouchableOpacity>
           </View>
@@ -475,6 +547,55 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surface,
     marginBottom: spacing.lg,
+  },
+  noteText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  // --- Karşılaştırma ---
+  compareTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  compareBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  compareRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  compareCol: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  compareImageWrap: {
+    flex: 1,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  compareImage: {
+    width: '100%',
+    height: '100%',
+  },
+  compareLabel: {
+    ...typography.bodySmall,
+    fontFamily: fonts.bodyMedium,
+    color: colors.text,
+    textAlign: 'center',
   },
   badge: {
     position: 'absolute',
