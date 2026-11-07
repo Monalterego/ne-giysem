@@ -16,6 +16,8 @@ export interface Usage {
   wardrobe: { used: number; limit: number | null };
   tryon:    { used: number; limit: number; reset_at: string | null };
   scan:     { used: number; limit: number | null; reset_at: string };
+  /** 021'den önce yok. window: 'free' ömür boyu · 'setup' yıllık kurulum ayı · 'monthly' */
+  packshot?: { used: number; limit: number | null; reset_at: string | null; window: 'free' | 'setup' | 'monthly' | null };
 }
 
 interface PlanState {

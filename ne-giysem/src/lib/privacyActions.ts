@@ -62,12 +62,28 @@ export async function deleteWardrobeItemFiles(
     .map((v) => toStoragePath('wardrobe-items', v))
     .filter((p): p is string => !!p && p.startsWith(`${uid}/`));
   await removeFiles('wardrobe-items', paths);
+  await deleteTryOnCacheForItems(uid, items.map((i) => i.id));
+}
 
+/**
+ * Adında parça id'si geçen try-on sonuçları ve tüm ara çıktılar (tmp_). Parça silinince
+ * ve görseli değişince ("stüdyo kalitesine yükselt") — eski görselle üretilmiş try-on'lar kalmasın.
+ */
+export async function deleteTryOnCacheForItems(uid: string, itemIds: string[]): Promise<void> {
+  if (!itemIds.length) return;
   const names = await listMannequinCache(uid);
   const tryOns = names
-    .filter((n) => n !== BASE_MANNEQUIN && (n.startsWith(TMP_PREFIX) || items.some((i) => n.includes(i.id))))
+    .filter((n) => n !== BASE_MANNEQUIN && (n.startsWith(TMP_PREFIX) || itemIds.some((id) => n.includes(id))))
     .map((n) => `${uid}/${n}`);
   await removeFiles('mannequin-cache', tryOns);
+}
+
+/** Kullanıcının kendi wardrobe-items dosyaları (yükseltmede eski görsel). Hata vermez. */
+export async function deleteWardrobeFiles(uid: string, values: (string | null | undefined)[]): Promise<void> {
+  const paths = values
+    .map((v) => toStoragePath('wardrobe-items', v))
+    .filter((p): p is string => !!p && p.startsWith(`${uid}/`));
+  await removeFiles('wardrobe-items', paths);
 }
 
 /**

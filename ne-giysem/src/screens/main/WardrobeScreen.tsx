@@ -18,6 +18,8 @@ import type { WardrobeStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
 import { itemThumbSource, itemImageRefs, useSignedImages } from '../../lib/storageUrls';
 import { deleteWardrobeItemFiles } from '../../lib/privacyActions';
+import { isUpgradeEligible, packshotRemaining } from '../../lib/studioUpgrade';
+import StudioUpgradeModal from '../../components/StudioUpgradeModal';
 import { useWardrobeStore } from '../../store/useWardrobeStore';
 import { useUserStore } from '../../store/useUserStore';
 import { usePlanStore } from '../../store/usePlanStore';
@@ -108,6 +110,7 @@ export default function WardrobeScreen({ navigation }: Props) {
   const isLoading  = useWardrobeStore((s) => s.isLoading);
   const fetchItems = useWardrobeStore((s) => s.fetchItems);
   const removeItem = useWardrobeStore((s) => s.removeItem);
+  const updateItem = useWardrobeStore((s) => s.updateItem);
   const user       = useUserStore((s) => s.user);
   const locale     = useUserStore((s) => s.locale);
   const usage      = usePlanStore((s) => s.usage);
@@ -141,6 +144,14 @@ export default function WardrobeScreen({ navigation }: Props) {
   const [activeFilter, setActiveFilter] = useState<ClothingCategory | 'all'>('all');
   const [activeSub,    setActiveSub]    = useState<string>('all');
   const [viewMode,     setViewMode]     = useState<ViewMode>('grid');
+  // "Stüdyo kalitesine yükselt": açık parça (null = kapalı); öneri kartı bu oturumda kapatıldı mı
+  const [upgradeItem,  setUpgradeItem]  = useState<WardrobeItem | null>(null);
+  const [upgradeCardDismissed, setUpgradeCardDismissed] = useState(false);
+
+  // Öneri kartı: packshot hakkı var ve yükseltilebilir parça var (otomatik yükseltme yok)
+  const upgradeEligibleCount = useMemo(() => items.filter(isUpgradeEligible).length, [items]);
+  const packshotLeft         = packshotRemaining(usage);
+  const upgradeCardCount     = packshotLeft === null ? 0 : Math.min(packshotLeft, upgradeEligibleCount);
 
   const filteredItems = useMemo(() => {
     let result = activeFilter === 'all' ? items : items.filter((i) => i.category === activeFilter);
@@ -257,6 +268,10 @@ export default function WardrobeScreen({ navigation }: Props) {
         text: t('common.edit'),
         onPress: () => navigation.navigate('UploadDetail', { existingItem: item }),
       },
+      // Cihaz kesimi / olduğu gibi kaydedilmiş parça → packshot (kota sunucuda)
+      ...(isUpgradeEligible(item)
+        ? [{ text: t('wardrobe.upgradeAction'), onPress: () => setUpgradeItem(item) }]
+        : []),
       {
         text: t('common.delete'),
         style: 'destructive',
@@ -464,6 +479,22 @@ export default function WardrobeScreen({ navigation }: Props) {
         </TouchableOpacity>
       )}
 
+      {/* Stüdyo görseli hakkı var → yükseltme önerisi (yalnızca öneri; seçim kullanıcının) */}
+      {!selectionMode && !limitMessage && !upgradeCardDismissed && upgradeCardCount > 0 && (
+        <View style={styles.limitNote}>
+          <Feather name="star" size={14} color={colors.text} />
+          <Text style={styles.limitNoteText}>
+            {t('wardrobe.upgradeCardBody', { count: upgradeCardCount })}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setUpgradeCardDismissed(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="x" size={14} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Kategori filtre barı */}
       {!selectionMode && (
         <ScrollView
@@ -537,6 +568,12 @@ export default function WardrobeScreen({ navigation }: Props) {
         renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
         extraData={imgVersion}
         showsVerticalScrollIndicator={false}
+      />
+
+      <StudioUpgradeModal
+        item={upgradeItem}
+        onClose={() => setUpgradeItem(null)}
+        onUpgraded={updateItem}
       />
     </SafeAreaView>
   );
