@@ -177,7 +177,7 @@ export async function withdrawTryOnConsent(
 }
 
 /**
- * Yapay zekâ ile fotoğraf işleme izni (Poof + Anthropic). Geri çekmek mevcut veriyi
+ * Yapay zekâ ile fotoğraf işleme izni (Anthropic + FASHN). Geri çekmek mevcut veriyi
  * SİLMEZ: dolap kalır, yeni yüklemeler elle devam eder, "Uyar mı?" kapanır.
  */
 export async function setAiProcessingConsent(uid: string, granted: boolean): Promise<void> {

@@ -45,7 +45,7 @@ export async function ensureAiDecision(): Promise<AiConsentResult> {
 }
 
 /**
- * Yapay zekâ çağrısı (bg-removal-proxy / anthropic-proxy). Sunucu onaylanan metni eski
+ * Yapay zekâ çağrısı (anthropic-proxy / garment-image). Sunucu onaylanan metni eski
  * bulursa (403 consent-version-outdated) güncel metinle izin ekranı açılır; onay
  * verilirse çağrı BİR KEZ yeniden yapılır (işlem kaldığı yerden sürer). Onay verilmezse
  * 'ai-consent-required' fırlatılır → çağıranın mevcut "izin yok" yolu (elle akış /

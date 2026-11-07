@@ -12,10 +12,12 @@ export type ConsentKind = 'notice_shown' | 'ai_processing' | 'tryon_photo' | 'tr
 export type TryOnConsentKind = 'tryon_photo' | 'tryon_physical';
 
 export const CONSENT_VERSIONS: Record<ConsentKind, string> = {
-  notice_shown:   '2.0',   // 2.0: özel nitelikli veri paragrafı (ana — "Okudum" yeniden istenir)
+  notice_shown:   '2.1',   // 2.0: özel nitelikli veri paragrafı (ana — "Okudum" yeniden istenir); 2.1: Poof cümleden çıktı (alt)
   // 2.0: FASHN alıcı olarak eklendi (ana — yeniden onay istenir). Sunucudaki en düşük
   // sürüm: supabase/functions/_shared/consent.ts MIN_CONSENT_MAJOR (önce OTA, sonra deploy)
-  ai_processing:  '2.0',
+  // 2.1: Poof alıcılardan çıktı; izin yoksa cihaz üstü kesim (alt — yeniden sorulmaz,
+  // sunucuda en düşük ana sürüm 2 kalır)
+  ai_processing:  '2.1',
   tryon_photo:    '1.0',
   tryon_physical: '1.0',
 };

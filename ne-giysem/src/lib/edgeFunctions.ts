@@ -4,7 +4,7 @@ const FUNCTIONS_URL = 'https://bdvrgbylirftuxmrpbea.supabase.co/functions/v1';
 
 /**
  * Edge function'ın 2xx dışı yanıtı. code: sunucunun { error } alanı (örn. 'daily-limit').
- * message üst servis gövdesini de içerir — friendlyError'ın FASHN/Poof eşleştirmeleri
+ * message üst servis gövdesini de içerir — friendlyError'ın FASHN eşleştirmeleri
  * (kredi, poz, format) bozulmasın diye.
  */
 export class EdgeError extends Error {
@@ -19,7 +19,7 @@ export class EdgeError extends Error {
   }
 }
 
-/** Proxy'ler (bg-removal, anthropic) yapay zekâ izni yoksa 403 'ai-consent-required' döner */
+/** Proxy'ler (anthropic, garment-image) yapay zekâ izni yoksa 403 'ai-consent-required' döner */
 export function isAiConsentError(err: unknown): err is EdgeError {
   return err instanceof EdgeError && err.code === 'ai-consent-required';
 }

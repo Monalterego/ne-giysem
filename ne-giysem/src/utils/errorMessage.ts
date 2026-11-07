@@ -39,8 +39,7 @@ export function friendlyError(err: unknown): string {
     return t('combos.tryOnPoseFailed');
 
   // Format reddi — yalnızca açık format kodları (415/422) ya da "unsupported" mesajı.
-  // Mesajda sağlayıcı adı (Poof) geçmesi format hatası DEĞİLDİR: proxy her üst servis
-  // hatasını "Poof error <status>" diye sarıyor (kredi, kota, 5xx dahil)
+  // Mesajda sağlayıcı adı geçmesi format hatası DEĞİLDİR (kredi, kota, 5xx de sarılabilir)
   const formatStatus = err instanceof EdgeError && (err.status === 415 || err.status === 422);
   if (formatStatus || (!(err instanceof EdgeError) && m.includes('unsupported')))
     return t('errors.imageFormatUnsupported');

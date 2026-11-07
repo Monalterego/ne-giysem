@@ -34,7 +34,7 @@ import {
 
 const SOURCE = "garment-image";
 
-// İstemci görseli 1400px JPEG'e indiriyor (anthropic-proxy / bg-removal-proxy ile aynı tavan)
+// İstemci görseli 1400px JPEG'e indiriyor (anthropic-proxy ile aynı tavan)
 const MAX_IMAGE_B64    = 2_000_000;
 // Çıktı tavanı (bucket sınırı, 019_storage_limits) — istemciye base64 olarak döner
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;

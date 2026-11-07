@@ -12,10 +12,11 @@ export type ConsentKind = "ai_processing" | "tryon_photo" | "tryon_physical";
 
 /**
  * Sunucunun kabul ettiği en düşük ANA sürüm — TEK yer (fashn-proxy, anthropic-proxy,
- * bg-removal-proxy; ileride garment-image). İstemcideki CONSENT_VERSIONS
+ * garment-image). İstemcideki CONSENT_VERSIONS
  * (src/constants/consent.ts) ana sürümüyle birlikte artırılır; önce OTA (yeni metin +
  * yeniden onay), sonra bu değerin deploy'u — aksi halde eski bundle 403 alır.
- *   ai_processing 2: FASHN alıcı olarak eklendi (izin metni 2.0)
+ *   ai_processing 2: FASHN alıcı olarak eklendi (izin metni 2.0). 2.1 (Poof çıktı) alt
+ *   sürüm: değer 2 kalır
  */
 export const MIN_CONSENT_MAJOR: Record<ConsentKind, number> = {
   ai_processing:  2,
@@ -52,7 +53,7 @@ export async function consentState(
 
 /**
  * 403 — istemci kodu görünce izin ekranını / elle akışı açar (edgeFunctions EdgeError.code).
- *   'ai-consent-required'      : bg-removal-proxy, anthropic-proxy (ai_processing yok)
+ *   'ai-consent-required'      : anthropic-proxy, garment-image (ai_processing yok)
  *   'consent-required'         : fashn-proxy (tryon_photo / tryon_physical; kinds = eksik olanlar)
  *   'consent-version-outdated' : izin var ama onaylanan metin eski (kinds = eski olanlar)
  */
@@ -62,7 +63,7 @@ export const consentRequired = (
 ) => json(kinds ? { error: code, kinds } : { error: code }, 403);
 
 /**
- * ai_processing kapısı (anthropic-proxy, bg-removal-proxy): geçerliyse null,
+ * ai_processing kapısı (anthropic-proxy, garment-image): geçerliyse null,
  * değilse döndürülecek 403 yanıtı.
  */
 export async function aiConsentGate(admin: SupabaseClient, userId: string): Promise<Response | null> {

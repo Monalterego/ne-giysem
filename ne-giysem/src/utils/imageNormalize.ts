@@ -13,13 +13,13 @@ export function alertAfterPicker(title: string, message: string): void {
 }
 
 // ─── Yükleme öncesi görsel normalizasyonu (Upload + Scan ortak) ──────────────
-// Galeri HEIC / 12–48 MP verebilir; Poof yalnızca PNG/JPG/WEBP kabul eder ve proxy'ler
+// Galeri HEIC / 12–48 MP verebilir; sağlayıcılar PNG/JPG/WEBP bekler ve proxy'ler
 // base64'ü MAX_IMAGE_B64 ile sınırlar. Her görsel yapay zekâ yoluna girmeden önce:
 //   uzun kenar ≤ 1400 px (küçükse büyütülmez) + JPEG + base64.
 // Picker'ın kendi base64'ü KULLANILMAZ: galeride tam çözünürlüklü (MB'larca) olabilir.
 
 export const MAX_EDGE = 1400;
-/** bg-removal-proxy / anthropic-proxy MAX_IMAGE_B64 ile aynı (sunucuda 413) */
+/** anthropic-proxy / garment-image MAX_IMAGE_B64 ile aynı (sunucuda 413) */
 export const MAX_UPLOAD_B64 = 2_000_000;
 // Sınır aşılırsa ikinci deneme
 const FALLBACK_EDGE = 1000;

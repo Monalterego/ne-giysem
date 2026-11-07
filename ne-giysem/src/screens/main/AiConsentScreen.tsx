@@ -70,7 +70,6 @@ export default function AiConsentScreen({ navigation }: Props) {
           <Text style={styles.sectionTitle}>{t('aiConsent.whoTitle')}</Text>
           <Provider name={t('aiConsent.anthropicName')} purpose={t('aiConsent.anthropicPurpose')} />
           <Provider name={t('aiConsent.fashnName')}     purpose={t('aiConsent.fashnPurpose')} />
-          <Provider name={t('aiConsent.poofName')}      purpose={t('aiConsent.poofPurpose')} />
         </View>
 
         <View style={styles.section}>

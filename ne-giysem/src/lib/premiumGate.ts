@@ -33,7 +33,7 @@ export async function guardScan(): Promise<boolean> {
 }
 
 /**
- * Tarama hakkını HARCA — Poof + vision başarıyla bittikten sonra, sonucu göstermeden
+ * Tarama hakkını HARCA — vision başarıyla bittikten sonra, sonucu göstermeden
  * hemen önce. false → sonucu gösterme; çağıran ekranı kapatıp openPaywall('scan') açar.
  * RPC hatasında (ağ / 013 yok) sonucu engellemez: tarama zaten yapıldı, kullanıcı
  * suçsuz; değiştirilmiş istemci riski kabul edildi (günlük tavanlar var).
